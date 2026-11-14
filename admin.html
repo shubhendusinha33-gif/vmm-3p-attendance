@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Admin · 3rd Party Attendance</title>
+<meta name="theme-color" content="#1565C0">
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&display=swap">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div class="shell">
+  <nav class="nav" id="nav"></nav>
+  <main class="main" id="view"><div class="spin"></div></main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/dash.js"></script>
+<script>
+let me = null;
+const view = () => $('#view');
+const fileBtn = (id, label) => `<label class="btn sm" style="display:inline-block;cursor:pointer">${label}<input type="file" id="${id}" accept=".xlsx,.xls,.csv" hidden></label>`;
+
+/* ---------- Store Master ---------- */
+async function StoresView(root) {
+  root.innerHTML = `<div class="top"><h1>Store Master</h1><div class="flt">
+      <input id="smQ" placeholder="Search store / city / AM / ZFM"><button class="btn o sm" id="smTpl">⬇ Excel template</button>${fileBtn('smFile', '⬆ Upload Excel')}
+      <a class="btn o sm" href="qr.html?all=1" style="text-decoration:none">🖨 All QR posters</a></div></div>
+    <div class="note i">Columns: Store Code · Name · City · AM Emp · ZFM Emp · Lat · Lng · Active. Lat/Lng are needed for the 500 m geo-fence. Uploading again updates existing stores.</div>
+    <div id="smMsg"></div><div class="tbl" id="smTbl"><div class="spin"></div></div>`;
+  let rows = [];
+  async function load() { const r = await rpc('admin_get', { p_token: me.token, p_kind: 'stores' }); rows = (r && r.rows) || []; paint(); }
+  function paint() {
+    const q = $('#smQ').value.trim().toLowerCase();
+    const f = rows.filter((s) => !q || `${s.store_code} ${s.name} ${s.city} ${s.am_emp} ${s.zfm_emp}`.toLowerCase().includes(q));
+    $('#smTbl').innerHTML = `<table><thead><tr><th>Store</th><th>Name</th><th>City</th><th>AM</th><th>ZFM</th><th>Geo</th><th>Active</th><th>QR</th></tr></thead><tbody>
+      ${f.slice(0, 1000).map((s) => `<tr><td>${esc(s.store_code)}</td><td>${esc(s.name)}</td><td>${esc(s.city || '')}</td><td>${esc(s.am_emp || '—')}</td><td>${esc(s.zfm_emp || '—')}</td>
+        <td>${s.lat ? '<span class="tag ok">Mapped</span>' : '<span class="tag w">No lat/lng</span>'}</td><td>${s.active ? 'Yes' : 'No'}</td><td><a href="qr.html?s=${esc(s.store_code)}">Poster</a></td></tr>`).join('')}</tbody></table>`;
+  }
+  $('#smQ').addEventListener('input', paint);
+  $('#smTpl').addEventListener('click', () => downloadXlsx(rows.length ? rows.map((s) => ({ 'Store Code': s.store_code, Name: s.name, City: s.city, 'AM Emp': s.am_emp, 'ZFM Emp': s.zfm_emp, Lat: s.lat, Lng: s.lng, Active: s.active ? 'TRUE' : 'FALSE' }))
+    : [{ 'Store Code': 'AA01', Name: 'Rajouri Garden', City: 'Delhi', 'AM Emp': '20117', 'ZFM Emp': '30001', Lat: 28.6415, Lng: 77.1209, Active: 'TRUE' }], 'Store_Master.xlsx'));
+  $('#smFile').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; if (!f) return; e.target.value = '';
+    const raw = (await readXlsx(f)).map(normRow);
+    const data = raw.map((r) => ({ store_code: String(r.store_code || r.store || '').toUpperCase(), name: r.name || r.store_name, city: r.city, am_emp: String(r.am_emp || r.am || ''), zfm_emp: String(r.zfm_emp || r.zfm || ''),
+      lat: r.lat === '' ? '' : String(r.lat ?? ''), lng: r.lng === '' ? '' : String(r.lng ?? r.long ?? ''), active: String(r.active ?? 'true').toLowerCase() !== 'false' }))
+      .filter((r) => /^[A-Z]{2}\d{2}$/.test(r.store_code) && r.name);
+    const bad = raw.length - data.length;
+    const r = await rpc('admin_stores_upsert', { p_token: me.token, p_rows: data });
+    $('#smMsg').innerHTML = r && r.ok ? `<div class="note k">${r.count} stores saved.${bad ? ` ${bad} rows skipped (bad store code or missing name).` : ''}</div>` : `<div class="note r">${esc(errText(r && r.error))}</div>`;
+    load();
+  });
+  load();
+}
+
+/* ---------- Manpower Master ---------- */
+async function ManpowerView(root) {
+  root.innerHTML = `<div class="top"><h1>Manpower Master · required per store</h1><div class="flt">
+      <input id="mpQ" placeholder="Search store / vendor"><select id="mpCat"><option value="">Category: All</option></select>
+      <button class="btn o sm" id="mpTpl">⬇ Excel template</button><input type="date" id="mpEff" title="Effective from">${fileBtn('mpFile', '⬆ Upload Excel')}</div></div>
+    <div class="note i">One sheet, all categories. Columns: Store Code · Category (HK / SEC / TRAVEL / CDIT or full name) · Brand (Travel: Safari / VIP / AT, CDIT: Bajaj / Butterfly / Eureka / Prestige / Usha) · Vendor · Morning · Evening · Effective From (optional). Each upload adds a new version from its effective date; old attendance keeps the old counts.</div>
+    <div id="mpMsg"></div><div class="tbl" id="mpTbl"><div class="spin"></div></div>`;
+  $('#mpEff').value = todayIST();
+  let rows = [];
+  const cats = (await rpc('admin_get', { p_token: me.token, p_kind: 'categories' })).rows || [];
+  cats.forEach((c) => $('#mpCat').insertAdjacentHTML('beforeend', `<option value="${c.id}">${esc(c.name)}</option>`));
+  async function load() { const r = await rpc('admin_get', { p_token: me.token, p_kind: 'manpower' }); rows = (r && r.rows) || []; paint(); }
+  function paint() {
+    const q = $('#mpQ').value.trim().toLowerCase(), c = $('#mpCat').value;
+    const f = rows.filter((x) => (!c || x.category_id === c) && (!q || `${x.store_code} ${x.vendor}`.toLowerCase().includes(q)));
+    const tm = f.reduce((a, x) => a + x.morning, 0), te = f.reduce((a, x) => a + x.evening, 0);
+    $('#mpTbl').innerHTML = `<table><thead><tr><th>Store</th><th>Category</th><th>Brand</th><th>Vendor</th><th>Morning</th><th>Evening</th><th>Effective from</th></tr></thead><tbody>
+      ${f.slice(0, 2000).map((x) => `<tr><td>${esc(x.store_code)}</td><td>${esc(x.category_id)}</td><td>${esc(x.brand || '—')}</td><td>${esc(x.vendor || '—')}</td><td>${x.morning}</td><td>${x.evening}</td><td>${esc(x.effective_from || '')}</td></tr>`).join('')}
+      <tr><td colspan="4"><b>Total (${f.length} rows)</b></td><td><b>${tm}</b></td><td><b>${te}</b></td><td></td></tr></tbody></table>`;
+  }
+  $('#mpQ').addEventListener('input', paint); $('#mpCat').addEventListener('change', paint);
+  $('#mpTpl').addEventListener('click', () => downloadXlsx(rows.length ? rows.map((x) => ({ 'Store Code': x.store_code, Category: x.category_id, Brand: x.brand, Vendor: x.vendor, Morning: x.morning, Evening: x.evening, 'Effective From': '' })) : [
+    { 'Store Code': 'AA01', Category: 'HK', Brand: '', Vendor: 'CleanPro Services', Morning: 3, Evening: 1, 'Effective From': '' },
+    { 'Store Code': 'AA01', Category: 'SEC', Brand: '', Vendor: 'Shield Guards', Morning: 1, Evening: 1, 'Effective From': '' },
+    { 'Store Code': 'AA01', Category: 'TRAVEL', Brand: 'VIP', Vendor: 'Shree Travels Mktg', Morning: 1, Evening: 0, 'Effective From': '' },
+    { 'Store Code': 'AA01', Category: 'CDIT', Brand: 'Prestige', Vendor: 'Prime Field Force', Morning: 1, Evening: 1, 'Effective From': '' }], 'Manpower_Master.xlsx'));
+  $('#mpFile').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; if (!f) return; e.target.value = '';
+    const raw = (await readXlsx(f)).map(normRow);
+    const toDate = (v) => { if (!v) return ''; if (typeof v === 'number') { const d = new Date(Math.round((v - 25569) * 86400000)); return d.toISOString().slice(0, 10); } return String(v).slice(0, 10); };
+    const data = raw.map((r) => ({ store_code: String(r.store_code || r.store || '').toUpperCase(), category: String(r.category || ''), brand: String(r.brand || ''), vendor: String(r.vendor || ''),
+      morning: Number(r.morning || 0), evening: Number(r.evening || 0), effective_from: toDate(r.effective_from) })).filter((r) => /^[A-Z]{2}\d{2}$/.test(r.store_code) && r.category);
+    const r = await rpc('admin_manpower_upload', { p_token: me.token, p_rows: data, p_effective: $('#mpEff').value || todayIST() });
+    $('#mpMsg').innerHTML = r && r.ok ? `<div class="note k">${r.count} rows saved from ${esc($('#mpEff').value)}.${r.skipped ? ` ${r.skipped} skipped (unknown category or store).` : ''}</div>` : `<div class="note r">${esc(errText(r && r.error))}</div>`;
+    load();
+  });
+  load();
+}
+
+/* ---------- Users ---------- */
+function UsersView(root) {
+  const holder = document.createElement('div'); holder.style.cssText = 'display:flex;flex-direction:column;gap:14px';
+  root.appendChild(holder);
+  PinReset(holder, me, async () => { const r = await rpc('admin_get', { p_token: me.token, p_kind: 'users' }); return (r && r.rows) || []; });
+  const up = document.createElement('div'); up.className = 'panel';
+  up.innerHTML = `<h3>Add / update users (Excel)</h3>
+    <p class="crumb">Columns: Emp Code · Name · Role (store / am / zfm / hodept / admin) · Post (SM / ASM / MOD, store only) · Store Code (store only) · Dept (Facility / Security / Travel / CDIT, hodept only) · Active.</p>
+    <div class="row"><button class="btn o sm" id="usTpl">⬇ Excel template</button>${fileBtn('usFile', '⬆ Upload Excel')}</div><div id="usMsg"></div>`;
+  root.appendChild(up);
+  $('#usTpl').addEventListener('click', () => downloadXlsx([
+    { 'Emp Code': '10482', Name: 'Ramesh Kumar', Role: 'store', Post: 'SM', 'Store Code': 'AA01', Dept: '', Active: 'TRUE' },
+    { 'Emp Code': '20117', Name: 'Vikas Sharma', Role: 'am', Post: '', 'Store Code': '', Dept: '', Active: 'TRUE' },
+    { 'Emp Code': '30001', Name: 'Anil Mehta', Role: 'zfm', Post: '', 'Store Code': '', Dept: '', Active: 'TRUE' },
+    { 'Emp Code': '40001', Name: 'P. Das', Role: 'hodept', Post: '', 'Store Code': '', Dept: 'Security', Active: 'TRUE' }], 'Users.xlsx'));
+  $('#usFile').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; if (!f) return; e.target.value = '';
+    const raw = (await readXlsx(f)).map(normRow);
+    const data = raw.map((r) => ({ emp_code: String(r.emp_code || r.emp || '').trim(), name: r.name, role: String(r.role || '').toLowerCase(), post: r.post || '', store_code: String(r.store_code || '').toUpperCase(),
+      dept: r.dept || r.department || '', active: String(r.active ?? 'true').toLowerCase() !== 'false' })).filter((r) => /^\d{5,}$/.test(r.emp_code) && r.name && ['store','am','zfm','hodept','admin'].includes(r.role));
+    const r = await rpc('admin_users_upsert', { p_token: me.token, p_rows: data });
+    $('#usMsg').innerHTML = r && r.ok ? `<div class="note k">${r.count} users saved.${raw.length - data.length ? ` ${raw.length - data.length} rows skipped (check Emp Code / Role).` : ''}</div>` : `<div class="note r">${esc(errText(r && r.error))}</div>`;
+  });
+}
+
+/* ---------- Reports ---------- */
+function ReportsView(root) {
+  root.innerHTML = `<div class="top"><h1>Attendance Reports</h1></div>
+    <div class="panel"><h3>Monthly statement (A4)</h3><p class="crumb">Pick store, associate and month. Print, save as PDF or download Excel.</p>
+      <div><a class="btn sm" href="statement.html" style="display:inline-block;text-decoration:none">Open statement</a></div></div>
+    <div class="panel"><h3>Raw punches (Excel)</h3><p class="crumb">Every IN / OUT with time, shift, device and photo status. Up to 62 days at a time.</p>
+      <div class="row"><input class="in" type="date" id="rpFrom" style="width:auto"> to <input class="in" type="date" id="rpTo" style="width:auto"><button class="btn sm" id="rpGo">⬇ Download Excel</button></div><div id="rpMsg"></div></div>`;
+  $('#rpFrom').value = monthStart(todayIST()); $('#rpTo').value = todayIST();
+  $('#rpGo').addEventListener('click', async () => {
+    $('#rpMsg').innerHTML = '<div class="spin"></div>';
+    const r = await rpc('admin_punch_export', { p_token: me.token, p_from: $('#rpFrom').value, p_to: $('#rpTo').value });
+    if (!r || !r.ok) { $('#rpMsg').innerHTML = `<div class="note r">${esc(errText(r && r.error))}</div>`; return; }
+    downloadXlsx(r.rows, `Punches_${$('#rpFrom').value}_${$('#rpTo').value}.xlsx`, 'Punches');
+    $('#rpMsg').innerHTML = `<div class="note k">${r.rows.length} punches downloaded.</div>`;
+  });
+}
+
+/* ---------- Settings (incl. photo storage + departments) ---------- */
+async function SettingsView(root) {
+  root.innerHTML = `<div class="top"><h1>Settings</h1><button class="btn sm" id="stSave">Save Settings</button></div>
+    <div class="panel"><h3>Photo storage</h3>
+      <div class="row" style="justify-content:space-between"><span id="psText">Checking…</span><b id="psPct"></b></div>
+      <div class="meter"><i id="psBar" style="width:0"></i></div>
+      <div class="row"><input class="in" type="date" id="psFrom" style="width:auto"> to <input class="in" type="date" id="psTo" style="width:auto">
+        <button class="btn blue sm" id="psZip">⬇ Download photos ZIP</button><button class="btn red sm" id="psDel">Downloaded, remove from portal</button></div>
+      <div id="psMsg" class="crumb">Save the ZIP to your drive first, then remove. Removing cannot be undone.</div></div>
+    <div class="k5" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+      <div class="panel"><h3>Login security</h3>
+        <label class="row"><span class="grow">Wrong PIN limit</span><input class="in" type="number" id="sTries" min="1" max="10" style="width:90px"></label>
+        <label class="row"><span class="grow">Lock time (minutes)</span><input class="in" type="number" id="sLock" min="1" max="60" style="width:90px"></label>
+        <label class="row"><span class="grow">Store auto-unlock (minutes idle)</span><input class="in" type="number" id="sIdle" min="5" max="240" style="width:90px"></label></div>
+      <div class="panel"><h3>Geo-fence &amp; alerts</h3>
+        <label class="row"><span class="grow">Test mode (no GPS check)</span><input type="checkbox" id="sTest" style="width:22px;height:22px"></label>
+        <label class="row"><span class="grow">Radius (metres)</span><input class="in" type="number" id="sRadius" min="50" max="3800000" style="width:120px"></label>
+        <label class="row"><span class="grow">Storage alert at (%)</span><input class="in" type="number" id="sAlert" min="10" max="99" style="width:90px"></label></div>
+    </div>
+    <div class="note w" id="testWarn" hidden>Test mode is ON: punches are accepted from anywhere. Turn it OFF before go-live.</div>
+    <div class="panel"><h3>HO Departments</h3><div class="pills" id="depts"></div>
+      <div class="row"><input class="in grow" id="dName" placeholder="New department name (e.g. FMCG)"><select class="in" id="dCats" multiple style="width:auto;min-width:160px;height:84px"></select><button class="btn sm" id="dAdd">+ Add</button></div>
+      <p class="crumb">Pick which categories this department can see (Ctrl/Cmd-click for more than one).</p></div>`;
+  const s = (await rpc('admin_get', { p_token: me.token, p_kind: 'settings' })).rows;
+  $('#sTries').value = s.pin_max_tries; $('#sLock').value = s.pin_lock_min; $('#sIdle').value = s.store_idle_min;
+  $('#sTest').checked = s.test_mode; $('#sRadius').value = s.radius_m; $('#sAlert').value = s.storage_alert_pct; $('#testWarn').hidden = !s.test_mode;
+  $('#stSave').addEventListener('click', async () => {
+    const r = await rpc('admin_settings_set', { p_token: me.token, p: { pin_max_tries: +$('#sTries').value, pin_lock_min: +$('#sLock').value, store_idle_min: +$('#sIdle').value,
+      test_mode: $('#sTest').checked, radius_m: +$('#sRadius').value, storage_alert_pct: +$('#sAlert').value } });
+    $('#testWarn').hidden = !$('#sTest').checked; toast(r && r.ok ? 'Settings saved' : errText(r && r.error));
+  });
+  // departments
+  const cats = (await rpc('admin_get', { p_token: me.token, p_kind: 'categories' })).rows || [];
+  $('#dCats').innerHTML = cats.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  async function loadDepts() { const d = (await rpc('admin_get', { p_token: me.token, p_kind: 'departments' })).rows || []; $('#depts').innerHTML = d.map((x) => `<span class="pill on" title="${esc((x.category_ids || []).join(', '))}">${esc(x.name)}</span>`).join(''); }
+  $('#dAdd').addEventListener('click', async () => {
+    const name = $('#dName').value.trim(); if (!name) return toast('Enter a department name');
+    const r = await rpc('admin_dept_add', { p_token: me.token, p_name: name, p_cats: [...$('#dCats').selectedOptions].map((o) => o.value) });
+    if (r && r.ok) { $('#dName').value = ''; loadDepts(); toast('Department saved'); } else toast(errText(r && r.error));
+  });
+  loadDepts();
+  // storage
+  $('#psFrom').value = monthStart(todayIST()); $('#psTo').value = todayIST();
+  async function usage() {
+    const u = await photoFn({ action: 'usage', session: me.token });
+    if (!u || !u.ok) { $('#psText').textContent = 'Could not read storage (' + ((u && u.error) || 'error') + ')'; return; }
+    const p = Math.round((u.bytes / u.limit) * 100);
+    $('#psText').textContent = `${(u.bytes / 1048576).toFixed(0)} MB of 1 GB used · ${u.photos.toLocaleString('en-IN')} photos`;
+    $('#psPct').textContent = p + '%'; $('#psPct').style.color = p >= s.storage_alert_pct ? 'var(--red)' : 'var(--ok)';
+    $('#psBar').style.width = Math.min(p, 100) + '%'; $('#psBar').style.background = p >= s.storage_alert_pct ? 'var(--red)' : p >= 50 ? 'var(--amb)' : 'var(--ok)';
+  }
+  $('#psZip').addEventListener('click', async () => {
+    $('#psMsg').textContent = 'Preparing list…';
+    const l = await photoFn({ action: 'list', session: me.token, from: $('#psFrom').value, to: $('#psTo').value });
+    if (!l || !l.ok) { $('#psMsg').textContent = 'Error: ' + ((l && l.error) || ''); return; }
+    if (!l.files.length) { $('#psMsg').textContent = 'No photos in these dates.'; return; }
+    const zip = new JSZip(); let done = 0;
+    for (const f of l.files) {
+      try { const b = await (await fetch(f.url)).blob(); zip.file(f.path.split('/').slice(1).join('/'), b); } catch (e) {}
+      done++; if (done % 25 === 0) $('#psMsg').textContent = `Downloading ${done} / ${l.files.length}…`;
+    }
+    $('#psMsg').textContent = 'Making ZIP…';
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Selfies_${$('#psFrom').value}_${$('#psTo').value}.zip`; a.click();
+    $('#psMsg').textContent = `${l.files.length} photos saved in the ZIP. Keep it on your drive, then remove from portal.`;
+  });
+  $('#psDel').addEventListener('click', async (e) => {
+    const b = e.currentTarget;
+    if (b.dataset.confirm !== '1') { b.dataset.confirm = '1'; b.textContent = `Tap again: remove photos ${$('#psFrom').value} to ${$('#psTo').value}`; return; }
+    b.disabled = true; $('#psMsg').textContent = 'Removing…';
+    const r = await photoFn({ action: 'delete', session: me.token, from: $('#psFrom').value, to: $('#psTo').value });
+    b.disabled = false; b.dataset.confirm = ''; b.textContent = 'Downloaded, remove from portal';
+    $('#psMsg').textContent = r && r.ok ? `${r.deleted} photos removed.` : 'Error: ' + ((r && r.error) || ''); usage();
+  });
+  usage();
+}
+
+/* ---------- Access Log ---------- */
+function AccessView(root) {
+  const st = { role: 'store', date: todayIST() };
+  root.innerHTML = `<div class="top"><h1>Access Log</h1><div class="flt"><input type="date" id="alDate"><button class="btn o sm" id="alXls">⬇ Excel</button></div></div>
+    <div class="seg blue" id="alTabs"></div><div class="k5" id="alKpi"></div>
+    <div class="k5" style="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);align-items:start">
+      <div class="tbl" id="alUsers"></div><div class="tbl" id="alResets"></div></div>`;
+  $('#alDate').value = st.date; $('#alDate').max = todayIST();
+  let data = null;
+  const names = { store: 'Store', am: 'AM', zfm: 'ZFM', hodept: 'HO Dept', admin: 'Admin' };
+  const ev = { login: ['ok', 'Login'], logout: ['i', 'Logout'], auto_logout: ['w', 'Auto logout'], pin_lock: ['r', 'PIN lock'], pin_set: ['i', 'PIN created'], pin_reset: ['w', 'PIN reset'], store_busy: ['w', 'Blocked: store open'], settings: ['i', 'Settings'] };
+  async function load() {
+    $('#alKpi').innerHTML = '<div class="spin"></div>';
+    data = await rpc('access_view', { p_token: me.token, p_role: st.role, p_date: st.date });
+    if (!data || !data.ok) { $('#alKpi').innerHTML = `<div class="note r">${esc(errText(data && data.error))}</div>`; return; }
+    const c = data.counts || {};
+    $('#alTabs').innerHTML = Object.keys(names).map((k) => `<button data-r="${k}" class="${k === st.role ? 'on' : ''}">${names[k]} (${c[k] || 0})</button>`).join('');
+    const k = data.kpi;
+    $('#alKpi').innerHTML = kpi('Logged in on this day', k.today, `<span class="p" style="color:var(--ok)">${pct(k.today, k.total)}%</span>`) + kpi('Logged in till date', k.ever, `<span class="p">${pct(k.ever, k.total)}%</span>`)
+      + kpi('Never logged in', k.total - k.ever, '', 'var(--red)') + kpi('Auto logouts', k.auto_logout) + kpi('PIN resets', k.pin_resets);
+    $('#alUsers').innerHTML = `<table><thead><tr><th>${st.role === 'store' ? 'Store' : 'Emp'}</th><th>User</th><th>Last login</th><th>Event on this day</th></tr></thead><tbody>
+      ${data.users.map((u) => { const e = u.last_event ? ev[u.last_event.event] || ['i', u.last_event.event] : null;
+        return `<tr><td>${esc(st.role === 'store' ? u.store_code : u.emp_code)}</td><td>${esc(u.name)}${u.post ? ' · ' + esc(u.post) : ''}${u.dept ? ' · ' + esc(u.dept) : ''}</td>
+        <td>${esc(u.last_login || '—')}</td><td>${u.active_now ? '<span class="tag ok">Active now</span> ' : ''}${e ? `<span class="tag ${e[0]}">${e[1]} ${u.last_event.at}</span>` : u.ever ? '<span class="tag w">Not on this day</span>' : '<span class="tag r">Never logged in</span>'}</td></tr>`; }).join('') || '<tr><td colspan="4" class="empty">No users</td></tr>'}</tbody></table>`;
+    $('#alResets').innerHTML = `<table><thead><tr><th>PIN reset</th><th>Reset by</th><th>Time</th></tr></thead><tbody>
+      ${data.resets.map((x) => `<tr><td>${esc(x.name || x.emp)}${x.store ? ' · ' + esc(x.store) : ''}</td><td>${esc(x.by_name || x.by || '—')}</td><td>${x.at}</td></tr>`).join('') || '<tr><td colspan="3" class="empty">No PIN resets on this day</td></tr>'}</tbody></table>`;
+  }
+  root.addEventListener('click', (e) => { const b = e.target.closest('#alTabs button'); if (b) { st.role = b.dataset.r; load(); } });
+  $('#alDate').addEventListener('change', (e) => { st.date = e.target.value || todayIST(); load(); });
+  $('#alXls').addEventListener('click', () => { if (data) downloadXlsx(data.users.map((u) => ({ Role: names[st.role], Emp: u.emp_code, Name: u.name, Post: u.post, Store: u.store_code, Dept: u.dept, 'Last login': u.last_login, 'Ever logged in': u.ever ? 'Yes' : 'No',
+      'Event on day': u.last_event ? u.last_event.event + ' ' + u.last_event.at : '' })), `Access_${st.role}_${st.date}.xlsx`); });
+  load();
+}
+
+(async function () {
+  me = await requireSession(['admin']); if (!me) return;
+  const items = [{ grp: 'OPERATE' }, { id: 'live', label: 'Live Dashboard' }, { id: 'churn', label: 'Staff Churn' }, { id: 'reports', label: 'Attendance Reports' },
+    { grp: 'MANAGE' }, { id: 'stores', label: 'Store Master' }, { id: 'manpower', label: 'Manpower Master' }, { id: 'users', label: 'Users & PIN' }, { id: 'settings', label: 'Settings' }, { id: 'access', label: 'Access Log' }];
+  Shell(me, items, (id) => {
+    const v = view(); v.innerHTML = '';
+    ({ live: () => LiveDash(v, me), churn: () => ChurnView(v, me), reports: () => ReportsView(v), stores: () => StoresView(v), manpower: () => ManpowerView(v),
+       users: () => UsersView(v), settings: () => SettingsView(v), access: () => AccessView(v) })[id]();
+  });
+})();
+</script>
+</body>
+</html>

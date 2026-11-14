@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>3rd Party Attendance</title>
+<meta name="theme-color" content="#1565C0">
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&family=Noto+Sans+Devanagari:wght@400;700&display=swap">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div class="blue-page">
+  <form class="card" id="card" autocomplete="off" novalidate>
+    <div id="langSlot" style="display:flex;justify-content:flex-end"></div>
+    <img class="logo" src="assets/logo.png" alt="Vishal Mega Mart">
+
+    <!-- step 1: details -->
+    <section id="s1">
+      <h1 class="ttl" data-t="appTitle"></h1>
+      <p class="sub" data-t="appSub"></p>
+      <div class="roles" id="roles" role="tablist" style="margin-top:12px">
+        <button type="button" class="role on" data-role="store"><span class="ic">🏪</span><span data-t="roleStore"></span></button>
+        <button type="button" class="role" data-role="am"><span class="ic">🧭</span><span data-t="roleAm"></span></button>
+        <button type="button" class="role" data-role="zfm"><span class="ic">🗺️</span><span data-t="roleZfm"></span></button>
+        <button type="button" class="role" data-role="hodept"><span class="ic">🏢</span><span data-t="roleHodept"></span></button>
+        <button type="button" class="role" data-role="admin"><span class="ic">🛡️</span><span data-t="roleAdmin"></span></button>
+      </div>
+      <div class="steps" style="margin:12px 0"><b class="on">1</b><span data-t="stepDetails"></span><span>—</span><b>2</b><span data-t="stepPin"></span></div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="field"><label class="lbl" for="emp" data-t="empCode"></label>
+          <input class="in" id="emp" inputmode="numeric" maxlength="10" data-tp="empHint"></div>
+        <div class="field" data-for="store"><label class="lbl" for="post" data-t="post"></label>
+          <select class="in" id="post"><option>SM</option><option>ASM</option><option>MOD</option></select></div>
+        <div class="field" data-for="store"><label class="lbl" for="storeCode" data-t="storeCode"></label>
+          <input class="in" id="storeCode" maxlength="4" style="text-transform:uppercase" data-tp="storeHint"></div>
+        <div class="field" data-for="hodept" hidden><label class="lbl" for="dept" data-t="department"></label>
+          <select class="in" id="dept"><option value="" data-t="selectDept"></option></select></div>
+        <div id="err1" class="note r" hidden></div>
+        <button class="btn" id="btnNext" type="submit" data-t="next"></button>
+      </div>
+    </section>
+
+    <!-- step 2: PIN -->
+    <section id="s2" hidden>
+      <h1 class="ttl"><span data-t="welcome"></span>, <span id="who"></span></h1>
+      <p class="sub" id="whoSub" style="margin-top:2px"></p>
+      <div class="steps" style="margin:12px 0"><b>1</b><span data-t="stepDetails"></span><span>—</span><b class="on">2</b><span data-t="stepPin"></span></div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="note k" data-t="verified"></div>
+        <div class="lbl" style="text-align:center" data-t="enterPin"></div>
+        <div class="pins" id="pinLogin"></div>
+        <div id="err2" class="note r" hidden></div>
+        <button class="btn" id="btnLogin" type="button" data-t="login"></button>
+        <p class="sub" style="margin:0" data-t="forgotPin"></p>
+        <button class="link" type="button" data-back data-t="back"></button>
+      </div>
+    </section>
+
+    <!-- create PIN -->
+    <section id="s3" hidden>
+      <h1 class="ttl" data-t="createPin"></h1>
+      <p class="sub" id="whoSub3" style="margin-top:2px"></p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+        <div class="lbl" data-t="answerQ"></div>
+        <div class="math" id="mathQ"></div>
+        <input class="in" id="mathA" inputmode="numeric" maxlength="3" style="text-align:center;font-size:20px;font-weight:700">
+        <div class="lbl" data-t="newPin"></div>
+        <div class="pins" id="pinNew"></div>
+        <div class="lbl" data-t="confirmPin"></div>
+        <div class="pins" id="pinNew2"></div>
+        <div id="err3" class="note r" hidden></div>
+        <button class="btn" id="btnSave" type="button" data-t="savePin"></button>
+        <button class="link" type="button" data-back data-t="back"></button>
+      </div>
+    </section>
+
+    <!-- locked -->
+    <section id="s4" hidden>
+      <h1 class="ttl" data-t="loginLocked"></h1>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+        <div class="note r" data-t="lockedWhy"></div>
+        <div class="big" id="countdown">05:00</div>
+        <p class="sub" style="margin:0" data-t="tryAfter"></p>
+        <div class="note i" data-t="forgotPin"></div>
+        <button class="link" type="button" data-back data-t="back"></button>
+      </div>
+    </section>
+
+    <!-- store busy -->
+    <section id="s5" hidden>
+      <h1 class="ttl"><span id="busyStore"></span> <span data-t="storeOpen"></span></h1>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+        <div class="note w" id="busyWho"></div>
+        <div class="note i" id="busyHow"></div>
+        <button class="btn o" id="btnRetry" type="button" data-t="checkAgain"></button>
+        <button class="link" type="button" data-back data-t="back"></button>
+      </div>
+    </section>
+
+    <p class="credit" id="credit"></p>
+  </form>
+</div>
+
+<script src="assets/app.js"></script>
+<script>
+let role = 'store', checked = null, timer = null, mathAns = 0;
+
+function show(id) { ['s1','s2','s3','s4','s5'].forEach((s) => $('#' + s).hidden = s !== id); }
+function err(id, msg) { const e = $('#' + id); e.hidden = !msg; e.textContent = msg || ''; }
+function pinBoxes(el) {
+  el.innerHTML = [0,1,2,3].map(() => '<input type="password" inputmode="numeric" maxlength="1" autocomplete="one-time-code">').join('');
+  const ins = $$('input', el);
+  ins.forEach((i, k) => {
+    i.addEventListener('input', () => { i.value = i.value.replace(/\D/g, '').slice(0, 1); if (i.value && ins[k + 1]) ins[k + 1].focus(); });
+    i.addEventListener('keydown', (e) => { if (e.key === 'Backspace' && !i.value && ins[k - 1]) ins[k - 1].focus(); });
+  });
+}
+const pinVal = (el) => $$('input', el).map((i) => i.value).join('');
+function ident() {
+  return { p_role: role, p_emp: $('#emp').value.trim(),
+    p_post: role === 'store' ? $('#post').value : null,
+    p_store: role === 'store' ? $('#storeCode').value.trim().toUpperCase() : null,
+    p_dept: role === 'hodept' ? (Number($('#dept').value) || null) : null };
+}
+function setRole(r) {
+  role = r;
+  $$('.role').forEach((b) => b.classList.toggle('on', b.dataset.role === r));
+  $$('[data-for="store"]').forEach((e) => e.hidden = r !== 'store');
+  $$('[data-for="hodept"]').forEach((e) => e.hidden = r !== 'hodept');
+  err('err1');
+}
+function newMath() {
+  const a = 2 + Math.floor(Math.random() * 9), b = 1 + Math.floor(Math.random() * 9);
+  mathAns = a + b; $('#mathQ').textContent = `${a} + ${b} = ?`; $('#mathA').value = '';
+}
+function lockedScreen(sec) {
+  show('s4'); clearInterval(timer);
+  const end = Date.now() + sec * 1000;
+  const tick = () => {
+    const left = Math.max(0, Math.round((end - Date.now()) / 1000));
+    $('#countdown').textContent = `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(left % 60).padStart(2, '0')}`;
+    if (!left) { clearInterval(timer); show('s2'); pinBoxes($('#pinLogin')); }
+  };
+  tick(); timer = setInterval(tick, 1000);
+}
+function subLine() {
+  const i = ident();
+  return role === 'store' ? `${i.p_post} · ${i.p_store}${checked.store_name ? ' · ' + checked.store_name : ''}` : `Emp ${i.p_emp}`;
+}
+
+async function doCheck() {
+  const i = ident();
+  if (!/^\d{5,}$/.test(i.p_emp)) return err('err1', t('empHint'));
+  if (role === 'store' && !/^[A-Z]{2}\d{2}$/.test(i.p_store)) return err('err1', t('storeHint'));
+  if (role === 'hodept' && !i.p_dept) return err('err1', t('selectDept'));
+  $('#btnNext').disabled = true;
+  const r = await rpc('auth_check', i);
+  $('#btnNext').disabled = false;
+  if (!r || !r.ok) return err('err1', errText(r && r.error));
+  checked = r; err('err1');
+  $('#who').textContent = r.name; $('#whoSub').textContent = subLine(); $('#whoSub3').textContent = subLine();
+  if (r.locked_sec > 0) return lockedScreen(r.locked_sec);
+  if (!r.pin_set) { newMath(); pinBoxes($('#pinNew')); pinBoxes($('#pinNew2')); err('err3'); return show('s3'); }
+  pinBoxes($('#pinLogin')); err('err2'); show('s2'); setTimeout(() => $('#pinLogin input').focus(), 50);
+}
+
+async function doLogin() {
+  const pin = pinVal($('#pinLogin'));
+  if (!/^\d{4}$/.test(pin)) return err('err2', t('enterPin'));
+  $('#btnLogin').disabled = true;
+  const r = await rpc('auth_login', { ...ident(), p_pin: pin, p_device: deviceId() });
+  $('#btnLogin').disabled = false;
+  if (r && r.ok) { Session.set(r); location.href = homeFor(r.role); return; }
+  const e = r && r.error;
+  if (e === 'WRONG_PIN') { pinBoxes($('#pinLogin')); return err('err2', t('wrongPin', { n: r.tries_left })); }
+  if (e === 'LOCKED') return lockedScreen(r.locked_sec);
+  if (e === 'PIN_NOT_SET') { newMath(); pinBoxes($('#pinNew')); pinBoxes($('#pinNew2')); return show('s3'); }
+  if (e === 'STORE_BUSY') {
+    $('#busyStore').textContent = ident().p_store;
+    $('#busyWho').textContent = t('openOnPhone', { name: r.by_name, emp: r.by_emp, since: r.since });
+    $('#busyHow').textContent = t('askLogout', { at: r.unlock_at });
+    return show('s5');
+  }
+  err('err2', errText(e));
+}
+
+async function doSave() {
+  if (Number($('#mathA').value) !== mathAns) { newMath(); return err('err3', t('wrongAnswer')); }
+  const p1 = pinVal($('#pinNew')), p2 = pinVal($('#pinNew2'));
+  if (!/^\d{4}$/.test(p1)) return err('err3', t('newPin'));
+  if (p1 !== p2) { pinBoxes($('#pinNew2')); return err('err3', t('pinMismatch')); }
+  $('#btnSave').disabled = true;
+  const r = await rpc('auth_set_pin', { ...ident(), p_pin: p1 });
+  $('#btnSave').disabled = false;
+  if (!r || !r.ok) return err('err3', errText(r && r.error));
+  toast(t('pinSaved'));
+  checked.pin_set = true; pinBoxes($('#pinLogin')); err('err2'); show('s2');
+}
+
+(async function init() {
+  $('#langSlot').appendChild(langToggle());
+  $('#credit').innerHTML = credit();
+  applyI18n();
+  const q = new URLSearchParams(location.search);
+  if (q.get('r') === 'expired') toast(t('sessionExpired'));
+  const s = Session.get();
+  if (s && s.token) { const me = await rpc('auth_me', { p_token: s.token }); if (me && me.ok) { location.href = homeFor(me.role); return; } Session.clear(); }
+  const last = store.get('vmm3p_last_login');
+  if (last) { setRole(last.role || 'store'); $('#emp').value = last.emp || ''; if (last.post) $('#post').value = last.post; $('#storeCode').value = last.store || ''; }
+  const opts = await rpc('login_options');
+  if (opts && opts.departments) opts.departments.forEach((d) => $('#dept').insertAdjacentHTML('beforeend', `<option value="${d.id}">${esc(d.name)}</option>`));
+  if (last && last.dept) $('#dept').value = last.dept;
+
+  $('#roles').addEventListener('click', (e) => { const b = e.target.closest('.role'); if (b) setRole(b.dataset.role); });
+  $('#card').addEventListener('submit', (e) => { e.preventDefault(); store.set('vmm3p_last_login', { role, emp: $('#emp').value, post: $('#post').value, store: $('#storeCode').value, dept: $('#dept').value }); doCheck(); });
+  $('#btnLogin').addEventListener('click', doLogin);
+  $('#pinLogin').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+  $('#btnSave').addEventListener('click', doSave);
+  $('#btnRetry').addEventListener('click', doLogin);
+  $$('[data-back]').forEach((b) => b.addEventListener('click', () => { clearInterval(timer); show('s1'); }));
+  $('#storeCode').addEventListener('input', (e) => e.target.value = e.target.value.toUpperCase());
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Store QR Poster · 3rd Party Attendance</title>
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&family=Noto+Sans+Devanagari:wght@400;700&display=swap">
+<link rel="stylesheet" href="assets/app.css">
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  .poster { width: 210mm; min-height: 297mm; margin: 16px auto; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10mm; padding: 18mm; box-shadow: 0 10px 30px rgba(0,0,0,.12); }
+  .poster h1 { font-size: 34pt; color: var(--blue-d); margin: 0; text-align: center; line-height: 1.1; }
+  .poster .hi { font-size: 20pt; color: var(--mut); }
+  .poster .qr { border: 6mm solid var(--pink); border-radius: 6mm; padding: 4mm; background: #fff; }
+  .poster .code { background: var(--blue); color: #fff; border-radius: 4mm; padding: 4mm 10mm; font-size: 28pt; font-weight: 800; letter-spacing: 2px; text-align: center; }
+  .poster .steps { font-size: 14pt; color: var(--ink); text-align: center; line-height: 1.6; }
+  .poster .url { font-size: 9pt; color: var(--mut); word-break: break-all; text-align: center; }
+  @media screen and (max-width: 840px) { .poster { width: 100%; min-height: auto; padding: 24px 16px; gap: 16px; margin: 0; box-shadow: none; } .poster h1 { font-size: 26px; } .poster .hi { font-size: 16px; } .poster .code { font-size: 22px; } .poster .steps { font-size: 14px; } }
+  @media print { body { background: #fff; } .poster { margin: 0; box-shadow: none; } }
+</style>
+</head>
+<body>
+<header class="hdr noprint">
+  <div class="t"><b id="hTitle">Store QR poster</b><small>Print on A4 and paste near the staff entry</small></div>
+  <button class="x" onclick="history.length > 1 ? history.back() : (location.href = 'store.html')">✕</button>
+</header>
+<div class="wrap noprint" style="padding-bottom:0">
+  <div class="row"><button class="btn" id="btnPrint" style="flex:1">🖨 Print / Save as PDF</button><button class="btn o" id="btnPng" style="flex:1">⬇ Download image</button></div>
+</div>
+<section class="poster" id="poster">
+  <img src="assets/logo.png" alt="Vishal Mega Mart" style="height:22mm">
+  <h1>Scan to Punch IN / OUT</h1>
+  <div class="hi">स्कैन करें और हाज़िरी लगाएं</div>
+  <div class="qr"></div>
+  <div class="code" id="code"></div>
+  <div class="steps">1. Open phone camera &nbsp;·&nbsp; 2. Scan &nbsp;·&nbsp; 3. Fill name and punch<br>Housekeeping · Security · Travel · CDIT promoters<br>No phone? Ask the MOD.</div>
+  <div class="url" id="url"></div>
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(async function () {
+  const me = await requireSession(['store', 'admin']); if (!me) return;
+  const q = new URLSearchParams(location.search);
+  const base = location.href.replace(/qr\.html.*$/, '');
+  if (me.role === 'admin' && q.get('all') === '1') {
+    const r = await rpc('admin_get', { p_token: me.token, p_kind: 'stores' });
+    const stores = ((r && r.rows) || []).filter((s) => s.active);
+    const tpl = $('#poster'); $('#hTitle').textContent = `All QR posters · ${stores.length} stores`;
+    $('#btnPng').hidden = true;
+    stores.forEach((s, i) => {
+      const el = i === 0 ? tpl : tpl.cloneNode(true); el.removeAttribute('id'); el.style.pageBreakAfter = 'always';
+      el.querySelector('.qr').innerHTML = ''; el.querySelector('.code').textContent = `${s.store_code} · ${s.name}`;
+      el.querySelector('.url').textContent = `${base}punch.html?s=${s.store_code}`;
+      if (i) document.body.appendChild(el);
+      new QRCode(el.querySelector('.qr'), { text: `${base}punch.html?s=${s.store_code}`, width: 320, height: 320, colorDark: '#0D47A1', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+    });
+    $('#btnPrint').onclick = () => window.print();
+    return;
+  }
+  const code = (me.role === 'store' ? me.store_code : (q.get('s') || '')).toUpperCase();
+  if (!/^[A-Z]{2}\d{2}$/.test(code)) { document.body.insertAdjacentHTML('beforeend', '<div class="wrap"><div class="note r">Store code missing.</div></div>'); return; }
+  const ctx = await rpc('punch_context', { p_store: code });
+  const name = ctx && ctx.store ? ctx.store.name : '';
+  const url = `${base}punch.html?s=${code}`;
+  document.title = `QR ${code} · 3rd Party Attendance`;
+  $('#code').textContent = `${code} · ${name}`; $('#url').textContent = url; $('#hTitle').textContent = `QR poster · ${code}`;
+  new QRCode($('.qr'), { text: url, width: 320, height: 320, colorDark: '#0D47A1', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+  $('#btnPrint').onclick = () => window.print();
+  $('#btnPng').onclick = () => {
+    const img = $('.qr img') || $('.qr canvas'); if (!img) return;
+    const a = document.createElement('a'); a.download = `QR_${code}.png`;
+    a.href = img.tagName === 'IMG' ? img.src : img.toDataURL('image/png'); a.click();
+  };
+})();
+</script>
+</body>
+</html>
