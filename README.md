@@ -15,7 +15,7 @@ Designed & Developed by Shubhendu Sinha · VMM Central Ops & BI
 | `punch.html?s=AA01` | Associates | Opens from the store QR. Punch IN / OUT, geo-fence, random 8 KB photo. |
 | `store.html` | SM / ASM / MOD | Today / any date / 1st to today, "not punched" list, WhatsApp share, comp-off, Punch for staff, QR poster. |
 | `manage.html` | AM, ZFM, HO Dept | Live dashboard with drill-down, staff churn, statements. ZFM also resets PINs. |
-| `admin.html` | Admin | Everything above + Store Master, Manpower Master, Users & PIN, Settings, Access Log, photo ZIP download. |
+| `admin.html` | Admin | Everything above + Store Master, Manpower Master, Users & PIN, View as User, Settings, Access Log, Consent Log, photo ZIP download. |
 | `statement.html` | All logged-in roles | A4 monthly statement, print / PDF / Excel. |
 | `qr.html` | Store login, Admin | Printable QR poster (Admin: all stores at once). |
 | `privacy.html` | Everyone | Camera & location privacy policy (English / हिंदी). |
@@ -25,10 +25,10 @@ Designed & Developed by Shubhendu Sinha · VMM Central Ops & BI
 ### Step 1 · Open the portal
 Open `https://shubhendusinha33-gif.github.io/vmm-3p-attendance/` on your phone or computer.
 
-### Step 2 · Log in as Admin (first time)
+### Step 2 · Log in as Admin
 1. Tap **Admin**.
-2. Emp Code: `99999` → **Next**.
-3. PIN: `4321` → **Login**. (Test PIN. Change it in Step 6.)
+2. Enter your Admin Emp Code → **Next** → your Admin PIN → **Login**.
+3. The Admin Emp Code and PIN are given to you privately. **Never write them in this repo, in a chat group or on paper at the store.**
 
 ### Step 3 · Upload stores
 1. Left menu → **Store Master** → **⬇ Excel template**.
@@ -45,9 +45,10 @@ Open `https://shubhendusinha33-gif.github.io/vmm-3p-attendance/` on your phone o
 2. One row per store + category + brand: Vendor, Morning count, Evening count.
 3. Pick the **effective date** next to the upload button → **⬆ Upload Excel**.
 
-### Step 6 · Change the test Admin PIN
-1. **Users & PIN** → find your row (99999) → **Reset PIN** → tap again to confirm.
-2. You are logged out. Log in again: it asks a math question and a new PIN.
+### Step 6 · Change your Admin PIN
+1. Left menu → **Change PIN**.
+2. Current PIN → new PIN twice → **Change PIN**. Easy PINs (1234, 0000, 1111 …) are refused.
+3. Admin PIN cannot be reset from the portal by anyone (not even another Admin), and it cannot be "created" from the login screen. Only **Change PIN** works.
 
 ### Step 7 · Test in one store
 1. **Settings** → keep **Test mode** ON for the first day (GPS not checked).
@@ -69,6 +70,16 @@ Open `https://shubhendusinha33-gif.github.io/vmm-3p-attendance/` on your phone o
 - Store login checks location inside the 500 m geo-fence (when Test mode is OFF).
 - Change `policy` in `assets/app.js` when the privacy text changes; everyone is asked again.
 - The privacy policy text is a draft: have VMM Legal / HR review it before go-live.
+
+## Security (what protects the portal)
+- No password or PIN is stored in this repo. PINs are saved only as encrypted hashes in the database.
+- 3 wrong PINs → 5 min lock. 3rd lock within 24 hours → 24 hour lock (every lock is in the Access Log). ZFM / Admin can clear a store or AM lock with **Reset PIN**.
+- Admin PIN: only **Change PIN** (old + new). No reset, no first-time PIN from the login screen.
+- Store first PIN: with Test mode OFF, the SM / ASM / MOD must be inside the store's 500 m geo-fence to create it.
+- Tables are locked (RLS). The website can only call checked database functions; every function checks the login token and the person's stores.
+- **View as User** (Admin) opens a read-only copy of anyone's view. It cannot punch, reset or change anything, and it never blocks the store's own login.
+- Pages refuse to open inside another site (no clickjacking) and only talk to this Supabase project (Content-Security-Policy).
+- The Supabase key in `assets/app.js` is the public "publishable" key. It is meant to be public; it cannot read tables.
 
 ## Free plan limits (check on supabase.com/pricing)
 - Database 500 MB, file storage 1 GB, 5 GB data transfer per month.

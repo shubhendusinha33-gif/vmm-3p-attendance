@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://phyllziizajuphenpwxz.supabase.co; media-src 'self' blob:; connect-src https://phyllziizajuphenpwxz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Monthly Statement · 3rd Party Attendance</title>
 <link rel="icon" href="assets/logo.png">
@@ -10,7 +12,7 @@
 <style>
   @page { size: A4 portrait; margin: 0; }
   .a4 { width: 210mm; min-height: 297mm; margin: 16px auto; background: #fff; padding: 14mm; display: flex; flex-direction: column; gap: 5mm; box-shadow: 0 10px 30px rgba(0,0,0,.12); }
-  .hd { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--blue); padding-bottom: 4mm; }
+  .hd { display: flex; justify-content: center; align-items: center; text-align: center; border-bottom: 3px solid var(--blue); padding-bottom: 4mm; }
   .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm 6mm; font-size: 10pt; color: var(--mut); }
   .meta b { color: var(--ink); }
   .grid { display: grid; grid-template-columns: repeat(7, 1fr); border: 1px solid var(--line); }
@@ -47,13 +49,13 @@
   </div>
 </div>
 <section class="a4" id="sheet" hidden>
-  <div class="hd"><img src="assets/logo.png" alt="Vishal Mega Mart" style="height:12mm">
-    <div style="text-align:right"><div style="font-size:15pt;font-weight:800">Monthly Attendance Statement</div><div style="font-size:9pt;color:var(--mut)">3rd Party Staff · VMM Central Ops &amp; BI</div></div></div>
+  <div class="hd"><div style="font-size:16pt;font-weight:800;letter-spacing:.3px">Monthly Attendance Statement</div></div>
   <div class="meta" id="meta"></div>
   <div class="grid" id="grid"></div>
   <div class="sum" id="sum"></div>
   <div class="sign"><div><div style="height:22mm;border:1px dashed #C9D0DA;border-radius:2mm"></div>Store Stamp</div><div><div style="height:22mm;border-bottom:1px solid var(--ink)"></div>Store Manager Signature</div></div>
 </section>
+<p class="foot noprint" id="credit"></p>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="assets/app.js"></script>
@@ -109,6 +111,7 @@ function render() {
 }
 
 (async function init() {
+  $('#credit').innerHTML = credit();
   me = await requireSession(); if (!me) return;
   $('#storeField').hidden = me.role === 'store';
   const m0 = q.get('from') ? q.get('from').slice(0, 7) : todayIST().slice(0, 7);

@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://phyllziizajuphenpwxz.supabase.co; media-src 'self' blob:; connect-src https://phyllziizajuphenpwxz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Admin · 3rd Party Attendance</title>
 <meta name="theme-color" content="#1565C0">
@@ -281,14 +283,42 @@ function ConsentView(root) {
   load();
 }
 
+function ViewAsView(root) {
+  root.innerHTML = `<div class="top"><h1>View as user</h1><div class="flt"><select id="vaRole"><option value="">All roles</option><option value="store">Store (SM / ASM / MOD)</option><option value="am">AM</option><option value="zfm">ZFM</option><option value="hodept">HO Dept</option></select>
+      <input id="vaQ" placeholder="Search name / emp / store"></div></div>
+    <div class="note i">Opens the portal in a new tab exactly as this person sees it. Read-only: nothing can be punched, reset or changed. The store's own login is not blocked. Every view is saved in the Access Log.</div>
+    <div class="tbl" id="vaTbl"><div class="spin"></div></div>`;
+  const $r = (x) => root.querySelector(x); let rows = [];
+  const roleName = { store: 'Store', am: 'AM', zfm: 'ZFM', hodept: 'HO Dept' };
+  function paint() {
+    const qv = $r('#vaQ').value.trim().toLowerCase(), rv = $r('#vaRole').value;
+    const f = rows.filter((u) => u.role !== 'admin' && u.active !== false && (!rv || u.role === rv) && (!qv || `${u.name} ${u.emp_code} ${u.store_code || ''} ${u.dept || ''}`.toLowerCase().includes(qv)));
+    $r('#vaTbl').innerHTML = `<table><thead><tr><th>Emp</th><th>Name</th><th>Role</th><th>Post / Dept</th><th>Store</th><th>Last login</th><th></th></tr></thead><tbody>
+      ${f.slice(0, 300).map((u) => `<tr><td>${esc(u.emp_code)}</td><td>${esc(u.name)}</td><td>${esc(roleName[u.role] || u.role)}</td><td>${esc(u.post || u.dept || '—')}</td><td>${esc(u.store_code || '—')}</td><td>${esc(u.last_login || '—')}</td>
+        <td><button class="btn o sm" data-va="${esc(u.emp_code)}">👁 View as</button></td></tr>`).join('') || '<tr><td colspan="7" class="empty">No users</td></tr>'}</tbody></table>
+      ${f.length > 300 ? `<p class="crumb">Showing 300 of ${f.length}. Search to narrow.</p>` : ''}`;
+  }
+  root.addEventListener('input', paint); root.addEventListener('change', paint);
+  root.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-va]'); if (!b) return;
+    const w = window.open('about:blank', '_blank');
+    b.disabled = true; const r = await rpc('admin_view_as', { p_token: me.token, p_emp: b.dataset.va }); b.disabled = false;
+    if (!r || !r.ok) { if (w) w.close(); return toast(errText(r && r.error)); }
+    store.set('vmm3p_view_handoff', { ...r, at: Date.now() });
+    const url = homeFor(r.role) + '?view=1';
+    if (w) w.location.href = url; else location.href = url;
+  });
+  rpc('admin_get', { p_token: me.token, p_kind: 'users' }).then((r) => { rows = (r && r.rows) || []; paint(); });
+}
+
 (async function () {
   me = await requireSession(['admin']); if (!me) return;
   const items = [{ grp: 'OPERATE' }, { id: 'live', label: 'Live Dashboard' }, { id: 'churn', label: 'Staff Churn' }, { id: 'reports', label: 'Attendance Reports' },
-    { grp: 'MANAGE' }, { id: 'stores', label: 'Store Master' }, { id: 'manpower', label: 'Manpower Master' }, { id: 'users', label: 'Users & PIN' }, { id: 'settings', label: 'Settings' }, { id: 'access', label: 'Access Log' }, { id: 'consent', label: 'Consent Log' }];
+    { grp: 'MANAGE' }, { id: 'stores', label: 'Store Master' }, { id: 'manpower', label: 'Manpower Master' }, { id: 'users', label: 'Users & PIN' }, { id: 'viewas', label: 'View as User' }, { id: 'settings', label: 'Settings' }, { id: 'access', label: 'Access Log' }, { id: 'consent', label: 'Consent Log' }];
   Shell(me, items, (id) => {
     const v = view(); v.innerHTML = '';
     ({ live: () => LiveDash(v, me), churn: () => ChurnView(v, me), reports: () => ReportsView(v), stores: () => StoresView(v), manpower: () => ManpowerView(v),
-       users: () => UsersView(v), settings: () => SettingsView(v), access: () => AccessView(v), consent: () => ConsentView(v) })[id]();
+       users: () => UsersView(v), settings: () => SettingsView(v), access: () => AccessView(v), consent: () => ConsentView(v), viewas: () => ViewAsView(v) })[id]();
   });
 })();
 </script>

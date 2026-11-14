@@ -1,11 +1,14 @@
-/* VMM 3rd Party Attendance — shared helpers (v1)
+/* VMM 3rd Party Attendance — shared helpers (v3)
    The only file to edit when moving to another Supabase project: CONFIG below. */
 const CONFIG = {
   url: 'https://phyllziizajuphenpwxz.supabase.co',
   key: 'sb_publishable_KRASYzbWRPYoKzJItq-Gqw_zLwUvnX-',
-  version: 'v2',
+  version: 'v3',
   policy: '2026-11-v1',   // bump when the privacy text changes: everyone is asked again
 };
+
+/* ---------- no framing (clickjacking guard) ---------- */
+if (window.top !== window.self) { document.documentElement.style.display = 'none'; try { window.top.location = window.self.location; } catch (e) {} }
 
 /* ---------- API ---------- */
 async function rpc(fn, args = {}) {
@@ -41,11 +44,24 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
   del(k) { try { localStorage.removeItem(k); } catch (e) {} },
 };
+/* View-as (Admin, read-only) lives in this tab only (sessionStorage), so the Admin's own login is untouched */
+const tabStore = {
+  get(k) { try { const v = sessionStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } },
+  set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  del(k) { try { sessionStorage.removeItem(k); } catch (e) {} },
+};
+(function takeViewHandoff() {
+  if (!/[?&]view=1\b/.test(location.search)) return;
+  const h = store.get('vmm3p_view_handoff'); store.del('vmm3p_view_handoff');
+  if (h && h.token && Date.now() - (h.at || 0) < 60000) tabStore.set('vmm3p_view', h);
+  history.replaceState(null, '', location.pathname + location.hash);
+})();
 const Session = {
-  get() { return store.get('vmm3p_session'); },
-  set(s) { store.set('vmm3p_session', s); },
-  clear() { store.del('vmm3p_session'); },
-  token() { const s = store.get('vmm3p_session'); return s ? s.token : null; },
+  isView() { return !!tabStore.get('vmm3p_view'); },
+  get() { return tabStore.get('vmm3p_view') || store.get('vmm3p_session'); },
+  set(s) { if (this.isView()) tabStore.set('vmm3p_view', s); else store.set('vmm3p_session', s); },
+  clear() { if (this.isView()) tabStore.del('vmm3p_view'); else store.del('vmm3p_session'); },
+  token() { const s = this.get(); return s ? s.token : null; },
 };
 function deviceId() {
   let d = store.get('vmm3p_device');
@@ -63,12 +79,19 @@ async function requireSession(roles) {
   if (!me || !me.ok) { Session.clear(); goLogin('expired'); return null; }
   if (roles && !roles.includes(me.role)) { location.href = homeFor(me.role); return null; }
   Session.set({ ...s, ...me, token: s.token });
+  if (me.view_by) viewBanner(me);
   return { ...me, token: s.token };
 }
+function viewBanner(me) {
+  if ($('#viewBar')) return;
+  document.body.insertAdjacentHTML('afterbegin', `<div id="viewBar" class="viewbar noprint">👁 Viewing as <b>${esc(me.name)}</b> (${esc(me.post || me.role)}${me.store_code ? ' · ' + esc(me.store_code) : ''}) · read-only<button type="button" id="viewExit">Exit view</button></div>`);
+  $('#viewExit').addEventListener('click', logout);
+}
 async function logout() {
-  const t = Session.token();
+  const t = Session.token(), view = Session.isView();
   if (t) await rpc('auth_logout', { p_token: t });
   Session.clear();
+  if (view) { window.close(); location.href = 'admin.html'; return; }
   goLogin();
 }
 
@@ -92,6 +115,8 @@ const I18N = {
     forgotPin: 'Forgot PIN? Ask your ZFM or HO Admin to reset it.', back: '← Back',
     createPin: 'Create your PIN', answerQ: 'Answer this question', newPin: 'New PIN (4 digits)', confirmPin: 'Confirm PIN', savePin: 'Save PIN',
     pinSaved: 'PIN saved. Please log in.', wrongAnswer: 'Wrong answer. Try the new question.', pinMismatch: 'The two PINs do not match.',
+    weakPin: 'PIN too easy (like 1234 or 0000). Pick another.', wrongOldPin: 'Current PIN is wrong.', adminSetup: 'Admin PIN is not set from this screen. Contact the portal owner.', forbidden: 'Not allowed for your login.',
+    changePin: 'Change PIN', curPin: 'Current PIN', pinChanged: 'PIN changed.',
     loginLocked: 'Login locked', lockedWhy: 'Wrong PIN entered too many times.', tryAfter: 'Try again after this time',
     storeOpen: 'is already open', openOnPhone: 'The portal is open on {name}\'s phone (Emp {emp}) since {since}.',
     askLogout: 'Ask them to log out. If they are inactive, the store unlocks automatically around {at}.', checkAgain: 'Check again',
@@ -133,6 +158,8 @@ const I18N = {
     forgotPin: 'PIN भूल गए? ZFM या HO एडमिन से रीसेट करवाएं।', back: '← पीछे',
     createPin: 'अपना PIN बनाएं', answerQ: 'इस सवाल का जवाब दें', newPin: 'नया PIN (4 अंक)', confirmPin: 'PIN दोबारा डालें', savePin: 'PIN सेव करें',
     pinSaved: 'PIN सेव हो गया। अब लॉगिन करें।', wrongAnswer: 'जवाब गलत है। नया सवाल हल करें।', pinMismatch: 'दोनों PIN एक जैसे नहीं हैं।',
+    weakPin: 'PIN बहुत आसान है (जैसे 1234 या 0000)। दूसरा चुनें।', wrongOldPin: 'मौजूदा PIN गलत है।', adminSetup: 'एडमिन PIN यहां से सेट नहीं होता। पोर्टल ओनर से संपर्क करें।', forbidden: 'आपके लॉगिन के लिए अनुमति नहीं है।',
+    changePin: 'PIN बदलें', curPin: 'मौजूदा PIN', pinChanged: 'PIN बदल गया।',
     loginLocked: 'लॉगिन बंद है', lockedWhy: 'कई बार गलत PIN डाला गया।', tryAfter: 'इतने समय बाद दोबारा कोशिश करें',
     storeOpen: 'पहले से खुला है', openOnPhone: 'पोर्टल {name} के फ़ोन पर (Emp {emp}) {since} से खुला है।',
     askLogout: 'उनसे लॉगआउट करवाएं। वे इस्तेमाल न करें तो स्टोर लगभग {at} बजे अपने आप खुल जाएगा।', checkAgain: 'दोबारा जांचें',
@@ -204,7 +231,9 @@ function pctColor(v) { return v >= 90 ? 'var(--ok)' : v >= 70 ? 'var(--amb)' : '
 function pctTag(v) { return v >= 90 ? 'ok' : v >= 70 ? 'w' : 'r'; }
 function errText(e) {
   return ({ NETWORK: t('network'), NOT_FOUND: t('notFound'), SESSION_EXPIRED: t('sessionExpired'),
-    DUPLICATE: t('duplicate'), BAD_NAME: t('badName'), BRAND_REQUIRED: t('brandRequired'), CONSENT_REQUIRED: t('consentRequired'), NO_GPS: t('noGps') })[e] || String(e || 'Error');
+    DUPLICATE: t('duplicate'), BAD_NAME: t('badName'), BRAND_REQUIRED: t('brandRequired'), CONSENT_REQUIRED: t('consentRequired'), NO_GPS: t('noGps'),
+    READ_ONLY: 'View mode is read-only. Nothing was changed.', WEAK_PIN: t('weakPin'), WRONG_OLD_PIN: t('wrongOldPin'),
+    ADMIN_SETUP: t('adminSetup'), ADMIN_PROTECTED: 'Admin PIN cannot be reset here. Admin changes it with Change PIN.', FORBIDDEN: t('forbidden') })[e] || String(e || 'Error');
 }
 function credit() { return `${CONFIG.version} · Designed &amp; Developed by Shubhendu Sinha · VMM Central Ops &amp; BI`; }
 
@@ -362,4 +391,33 @@ async function compressDrawable(src, sw, sh, maxKB = 8, w = 240, h = 320, mirror
   if (!best) best = await toBlob(type, 0.05);
   const b64 = await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(best); });
   return { b64, bytes: best.size, type };
+}
+
+/* ---------- v3: change own PIN (old + new) ---------- */
+function changePinDialog(me) {
+  if (me.view_by) return toast(errText('READ_ONLY'));
+  const el = document.createElement('div'); el.className = 'dlg';
+  el.innerHTML = `<form class="box"><h3>${t('changePin')}</h3>
+    <label class="lbl">${t('curPin')}<input class="in" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" id="cpOld"></label>
+    <label class="lbl">${t('newPin')}<input class="in" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password" id="cpNew"></label>
+    <label class="lbl">${t('confirmPin')}<input class="in" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password" id="cpNew2"></label>
+    <div class="note r" id="cpErr" hidden></div>
+    <div class="row"><button type="button" class="btn o" id="cpCancel" style="flex:1">✕</button><button class="btn" id="cpSave" style="flex:2">${t('changePin')}</button></div></form>`;
+  document.body.appendChild(el);
+  const f = (id) => el.querySelector('#' + id);
+  const bad = (m) => { f('cpErr').hidden = false; f('cpErr').textContent = m; };
+  el.querySelectorAll('input').forEach((i) => i.addEventListener('input', () => { i.value = i.value.replace(/\D/g, '').slice(0, 4); }));
+  f('cpCancel').onclick = () => el.remove();
+  f('cpOld').focus();
+  el.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const o = f('cpOld').value, n = f('cpNew').value;
+    if (!/^\d{4}$/.test(o) || !/^\d{4}$/.test(n)) return bad(t('enterPin'));
+    if (n !== f('cpNew2').value) return bad(t('pinMismatch'));
+    f('cpSave').disabled = true;
+    const r = await rpc('change_pin', { p_token: me.token, p_old: o, p_new: n });
+    f('cpSave').disabled = false;
+    if (!r || !r.ok) return bad(errText(r && r.error));
+    el.remove(); toast(t('pinChanged'));
+  });
 }

@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://phyllziizajuphenpwxz.supabase.co; media-src 'self' blob:; connect-src https://phyllziizajuphenpwxz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Store Dashboard · 3rd Party Attendance</title>
 <meta name="theme-color" content="#1565C0">
@@ -63,6 +65,7 @@
     <button class="btn" id="btnMod" data-t="punchForStaff"></button>
     <button class="btn o" id="btnQr" data-t="qrPoster"></button>
     <button class="btn o" id="btnStmt" data-t="statement"></button>
+    <button class="link" id="btnPin" data-t="changePin" style="align-self:center"></button>
   </div>
   <p class="foot" id="credit"></p>
 </main>
@@ -185,6 +188,7 @@ async function loadMtd() {
   $('#btnQr').addEventListener('click', () => location.href = 'qr.html');
   $('#btnStmt').addEventListener('click', () => { setMode('mtd'); toast(t('statement') + ': ' + t('associate') + ' ›'); });
   $('#btnLogout').addEventListener('click', logout);
+  $('#btnPin').addEventListener('click', () => changePinDialog(me));
 
   // refresh every 2 min only while someone is using the page (so the store lock can still auto-release)
   ['click', 'touchstart', 'keydown', 'scroll'].forEach((ev) => addEventListener(ev, () => lastTouch = Date.now(), { passive: true }));

@@ -11,6 +11,39 @@ function kpi(label, value, extra = '', color = '') {
 }
 function pctCell(p, r) { const v = pct(p, r); return r || p ? `<span class="tag ${pctTag(v)}">${v}%</span>` : '—'; }
 
+/* ---------- 7-day trend (inline SVG) ---------- */
+const TREND_COLORS = ['#E91E8C', '#2E7D32', '#EF6C00', '#6A1B9A', '#00838F', '#5D4037'];
+function trendChart(r, cats, label, shift, width) {
+  const days = []; const end = parseYmd(r.end);
+  for (let i = r.days - 1; i >= 0; i--) { const d = new Date(end); d.setDate(d.getDate() - i); days.push(ymd(d)); }
+  const agg = (d, c) => r.rows.filter((x) => x.d === d && (!c || x.c === c)).reduce((a, x) => ({ req: a.req + x.req, p: a.p + x.p }), { req: 0, p: 0 });
+  const tot = days.map((d) => agg(d));
+  const series = [{ name: 'Total', color: '#1565C0', w: 3.5, pts: tot.map((o) => (o.req ? Math.min(pct(o.p, o.req), 150) : null)) }]
+    .concat(cats.map((c, i) => ({ name: catName(c), color: TREND_COLORS[i % TREND_COLORS.length], w: 1.8,
+      pts: days.map((d) => { const o = agg(d, c.id); return o.req ? Math.min(pct(o.p, o.req), 150) : null; }) })).filter((s) => s.pts.some((v) => v !== null)));
+  const W = Math.max(300, Math.round(width || 640)), H = 240, L = 40, R = 30, T = 18, B = 44;
+  const maxY = Math.max(100, ...series.flatMap((s) => s.pts.filter((v) => v !== null)));
+  const x = (i) => L + (i * (W - L - R)) / Math.max(days.length - 1, 1);
+  const y = (v) => T + (H - T - B) * (1 - v / maxY);
+  const grid = [0, 25, 50, 75, 100].map((v) => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="#E6EBF2"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" font-size="10" fill="#7A8594">${v}%</text>`).join('')
+    + `<line x1="${L}" x2="${W - R}" y1="${y(70)}" y2="${y(70)}" stroke="#E53935" stroke-dasharray="4 4" opacity=".5"/>`;
+  const lines = series.slice().reverse().map((s) => {
+    let d = ''; s.pts.forEach((v, i) => { if (v === null) return; d += `${d && s.pts[i - 1] !== null && s.pts[i - 1] !== undefined ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`; });
+    const dots = s.pts.map((v, i) => v === null ? '' : `<circle cx="${x(i)}" cy="${y(v)}" r="${s.w > 3 ? 4 : 2.6}" fill="${s.color}"><title>${esc(s.name)} · ${fmtDay(days[i])}: ${v}%</title></circle>`).join('');
+    return `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.w}" stroke-linejoin="round" stroke-linecap="round"/>${dots}`;
+  }).join('');
+  const lbl = series[0].pts.map((v, i) => v === null ? '' : `<text x="${x(i)}" y="${y(v) - 9}" text-anchor="middle" font-size="11" font-weight="700" fill="#0D47A1">${v}%</text>`).join('');
+  const xl = days.map((d, i) => { const dt = parseYmd(d); return `<text x="${x(i)}" y="${H - 24}" text-anchor="middle" font-size="10.5" fill="#3A4452" font-weight="600">${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()]} ${dt.getDate()}</text>
+    <text x="${x(i)}" y="${H - 9}" text-anchor="middle" font-size="9.5" fill="#7A8594">${tot[i].p}/${tot[i].req}</text>`; }).join('');
+  const legend = series.map((s) => `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;font-size:12px"><i style="width:14px;height:${s.w > 3 ? 4 : 3}px;border-radius:2px;background:${s.color};display:inline-block"></i>${esc(s.name)}</span>`).join('');
+  const valid = series[0].pts.filter((v) => v !== null);
+  const avg = valid.length ? Math.round(valid.reduce((a, v) => a + v, 0) / valid.length) : 0;
+  return `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h3 style="margin:0">Last 7 days · ${esc(label || 'All stores')}</h3>
+      <span class="crumb">${{ M: 'Morning', E: 'Evening', B: 'Both shifts' }[shift] || ''} · 7-day avg <b style="color:${pctColor(avg)}">${avg}%</b> · red line = 70%</span></div>
+    <div style="overflow-x:auto"><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="display:block;max-width:none" role="img" aria-label="Attendance % for the last 7 days">${grid}${lines}${lbl}${xl}</svg></div>
+    <div>${legend}</div>`;
+}
+
 /* ---------- live dashboard with drill-down ---------- */
 function LiveDash(root, me) {
   const st = { date: todayIST(), shift: istNow().getHours() < 14 ? 'M' : 'B', upto: '', zfm: '', am: '', path: [], data: null };
@@ -21,6 +54,7 @@ function LiveDash(root, me) {
       <div class="seg blue grow" id="ldCp">${CHECKPOINTS.map(([v, l]) => `<button data-v="${v}">${l}</button>`).join('')}</div></div>
     <div class="k5" id="ldKpi"></div>
     <div class="pies" id="ldPies"></div>
+    <div class="panel" id="ldTrend"></div>
     <div class="crumb" id="ldCrumb"></div>
     <div class="tbl" id="ldTbl"></div>
     <div id="ldStore"></div>`;
@@ -66,6 +100,7 @@ function LiveDash(root, me) {
       return `<div class="pie">${donut(pct(p, q), DONUT_COLORS[i % DONUT_COLORS.length])}<small>${esc(catName(c))}</small><span>${p.toLocaleString('en-IN')} / ${q.toLocaleString('en-IN')}</span></div>`;
     }).join('');
     paintTable(stores, rows);
+    loadTrend();
   }
   // level: zfm -> am -> store
   function level() {
@@ -99,6 +134,7 @@ function LiveDash(root, me) {
   }
   async function storeDetail(code, name) {
     $r('#ldStore').innerHTML = '<div class="spin"></div>';
+    loadTrend(code, name);
     const r = await rpc('dash_store', { p_token: me.token, p_store: code, p_date: st.date, p_shift: st.shift });
     if (!r || !r.ok) { $r('#ldStore').innerHTML = `<div class="note r">${esc(errText(r && r.error))}</div>`; return; }
     const cname = (id) => { const c = st.data.categories.find((x) => x.id === id); return c ? catName(c) : id; };
@@ -110,6 +146,20 @@ function LiveDash(root, me) {
         <td><a href="statement.html?s=${code}&a=${a.id}&from=${monthStart(st.date)}&to=${st.date}">Statement</a></td></tr>`).join('') || '<tr><td colspan="10" class="empty">Nobody has punched</td></tr>'}</tbody></table></div>
       ${r.regulars_missing.length ? `<h3>Regulars not here</h3><div>${r.regulars_missing.map((a) => `<span class="tag w" style="margin:2px">${esc(a.name)} · ${esc(cname(a.c))} · ${a.days}/7</span>`).join('')}</div>` : ''}</div>`;
     $r('#ldStore').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  async function loadTrend(storeCode, storeName) {
+    const f = { p_zfm: st.zfm || null, p_am: st.am || null, p_store: storeCode || null };
+    st.path.forEach((p) => { if (p.key === 'zfm') f.p_zfm = p.val; if (p.key === 'am') f.p_am = p.val; });
+    if (f.p_zfm === '—') f.p_zfm = null; if (f.p_am === '—') f.p_am = null;
+    const key = JSON.stringify([st.date, st.shift, f]);
+    if (key === st.trendKey) return; st.trendKey = key;
+    const label = storeName || (st.path.length ? st.path[st.path.length - 1].name : (f.p_am || f.p_zfm ? ($r('#ldAm').selectedOptions[0] || {}).text : 'All stores'));
+    $r('#ldTrend').innerHTML = '<h3>Last 7 days</h3><div class="spin"></div>';
+    const r = await rpc('dash_trend', { p_token: me.token, p_end: st.date, p_shift: st.shift, ...f, p_days: 7 });
+    if (key !== st.trendKey) return;
+    if (!r || !r.ok) { $r('#ldTrend').innerHTML = `<h3>Last 7 days</h3><div class="note r">${esc(errText(r && r.error))}</div>`; return; }
+    $r('#ldTrend').innerHTML = trendChart(r, st.data ? st.data.categories : [], label, st.shift, $r('#ldTrend').clientWidth - 36);
   }
 
   root.addEventListener('click', (e) => {
@@ -207,7 +257,7 @@ function PinReset(root, me, rowsLoader) {
     $r('#prTbl').innerHTML = `<table><thead><tr><th>Emp</th><th>Name</th><th>Role</th><th>Post</th><th>Store</th><th>PIN</th><th></th></tr></thead><tbody>
       ${f.slice(0, 400).map((u) => `<tr><td>${esc(u.emp_code)}</td><td>${esc(u.name)}</td><td>${esc(u.role)}</td><td>${esc(u.post || '—')}</td><td>${esc(u.store_code || '—')}</td>
         <td>${u.locked ? '<span class="tag r">Locked</span>' : u.pin_set ? '<span class="tag ok">Set</span>' : '<span class="tag w">Not set</span>'}</td>
-        <td>${u.pin_set || u.locked ? `<button class="btn o sm" data-reset="${esc(u.emp_code)}">Reset PIN</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">No users</td></tr>'}</tbody></table>`;
+        <td>${u.role !== 'admin' && (u.pin_set || u.locked) ? `<button class="btn o sm" data-reset="${esc(u.emp_code)}">Reset PIN</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">No users</td></tr>'}</tbody></table>`;
   }
   $r('#prQ').addEventListener('input', paint);
   root.addEventListener('click', async (e) => {
@@ -225,13 +275,17 @@ function Shell(me, items, onPick) {
   nav.innerHTML = `<div class="brand"><img src="assets/logo.png" alt="Vishal Mega Mart"></div><div class="subt">3RD PARTY ATTENDANCE</div>
     <div class="who">${esc(me.name)}<small>${esc({ admin: 'Admin', am: 'AM', zfm: 'ZFM', hodept: 'HO ' + (me.dept || 'Dept') }[me.role] || me.role)} · ${esc(me.emp)}</small></div>
     ${items.map((it) => it.grp ? `<div class="grp">${esc(it.grp)}</div>` : `<button data-v="${it.id}">${esc(it.label)}</button>`).join('')}
+    <button id="navPin">Change PIN</button>
     <button id="navLogout">Logout</button>
     <div class="bottom">${credit()}</div>`;
+  if (!$('#shellFoot')) document.body.insertAdjacentHTML('beforeend', `<p class="foot shellfoot" id="shellFoot">${credit()}</p>`);
   nav.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-v]'); if (b) { pick(b.dataset.v); }
     if (e.target.id === 'navLogout') logout();
+    if (e.target.id === 'navPin') changePinDialog(me);
   });
   function pick(id) { nav.querySelectorAll('button[data-v]').forEach((b) => b.classList.toggle('on', b.dataset.v === id)); location.hash = id; onPick(id); }
+  window.addEventListener('hashchange', () => { const h = (location.hash || '').slice(1); const on = nav.querySelector('button.on'); if (ids.includes(h) && (!on || on.dataset.v !== h)) pick(h); });
   const first = (location.hash || '').slice(1);
   const ids = items.filter((i) => i.id).map((i) => i.id);
   pick(ids.includes(first) ? first : ids[0]);

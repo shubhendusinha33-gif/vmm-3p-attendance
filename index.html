@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://phyllziizajuphenpwxz.supabase.co; media-src 'self' blob:; connect-src https://phyllziizajuphenpwxz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3rd Party Attendance</title>
 <meta name="theme-color" content="#1565C0">
@@ -199,10 +201,16 @@ async function doSave() {
   const p1 = pinVal($('#pinNew')), p2 = pinVal($('#pinNew2'));
   if (!/^\d{4}$/.test(p1)) return err('err3', t('newPin'));
   if (p1 !== p2) { pinBoxes($('#pinNew2')); return err('err3', t('pinMismatch')); }
+  const id = ident(); let perm = { pos: null };
+  if (role === 'store') {
+    const ctx = await rpc('punch_context', { p_store: id.p_store });
+    perm = (await permissionsReady('user', true)) || (await consentGate({ kind: 'user', store: id.p_store, emp: id.p_emp, testMode: ctx && ctx.test_mode, needCamera: true }));
+  }
   $('#btnSave').disabled = true;
-  const r = await rpc('auth_set_pin', { ...ident(), p_pin: p1 });
+  const r = await rpc('auth_set_pin', { ...id, p_pin: p1, p_lat: perm.pos ? perm.pos.lat : null, p_lng: perm.pos ? perm.pos.lng : null });
   $('#btnSave').disabled = false;
-  if (!r || !r.ok) return err('err3', errText(r && r.error));
+  if (r && r.error === 'OUT_OF_RANGE') return err('err3', t('outsideLogin', { d: r.dist_m, r: r.radius_m }));
+  if (!r || !r.ok) { if (r && r.error === 'WEAK_PIN') { pinBoxes($('#pinNew')); pinBoxes($('#pinNew2')); } return err('err3', errText(r && r.error)); }
   toast(t('pinSaved'));
   checked.pin_set = true; pinBoxes($('#pinLogin')); err('err2'); show('s2');
 }
