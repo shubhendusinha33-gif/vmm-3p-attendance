@@ -40,6 +40,8 @@
     <div class="field" id="nameWrap"><label class="lbl" for="name" data-t="yourName"></label>
       <input class="in" id="name" maxlength="40" autocomplete="name" data-tp="nameHint"></div>
     <div id="lookupNote" class="note i" hidden></div>
+    <label id="modConsentWrap" hidden style="display:flex;gap:10px;align-items:flex-start;font-size:14px;font-weight:700;background:#fff;border-radius:10px;padding:10px 12px;cursor:pointer">
+      <input type="checkbox" id="modConsent" style="width:22px;height:22px;flex-shrink:0"><span data-t="modConsent"></span></label>
     <div id="err" class="note r" hidden></div>
     <button class="btn" id="btnPunch" data-t="punchIn"></button>
     <div class="note i" id="noPhone" data-t="noPhone"></div>
@@ -49,13 +51,14 @@
   <section id="photo" hidden style="display:flex;flex-direction:column;gap:12px;align-items:stretch">
     <h2 class="ttl" data-t="photoToday"></h2>
     <p class="sub" id="photoWho" style="margin:0"></p>
-    <div style="background:#2A3442;border-radius:14px;height:260px;display:flex;align-items:center;justify-content:center;overflow:hidden">
-      <img id="photoPrev" alt="" style="max-height:100%;display:none">
-      <div id="photoRing" style="width:140px;height:180px;border:3px dashed rgba(255,255,255,.7);border-radius:50%"></div>
-    </div>
+    <div class="camwrap"><video id="camVideo" autoplay playsinline muted></video><img id="photoPrev" alt="" hidden><div class="ring" id="photoRing"></div></div>
     <p class="sub" style="margin:0" data-t="photoHint"></p>
-    <label class="btn" for="cam" style="text-align:center">📷 <span data-t="takePhoto"></span></label>
-    <input id="cam" type="file" accept="image/*" capture="user" hidden>
+    <button class="shutter" id="btnShutter" aria-label="Capture"></button>
+    <div class="row" id="reviewBtns" hidden><button class="btn o grow" id="btnRetake" data-t="retake"></button><button class="btn grow" id="btnUse" data-t="usePhoto"></button></div>
+    <div id="camFallback" hidden style="display:flex;flex-direction:column;gap:8px">
+      <div class="note w" data-t="noCamera"></div>
+      <label class="btn" for="cam" style="text-align:center">📷 <span data-t="takePhoto"></span></label>
+      <input id="cam" type="file" accept="image/*" capture="user" hidden></div>
     <div id="photoErr" class="note r" hidden></div>
   </section>
 
@@ -74,7 +77,7 @@
 <script src="assets/app.js"></script>
 <script>
 const q = new URLSearchParams(location.search);
-let ctx = null, modToken = null, pos = null, cat = null, brand = '', lastLookup = null, punchRes = null, lookTimer = null;
+let ctx = null, modToken = null, pos = null, cat = null, brand = '', lastLookup = null, punchRes = null, lookTimer = null, stopCam = null, shot = null;
 
 function show(id) { ['loading','form','photo','done'].forEach((s) => $('#' + s).hidden = s !== id); }
 function err(msg, el = '#err') { $(el).hidden = !msg; $(el).textContent = msg || ''; }
@@ -130,11 +133,13 @@ async function doPunch() {
   if (cat.brands.length && !brand) return err(t('brandRequired'));
   const name = $('#name').value.trim();
   if (!/^[\p{L} .]{2,40}$/u.test(name)) return err(t('badName'));
-  if (!ctx.test_mode && ctx.store.mapped && !pos) { await locate(); if (!pos) return err(t('noGps')); }
+  if (modToken && !$('#modConsent').checked) return err(t('consentRequired'));
+  if (!ctx.test_mode) { await locate(); if (!pos) return err(t('noGps')); }
   let vendor = $('#vendor').value; if (vendor === '__other') vendor = $('#vendorOther').value.trim();
   $('#btnPunch').disabled = true;
   const r = await rpc('punch_submit', { p_store: ctx.store.code, p_cat: cat.id, p_brand: brand, p_vendor: vendor || null, p_name: name,
-    p_lat: pos ? pos.lat : null, p_lng: pos ? pos.lng : null, p_device: deviceId(), p_mod_token: modToken });
+    p_lat: pos ? pos.lat : null, p_lng: pos ? pos.lng : null, p_device: deviceId(), p_mod_token: modToken,
+    p_consent: true, p_policy: CONFIG.policy });
   $('#btnPunch').disabled = false;
   if (!r || !r.ok) {
     if (r && r.error === 'OUT_OF_RANGE') return err(t('outside', { d: r.dist_m, r: r.radius_m }));
@@ -142,23 +147,45 @@ async function doPunch() {
     return err(errText(r && r.error));
   }
   punchRes = r;
-  if (r.photo_required) { $('#photoWho').textContent = `${r.name} · ${catName(cat)} · ${ctx.store.code}`; $('#photoPrev').style.display = 'none'; $('#photoRing').style.display = ''; err('', '#photoErr'); show('photo'); return; }
+  if (r.photo_required) { $('#photoWho').textContent = `${r.name} · ${catName(cat)} · ${ctx.store.code}`; err('', '#photoErr'); show('photo'); openCam(); return; }
   showDone();
 }
 
-async function onPhoto(file) {
-  err('', '#photoErr');
+async function openCam() {
+  shot = null; $('#photoPrev').hidden = true; $('#camVideo').hidden = false; $('#photoRing').hidden = false;
+  $('#btnShutter').hidden = false; $('#reviewBtns').hidden = true; $('#camFallback').hidden = true;
+  try { if (stopCam) stopCam(); stopCam = await startCamera($('#camVideo')); }
+  catch (e) { $('#btnShutter').hidden = true; $('#camVideo').hidden = true; $('#camFallback').hidden = false; }
+}
+async function capture() {
+  const v = $('#camVideo'); if (!v.videoWidth) return;
+  $('#btnShutter').disabled = true;
+  shot = await compressDrawable(v, v.videoWidth, v.videoHeight, 8, 240, 320, true);
+  $('#btnShutter').disabled = false;
+  if (stopCam) { stopCam(); stopCam = null; }
+  $('#photoPrev').src = shot.b64; $('#photoPrev').hidden = false; $('#camVideo').hidden = true; $('#photoRing').hidden = true;
+  $('#btnShutter').hidden = true; $('#reviewBtns').hidden = false;
+}
+async function sendPhoto() {
+  if (!shot) return;
+  err('', '#photoErr'); $('#btnUse').disabled = true;
+  const r = await photoFn({ action: 'upload', token: punchRes.photo_token, b64: shot.b64 });
+  $('#btnUse').disabled = false;
+  if (!r || !r.ok) return err(t('photoFailed') + (r && r.error ? ` (${r.error})` : ''), '#photoErr');
+  punchRes.photoKB = (shot.bytes / 1024).toFixed(1);
+  showDone();
+}
+async function onPhotoFile(file) {
   try {
-    const p = await compressPhoto(file, 8);
-    $('#photoPrev').src = p.b64; $('#photoPrev').style.display = ''; $('#photoRing').style.display = 'none';
-    const r = await photoFn({ action: 'upload', token: punchRes.photo_token, b64: p.b64 });
-    if (!r || !r.ok) return err(t('photoFailed') + (r && r.error ? ` (${r.error})` : ''), '#photoErr');
-    punchRes.photoKB = (p.bytes / 1024).toFixed(1);
-    showDone();
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
+    shot = await compressDrawable(img, img.width, img.height, 8);
+    $('#photoPrev').src = shot.b64; $('#photoPrev').hidden = false; $('#photoRing').hidden = true;
+    sendPhoto();
   } catch (e) { err(t('photoFailed'), '#photoErr'); }
 }
 
 function showDone() {
+  if (stopCam) { stopCam(); stopCam = null; }
   const r = punchRes;
   $('#doneTitle').textContent = `${r.name} · ${r.kind} ${r.time}`;
   $('#doneSub').textContent = `${r.shift === 'M' ? t('morning') : t('evening')} · ${catName(cat)}${brand ? ' · ' + brand : ''} · ${r.code}`;
@@ -171,7 +198,7 @@ function showDone() {
 }
 
 function resetForm(keepCat) {
-  $('#name').value = ''; lastLookup = null; $('#lookupNote').hidden = true; err(); setBtn('IN');
+  $('#name').value = ''; $('#modConsent').checked = false; lastLookup = null; $('#lookupNote').hidden = true; err(); setBtn('IN');
   if (!keepCat) { cat = null; brand = ''; paintCats(); paintBrands(); paintVendors(); }
   if (modToken) paintRoster();
   show('form');
@@ -186,12 +213,16 @@ function resetForm(keepCat) {
     modToken = me.token; code = me.store_code;
     $('#btnBack').hidden = false; $('#btnBack').onclick = () => location.href = 'store.html';
     $('#modNote').hidden = false; $('#modNote').textContent = `${t('modMode')}: ${me.name} (Emp ${me.emp})`;
-    $('#noPhone').hidden = true; $('#nameWrap').querySelector('label').textContent = t('associate');
+    $('#noPhone').hidden = true; $('#nameWrap').querySelector('label').textContent = t('associate'); $('#modConsentWrap').hidden = false;
   }
   if (!/^[A-Z]{2}\d{2}$/.test(code)) { $('#loading').hidden = true; document.querySelector('main').insertAdjacentHTML('afterbegin', `<div class="note r">${esc(t('storeHint'))}</div>`); return; }
   ctx = await rpc('punch_context', { p_store: code });
   if (!ctx || !ctx.ok) { $('#loading').hidden = true; document.querySelector('main').insertAdjacentHTML('afterbegin', `<div class="note r">${esc(errText(ctx && ctx.error))}</div>`); return; }
   $('#hTitle').textContent = `${t('punchTitle')} · ${ctx.store.code}`; $('#hSub').textContent = ctx.store.name;
+  if (!modToken) {
+    const ready = await permissionsReady('associate', true);
+    if (!ready) { $('#loading').hidden = true; await consentGate({ kind: 'associate', store: ctx.store.code, testMode: ctx.test_mode, needCamera: true }); }
+  }
   $('#storeNote').textContent = `${ctx.store.code} · ${ctx.store.name} ✓ ${modToken ? '' : t('fromQr')}`;
   paintCats(); paintBrands(); paintVendors(); setBtn('IN'); show('form'); locate();
 
@@ -207,7 +238,10 @@ function resetForm(keepCat) {
     lookup(); $('#btnPunch').scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
   $('#btnPunch').addEventListener('click', doPunch);
-  $('#cam').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (f) onPhoto(f); e.target.value = ''; });
+  $('#cam').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (f) onPhotoFile(f); e.target.value = ''; });
+  $('#btnShutter').addEventListener('click', capture);
+  $('#btnRetake').addEventListener('click', openCam);
+  $('#btnUse').addEventListener('click', sendPhoto);
   $('#btnAgain').addEventListener('click', () => resetForm(!!modToken));
 })();
 </script>

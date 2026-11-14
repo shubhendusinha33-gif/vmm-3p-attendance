@@ -3,7 +3,8 @@
 const CONFIG = {
   url: 'https://phyllziizajuphenpwxz.supabase.co',
   key: 'sb_publishable_KRASYzbWRPYoKzJItq-Gqw_zLwUvnX-',
-  version: 'v1',
+  version: 'v2',
+  policy: '2026-11-v1',   // bump when the privacy text changes: everyone is asked again
 };
 
 /* ---------- API ---------- */
@@ -110,6 +111,18 @@ const I18N = {
     duplicate: 'You just punched. Wait 2 minutes.', badName: 'Write your name in letters only (2–40).', brandRequired: 'Select your brand.',
     noPhone: 'No phone? Ask the MOD to punch for you from the store login.', fromQr: '(from QR)', modMode: 'MOD phone',
     associate: 'Associate', selectAssociate: 'Pick associate', newName: '+ New name', chooseCat: 'Choose department',
+    consentTitle: 'Camera and location are needed', consentIntro: 'To mark attendance, this portal uses:',
+    consentLoc: 'Your location, only when you log in or punch, to check you are inside the store.',
+    consentCam: 'Your photo (small, about 8 KB), on some punches, to confirm the right person punched.',
+    consentKeep: 'Used only by VMM for attendance and payroll with your vendor. Photos are removed from the portal after the monthly download.',
+    consentRead: 'Read full privacy policy', consentAgree: 'I agree to share my location and photo for attendance.',
+    consentBtn: 'Allow camera & location', consentNeedTick: 'Tick the box to agree first.',
+    permDenied: 'Camera or location is blocked. This portal cannot be used without them.',
+    permHow: 'Fix: tap the 🔒 icon next to the website address → Permissions → allow Camera and Location → reload the page.',
+    permRetry: 'Try again', permTestSkip: 'Continue without (test mode only)',
+    modConsent: 'The associate agreed to share location and photo for attendance.', consentRequired: 'Consent is required to punch.',
+    noCamera: 'Camera not available. Use the button below to take the photo.', shutter: 'Capture',
+    retake: 'Retake', usePhoto: 'Use this photo', outsideLogin: 'You are {d} m from the store. Store login works only inside the store ({r} m).',
   },
   hi: {
     appTitle: '3rd Party हाज़िरी', appSub: 'VMM Central Ops & BI',
@@ -139,6 +152,18 @@ const I18N = {
     duplicate: 'आपने अभी पंच किया है। 2 मिनट रुकें।', badName: 'नाम सिर्फ़ अक्षरों में लिखें (2–40)।', brandRequired: 'अपना ब्रांड चुनें।',
     noPhone: 'फ़ोन नहीं है? MOD से स्टोर लॉगिन से पंच करवाएं।', fromQr: '(QR से)', modMode: 'MOD का फ़ोन',
     associate: 'कर्मचारी', selectAssociate: 'कर्मचारी चुनें', newName: '+ नया नाम', chooseCat: 'विभाग चुनें',
+    consentTitle: 'कैमरा और लोकेशन ज़रूरी है', consentIntro: 'हाज़िरी के लिए यह पोर्टल इस्तेमाल करता है:',
+    consentLoc: 'आपकी लोकेशन, सिर्फ़ लॉगिन या पंच के समय, यह देखने के लिए कि आप स्टोर के अंदर हैं।',
+    consentCam: 'आपकी फ़ोटो (छोटी, लगभग 8 KB), कुछ पंच पर, यह पक्का करने के लिए कि सही व्यक्ति ने पंच किया।',
+    consentKeep: 'सिर्फ़ VMM हाज़िरी और वेंडर पेरोल के लिए इस्तेमाल करता है। मासिक डाउनलोड के बाद फ़ोटो पोर्टल से हटा दी जाती हैं।',
+    consentRead: 'पूरी प्राइवेसी पॉलिसी पढ़ें', consentAgree: 'मैं हाज़िरी के लिए अपनी लोकेशन और फ़ोटो देने के लिए सहमत हूँ।',
+    consentBtn: 'कैमरा और लोकेशन की अनुमति दें', consentNeedTick: 'पहले सहमति वाला बॉक्स टिक करें।',
+    permDenied: 'कैमरा या लोकेशन बंद है। इनके बिना पोर्टल इस्तेमाल नहीं हो सकता।',
+    permHow: 'ठीक करें: वेबसाइट पते के पास 🔒 आइकन दबाएं → Permissions → Camera और Location चालू करें → पेज रीलोड करें।',
+    permRetry: 'दोबारा कोशिश करें', permTestSkip: 'बिना अनुमति आगे बढ़ें (सिर्फ़ टेस्ट मोड)',
+    modConsent: 'कर्मचारी हाज़िरी के लिए लोकेशन और फ़ोटो देने के लिए सहमत है।', consentRequired: 'पंच के लिए सहमति ज़रूरी है।',
+    noCamera: 'कैमरा नहीं मिला। फ़ोटो लेने के लिए नीचे का बटन दबाएं।', shutter: 'फ़ोटो लें',
+    retake: 'दोबारा लें', usePhoto: 'यह फ़ोटो भेजें', outsideLogin: 'आप स्टोर से {d} m दूर हैं। स्टोर लॉगिन सिर्फ़ स्टोर के अंदर ({r} m) होगा।',
   },
 };
 function lang() { return store.get('vmm3p_lang', 'en'); }
@@ -179,7 +204,7 @@ function pctColor(v) { return v >= 90 ? 'var(--ok)' : v >= 70 ? 'var(--amb)' : '
 function pctTag(v) { return v >= 90 ? 'ok' : v >= 70 ? 'w' : 'r'; }
 function errText(e) {
   return ({ NETWORK: t('network'), NOT_FOUND: t('notFound'), SESSION_EXPIRED: t('sessionExpired'),
-    DUPLICATE: t('duplicate'), BAD_NAME: t('badName'), BRAND_REQUIRED: t('brandRequired') })[e] || String(e || 'Error');
+    DUPLICATE: t('duplicate'), BAD_NAME: t('badName'), BRAND_REQUIRED: t('brandRequired'), CONSENT_REQUIRED: t('consentRequired'), NO_GPS: t('noGps') })[e] || String(e || 'Error');
 }
 function credit() { return `${CONFIG.version} · Designed &amp; Developed by Shubhendu Sinha · VMM Central Ops &amp; BI`; }
 
@@ -231,3 +256,110 @@ function normRow(r) { const o = {}; for (const [k, v] of Object.entries(r)) o[St
 
 /* ---------- WhatsApp share (free, opens WhatsApp with text) ---------- */
 function waShare(text) { location.href = 'https://wa.me/?text=' + encodeURIComponent(text); }
+
+/* ---------- v2: permissions, consent gate, live camera ---------- */
+async function camPermission() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
+  try {
+    const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    st.getTracks().forEach((t) => t.stop());
+    return true;
+  } catch (e) { return false; }
+}
+/* asks for location + camera; returns { pos, cam } */
+async function askPermissions(needCamera = true) {
+  const [pos, cam] = await Promise.all([getPosition(), needCamera ? camPermission() : Promise.resolve(true)]);
+  return { pos, cam };
+}
+function consentKey(kind) { return `vmm3p_consent_${kind}_${CONFIG.policy}`; }
+function hasConsent(kind) { return !!store.get(consentKey(kind)); }
+
+/* Full-screen gate: policy summary + tick box + permission check.
+   opts: { kind: 'associate'|'user', store, emp, testMode, needCamera }
+   resolves with { pos, cam } once consent is given and permissions are allowed (or test mode skip). */
+function consentGate(opts) {
+  return new Promise((resolve) => {
+    const already = hasConsent(opts.kind);
+    const el = document.createElement('div');
+    el.className = 'gate';
+    el.innerHTML = `<div class="card" style="max-width:440px">
+      <img class="logo" src="assets/logo.png" alt="Vishal Mega Mart">
+      <h2 class="ttl" data-t="consentTitle"></h2>
+      <div data-box="info" style="display:flex;flex-direction:column;gap:8px;font-size:14px">
+        <div data-t="consentIntro" style="font-weight:700"></div>
+        <div class="note i">📍 <span data-t="consentLoc"></span></div>
+        ${opts.needCamera === false ? '' : '<div class="note i">📷 <span data-t="consentCam"></span></div>'}
+        <div class="crumb" data-t="consentKeep"></div>
+        <a href="privacy.html" target="_blank" rel="noopener" style="font-size:13px;font-weight:700" data-t="consentRead"></a>
+        <label style="display:flex;gap:10px;align-items:flex-start;font-size:14px;font-weight:700;cursor:pointer">
+          <input type="checkbox" data-box="tick" style="width:22px;height:22px;flex-shrink:0;margin-top:1px" ${already ? 'checked' : ''}><span data-t="consentAgree"></span></label>
+      </div>
+      <div class="note r" data-box="err" hidden></div>
+      <button class="btn" type="button" data-box="go" data-t="consentBtn"></button>
+      <button class="btn o" type="button" data-box="skip" hidden data-t="permTestSkip"></button>
+      <p class="credit">${credit()}</p></div>`;
+    document.body.appendChild(el);
+    applyI18n(el);
+    const box = (k) => el.querySelector(`[data-box="${k}"]`);
+    const fail = (m, how) => { box('err').hidden = false; box('err').innerHTML = esc(m) + (how ? `<br><br>${esc(t('permHow'))}` : ''); };
+    box('go').addEventListener('click', async () => {
+      if (!box('tick').checked) return fail(t('consentNeedTick'));
+      if (opts.requirePerms === false) {
+        if (!hasConsent(opts.kind)) { store.set(consentKey(opts.kind), { at: Date.now() });
+          rpc('consent_record', { p_kind: opts.kind, p_store: opts.store || null, p_device: deviceId(), p_emp: opts.emp || null, p_version: CONFIG.policy, p_lang: lang(), p_ua: navigator.userAgent }); }
+        el.remove(); return resolve({ pos: null, cam: false });
+      }
+      box('err').hidden = true; box('go').disabled = true; box('go').textContent = t('getLocation');
+      const r = await askPermissions(opts.needCamera !== false);
+      box('go').disabled = false; box('go').textContent = t('permRetry');
+      if (!hasConsent(opts.kind)) {
+        store.set(consentKey(opts.kind), { at: Date.now() });
+        rpc('consent_record', { p_kind: opts.kind, p_store: opts.store || null, p_device: deviceId(), p_emp: opts.emp || null,
+          p_version: CONFIG.policy, p_lang: lang(), p_ua: navigator.userAgent });
+      }
+      if (r.pos && r.cam) { el.remove(); return resolve(r); }
+      fail(t('permDenied'), true);
+      if (opts.testMode) box('skip').hidden = false;
+    });
+    box('skip').addEventListener('click', () => { el.remove(); resolve({ pos: null, cam: false, skipped: true }); });
+  });
+}
+/* quick check without UI: consent stored and permissions already allowed? */
+async function permissionsReady(kind, needCamera = true) {
+  if (!hasConsent(kind)) return null;
+  try {
+    if (navigator.permissions && navigator.permissions.query) {
+      const g = await navigator.permissions.query({ name: 'geolocation' });
+      if (g.state !== 'granted') return null;
+      if (needCamera) { const c = await navigator.permissions.query({ name: 'camera' }).catch(() => null); if (c && c.state !== 'granted') return null; }
+    }
+  } catch (e) { /* some browsers do not support the query: fall through to a real request */ }
+  const r = await askPermissions(needCamera);
+  return r.pos && r.cam ? r : null;
+}
+
+/* live selfie camera into a <video>; returns a stop() function */
+async function startCamera(video) {
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+  video.srcObject = stream; video.setAttribute('playsinline', ''); video.muted = true; await video.play();
+  return () => stream.getTracks().forEach((t) => t.stop());
+}
+/* compress any drawable (video frame or image) to <= maxKB */
+async function compressDrawable(src, sw, sh, maxKB = 8, w = 240, h = 320, mirror = false) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  const r = Math.max(w / sw, h / sh);
+  if (mirror) { ctx.translate(w, 0); ctx.scale(-1, 1); }
+  ctx.drawImage(src, (w - sw * r) / 2, (h - sh * r) / 2, sw * r, sh * r);
+  const toBlob = (type, q) => new Promise((res) => c.toBlob(res, type, q));
+  const probe = await toBlob('image/webp', 0.5);
+  const type = probe && probe.type === 'image/webp' ? 'image/webp' : 'image/jpeg';
+  let lo = 0.05, hi = 0.95, best = null;
+  for (let k = 0; k < 9; k++) {
+    const q = (lo + hi) / 2; const b = await toBlob(type, q);
+    if (b.size <= maxKB * 1024) { best = b; lo = q; } else { hi = q; }
+  }
+  if (!best) best = await toBlob(type, 0.05);
+  const b64 = await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(best); });
+  return { b64, bytes: best.size, type };
+}

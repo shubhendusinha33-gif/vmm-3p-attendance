@@ -248,14 +248,47 @@ function AccessView(root) {
   load();
 }
 
+
+/* ---------- Consent Log ---------- */
+function ConsentView(root) {
+  const st = { from: monthStart(todayIST()), to: todayIST(), kind: '' };
+  root.innerHTML = `<div class="top"><h1>Consent Log</h1><div class="flt"><input type="date" id="cnFrom"> to <input type="date" id="cnTo">
+      <select id="cnKind"><option value="">All</option><option value="associate">Associate (own phone)</option><option value="mod_associate">Associate via MOD</option><option value="user">Store / AM / ZFM / HO users</option></select>
+      <button class="btn o sm" id="cnXls">⬇ Excel</button><a class="btn o sm" href="privacy.html" target="_blank" style="text-decoration:none">Privacy policy</a></div></div>
+    <div class="note i">Every consent to camera and location is recorded with date, time, device and policy version (current: ${esc(CONFIG.policy)}). Changing the policy version asks everyone again.</div>
+    <div class="k5" id="cnKpi"></div><div class="tbl" id="cnTbl"></div>`;
+  $('#cnFrom').value = st.from; $('#cnTo').value = st.to; $('#cnFrom').max = $('#cnTo').max = todayIST();
+  let data = null;
+  const kn = { associate: 'Associate · own phone', mod_associate: 'Associate · via MOD', user: 'User login' };
+  async function load() {
+    $('#cnKpi').innerHTML = '<div class="spin"></div>';
+    data = await rpc('consent_view', { p_token: me.token, p_from: st.from, p_to: st.to, p_kind: st.kind || null });
+    if (!data || !data.ok) { $('#cnKpi').innerHTML = `<div class="note r">${esc(errText(data && data.error))}</div>`; return; }
+    const c = data.counts || {};
+    $('#cnKpi').innerHTML = kpi('Associates · own phone', c.associate || 0) + kpi('Associates · via MOD', c.mod_associate || 0) + kpi('User logins', c.user || 0);
+    $('#cnTbl').innerHTML = `<table><thead><tr><th>Date & time</th><th>Type</th><th>Store</th><th>Person</th><th>Confirmed by</th><th>Policy</th><th>Language</th><th>Device</th></tr></thead><tbody>
+      ${data.rows.map((r) => `<tr><td>${esc(r.at)}</td><td>${esc(kn[r.kind] || r.kind)}</td><td>${esc(r.store || '—')}</td>
+        <td>${esc(r.associate || r.user_name || r.emp || '—')}${r.associate && r.emp ? ' · ' + esc(r.emp) : ''}</td>
+        <td>${r.mod_emp ? esc((r.mod_name || '') + ' · ' + r.mod_emp) : 'Self'}</td><td>${esc(r.version)}</td><td>${esc(r.lang || '—')}</td>
+        <td title="${esc(r.ua || '')}">${esc((r.device || '').slice(0, 10))}</td></tr>`).join('') || '<tr><td colspan="8" class="empty">No consent records in these dates</td></tr>'}</tbody></table>`;
+  }
+  root.addEventListener('change', (e) => {
+    if (e.target.id === 'cnFrom') st.from = e.target.value; if (e.target.id === 'cnTo') st.to = e.target.value; if (e.target.id === 'cnKind') st.kind = e.target.value;
+    if (['cnFrom', 'cnTo', 'cnKind'].includes(e.target.id)) load();
+  });
+  $('#cnXls').addEventListener('click', () => { if (data) downloadXlsx(data.rows.map((r) => ({ 'Date & time': r.at, Type: kn[r.kind] || r.kind, Store: r.store, Person: r.associate || r.user_name || r.emp,
+    Code: r.emp, 'Confirmed by': r.mod_emp ? `${r.mod_name || ''} ${r.mod_emp}` : 'Self', Policy: r.version, Language: r.lang, Device: r.device, Browser: r.ua })), `Consent_${st.from}_${st.to}.xlsx`); });
+  load();
+}
+
 (async function () {
   me = await requireSession(['admin']); if (!me) return;
   const items = [{ grp: 'OPERATE' }, { id: 'live', label: 'Live Dashboard' }, { id: 'churn', label: 'Staff Churn' }, { id: 'reports', label: 'Attendance Reports' },
-    { grp: 'MANAGE' }, { id: 'stores', label: 'Store Master' }, { id: 'manpower', label: 'Manpower Master' }, { id: 'users', label: 'Users & PIN' }, { id: 'settings', label: 'Settings' }, { id: 'access', label: 'Access Log' }];
+    { grp: 'MANAGE' }, { id: 'stores', label: 'Store Master' }, { id: 'manpower', label: 'Manpower Master' }, { id: 'users', label: 'Users & PIN' }, { id: 'settings', label: 'Settings' }, { id: 'access', label: 'Access Log' }, { id: 'consent', label: 'Consent Log' }];
   Shell(me, items, (id) => {
     const v = view(); v.innerHTML = '';
     ({ live: () => LiveDash(v, me), churn: () => ChurnView(v, me), reports: () => ReportsView(v), stores: () => StoresView(v), manpower: () => ManpowerView(v),
-       users: () => UsersView(v), settings: () => SettingsView(v), access: () => AccessView(v) })[id]();
+       users: () => UsersView(v), settings: () => SettingsView(v), access: () => AccessView(v), consent: () => ConsentView(v) })[id]();
   });
 })();
 </script>

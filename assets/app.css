@@ -151,3 +151,12 @@ tr.click:hover td{background:#F7FAFE}
   .main{padding:14px 16px 32px}
 }
 @media print{.noprint{display:none!important}body{background:#fff}}
+
+/* v2: consent gate + live camera */
+.gate{position:fixed;inset:0;z-index:40;background:var(--blue);display:flex;align-items:center;justify-content:center;padding:24px 16px;overflow:auto}
+.camwrap{position:relative;background:#2A3442;border-radius:14px;overflow:hidden;aspect-ratio:3/4;max-height:56vh;max-width:100%;margin:0 auto;width:100%}
+.camwrap video,.camwrap img{width:100%;height:100%;object-fit:cover;display:block}
+.camwrap video{transform:scaleX(-1)}
+.camwrap .ring{position:absolute;left:50%;top:44%;width:56%;height:62%;transform:translate(-50%,-50%);border:3px dashed rgba(255,255,255,.8);border-radius:50%;pointer-events:none}
+.shutter{width:72px;height:72px;border-radius:50%;background:#fff;border:6px solid var(--pink);align-self:center;cursor:pointer}
+.shutter:disabled{opacity:.5}

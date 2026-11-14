@@ -18,6 +18,7 @@ Designed & Developed by Shubhendu Sinha · VMM Central Ops & BI
 | `admin.html` | Admin | Everything above + Store Master, Manpower Master, Users & PIN, Settings, Access Log, photo ZIP download. |
 | `statement.html` | All logged-in roles | A4 monthly statement, print / PDF / Excel. |
 | `qr.html` | Store login, Admin | Printable QR poster (Admin: all stores at once). |
+| `privacy.html` | Everyone | Camera & location privacy policy (English / हिंदी). |
 
 ## Baby steps
 
@@ -61,6 +62,13 @@ Open `https://shubhendusinha33-gif.github.io/vmm-3p-attendance/` on your phone o
 1. **Settings** → Photo storage shows how full the free 1 GB is (alert at 70%).
 2. Pick dates → **⬇ Download photos ZIP** → save the ZIP on your drive.
 3. Then **Downloaded, remove from portal** → tap again to confirm.
+
+## Camera, location and consent
+- First use on every phone shows a consent screen (policy summary, tick box, link to `privacy.html`). Without allowing camera and location, punch and store login do not open.
+- Every consent is saved: Admin → **Consent Log** (date, time, store, device, policy version). On the MOD's phone the MOD ticks consent for the associate on every punch.
+- Store login checks location inside the 500 m geo-fence (when Test mode is OFF).
+- Change `policy` in `assets/app.js` when the privacy text changes; everyone is asked again.
+- The privacy policy text is a draft: have VMM Legal / HR review it before go-live.
 
 ## Free plan limits (check on supabase.com/pricing)
 - Database 500 MB, file storage 1 GB, 5 GB data transfer per month.

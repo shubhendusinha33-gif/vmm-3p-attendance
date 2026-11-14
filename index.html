@@ -168,13 +168,22 @@ async function doCheck() {
 async function doLogin() {
   const pin = pinVal($('#pinLogin'));
   if (!/^\d{4}$/.test(pin)) return err('err2', t('enterPin'));
+  const id = ident(); let perm = { pos: null };
+  if (role === 'store') {
+    const ctx = await rpc('punch_context', { p_store: id.p_store });
+    perm = (await permissionsReady('user', true)) || (await consentGate({ kind: 'user', store: id.p_store, emp: id.p_emp, testMode: ctx && ctx.test_mode, needCamera: true }));
+  } else if (!hasConsent('user')) {
+    await consentGate({ kind: 'user', emp: id.p_emp, requirePerms: false, needCamera: false });
+  }
   $('#btnLogin').disabled = true;
-  const r = await rpc('auth_login', { ...ident(), p_pin: pin, p_device: deviceId() });
+  const r = await rpc('auth_login', { ...id, p_pin: pin, p_device: deviceId(), p_lat: perm.pos ? perm.pos.lat : null, p_lng: perm.pos ? perm.pos.lng : null });
   $('#btnLogin').disabled = false;
   if (r && r.ok) { Session.set(r); location.href = homeFor(r.role); return; }
   const e = r && r.error;
   if (e === 'WRONG_PIN') { pinBoxes($('#pinLogin')); return err('err2', t('wrongPin', { n: r.tries_left })); }
   if (e === 'LOCKED') return lockedScreen(r.locked_sec);
+  if (e === 'OUT_OF_RANGE') return err('err2', t('outsideLogin', { d: r.dist_m, r: r.radius_m }));
+  if (e === 'NO_GPS') return err('err2', t('noGps') + ' ' + t('permHow'));
   if (e === 'PIN_NOT_SET') { newMath(); pinBoxes($('#pinNew')); pinBoxes($('#pinNew2')); return show('s3'); }
   if (e === 'STORE_BUSY') {
     $('#busyStore').textContent = ident().p_store;
