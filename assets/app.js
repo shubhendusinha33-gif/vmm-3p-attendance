@@ -1,10 +1,10 @@
-/* VMM 3rd Party Attendance — shared helpers (v3)
+/* VMM 3rd Party Attendance — shared helpers (v4)
    The only file to edit when moving to another Supabase project: CONFIG below. */
 const CONFIG = {
   url: 'https://phyllziizajuphenpwxz.supabase.co',
   key: 'sb_publishable_KRASYzbWRPYoKzJItq-Gqw_zLwUvnX-',
-  version: 'v3',
-  policy: '2026-11-v1',   // bump when the privacy text changes: everyone is asked again
+  version: 'v4',
+  policy: '2026-11-v2',   // bump when the privacy text changes: everyone is asked again
 };
 
 /* ---------- no framing (clickjacking guard) ---------- */
@@ -125,7 +125,7 @@ const I18N = {
     logout: 'Logout', today: 'Today', pickDate: 'Pick date', mtd: '1st – Today', morning: 'Morning', evening: 'Evening', both: 'Both',
     notPunched: '{n} not punched yet', allPunched: 'Everyone has punched in', present: 'Present', missing: 'Missing',
     emptySlots: 'Empty slots (as per master)', regularsMissing: 'Regulars not here today', cameDays: 'came {n} of last 7 days',
-    absentQ: 'Absent?', shareWa: 'Share on WhatsApp', punchForStaff: '+ Punch for staff (MOD)', qrPoster: 'Download store QR poster',
+    absentQ: 'Absent?', shareWa: 'Share on WhatsApp', punchForStaff: '+ Punch for staff (no phone)', qrPoster: 'Download store QR poster',
     statement: 'Monthly statement', compOff: 'Comp-off', markCompOff: 'Mark comp-off', moreDetails: 'details',
     punchIn: 'Punch IN', punchOut: 'Punch OUT', punchTitle: 'Punch', vendor: 'Vendor', selectVendor: 'Select vendor', otherVendor: '+ Other vendor',
     brand: 'Brand', yourName: 'Your name', nameHint: 'Full name', getLocation: 'Checking your location…',
@@ -134,7 +134,7 @@ const I18N = {
     photoToday: 'Your photo will be taken today', photoHint: 'Tap the button and take a clear selfie', takePhoto: 'Take photo',
     punchDone: 'Punch recorded', nextPunch: 'Next punch', photoSaved: 'Photo saved', photoFailed: 'Photo not saved, try again',
     duplicate: 'You just punched. Wait 2 minutes.', badName: 'Write your name in letters only (2–40).', brandRequired: 'Select your brand.',
-    noPhone: 'No phone? Ask the MOD to punch for you from the store login.', fromQr: '(from QR)', modMode: 'MOD phone',
+    noPhone: 'No phone? Ask SM / ASM / DM to punch for you from the store login.', fromQr: '(from QR)', modMode: 'Store phone',
     associate: 'Associate', selectAssociate: 'Pick associate', newName: '+ New name', chooseCat: 'Choose department',
     consentTitle: 'Camera and location are needed', consentIntro: 'To mark attendance, this portal uses:',
     consentLoc: 'Your location, only when you log in or punch, to check you are inside the store.',
@@ -147,6 +147,22 @@ const I18N = {
     permRetry: 'Try again', permTestSkip: 'Continue without (test mode only)',
     modConsent: 'The associate agreed to share location and photo for attendance.', consentRequired: 'Consent is required to punch.',
     noCamera: 'Camera not available. Use the button below to take the photo.', shutter: 'Capture',
+
+    registerTitle: 'Register & create PIN', registerNew: 'New here · {store} · {post}', registerSub: 'First login registers you for this store and post.',
+    fullName: 'Your full name', registerBtn: 'Register & save PIN', storeNotFound: 'Store code not found. Check the code.',
+    postTaken: '{post} of {store} is already registered to {name} ({emp}). If that person left, ask your AM to mark the post vacant, then register again.',
+    empElsewhere: 'This Emp Code is already registered as {where}. Ask your AM to mark it vacant first.',
+    setupCode: 'Setup code from your invite email', setupHint: 'One-time code · sent in your invite email', badCode: 'Wrong setup code.',
+    codeExpired: 'Setup code expired or not issued. Ask Admin or your ZFM for a new invite.', badNameReg: 'Write your full name in letters (3–60).',
+    viewDesktop: '🖥 Desktop', viewMobile: '📱 Mobile',
+    requestChange: 'Request change', reasonReq: 'Reason (required)', sendToAm: 'Send to AM for approval', myRequests: 'My requests',
+    stPending: 'Pending AM', stApproved: 'Approved', stRejected: 'Rejected', nothingChanges: 'Nothing changes until your AM approves.',
+    alreadyPending: 'A request for this is already pending with AM.', editTypeOff: 'This change type is switched off. Ask Admin.',
+    reasonRequired: 'Write a reason (at least 5 letters).', compoffReq: 'Comp-off request', staffReq: 'Change staff details', requestSent: 'Sent to AM for approval',
+    liveLook: 'Look straight at the camera', liveBlink: '👁 Blink 2 times', liveLeft: '↩ Turn your head LEFT', liveRight: '↪ Turn your head RIGHT',
+    liveFound: 'Face found ✓ hold still', livePass: '✓ Live person', liveFail: 'Live check failed', liveLoading: 'Starting face check…',
+    liveFailWhy: 'No blink or head turn seen in 15 seconds. A photo of a photo cannot do this.', liveTry: 'Try again ({n} left)', liveNoFace: 'Keep your face inside the oval',
+    liveSeen: 'Seen: {n} of {m}', liveSaved: 'Saved as “Live check failed”.',
     retake: 'Retake', usePhoto: 'Use this photo', outsideLogin: 'You are {d} m from the store. Store login works only inside the store ({r} m).',
   },
   hi: {
@@ -168,7 +184,7 @@ const I18N = {
     logout: 'लॉगआउट', today: 'आज', pickDate: 'तारीख चुनें', mtd: '1 से आज तक', morning: 'सुबह', evening: 'शाम', both: 'दोनों',
     notPunched: '{n} ने अभी पंच नहीं किया', allPunched: 'सबने पंच कर लिया', present: 'मौजूद', missing: 'नहीं आया',
     emptySlots: 'खाली जगह (मास्टर के अनुसार)', regularsMissing: 'रोज़ आने वाले जो आज नहीं आए', cameDays: 'पिछले 7 में से {n} दिन आए',
-    absentQ: 'गैरहाज़िर?', shareWa: 'WhatsApp पर भेजें', punchForStaff: '+ स्टाफ़ का पंच करें (MOD)', qrPoster: 'स्टोर QR पोस्टर डाउनलोड करें',
+    absentQ: 'गैरहाज़िर?', shareWa: 'WhatsApp पर भेजें', punchForStaff: '+ स्टाफ़ का पंच करें (बिना फ़ोन)', qrPoster: 'स्टोर QR पोस्टर डाउनलोड करें',
     statement: 'मासिक स्टेटमेंट', compOff: 'कॉम्प-ऑफ़', markCompOff: 'कॉम्प-ऑफ़ लगाएं', moreDetails: 'विवरण',
     punchIn: 'पंच IN', punchOut: 'पंच OUT', punchTitle: 'पंच', vendor: 'वेंडर', selectVendor: 'वेंडर चुनें', otherVendor: '+ दूसरा वेंडर',
     brand: 'ब्रांड', yourName: 'आपका नाम', nameHint: 'पूरा नाम', getLocation: 'आपकी लोकेशन देखी जा रही है…',
@@ -177,7 +193,7 @@ const I18N = {
     photoToday: 'आज आपकी फ़ोटो ली जाएगी', photoHint: 'बटन दबाएं और साफ़ सेल्फ़ी लें', takePhoto: 'फ़ोटो लें',
     punchDone: 'पंच हो गया', nextPunch: 'अगला पंच', photoSaved: 'फ़ोटो सेव हो गई', photoFailed: 'फ़ोटो सेव नहीं हुई, दोबारा लें',
     duplicate: 'आपने अभी पंच किया है। 2 मिनट रुकें।', badName: 'नाम सिर्फ़ अक्षरों में लिखें (2–40)।', brandRequired: 'अपना ब्रांड चुनें।',
-    noPhone: 'फ़ोन नहीं है? MOD से स्टोर लॉगिन से पंच करवाएं।', fromQr: '(QR से)', modMode: 'MOD का फ़ोन',
+    noPhone: 'फ़ोन नहीं है? SM / ASM / DM से स्टोर लॉगिन से पंच करवाएं।', fromQr: '(QR से)', modMode: 'स्टोर का फ़ोन',
     associate: 'कर्मचारी', selectAssociate: 'कर्मचारी चुनें', newName: '+ नया नाम', chooseCat: 'विभाग चुनें',
     consentTitle: 'कैमरा और लोकेशन ज़रूरी है', consentIntro: 'हाज़िरी के लिए यह पोर्टल इस्तेमाल करता है:',
     consentLoc: 'आपकी लोकेशन, सिर्फ़ लॉगिन या पंच के समय, यह देखने के लिए कि आप स्टोर के अंदर हैं।',
@@ -190,6 +206,22 @@ const I18N = {
     permRetry: 'दोबारा कोशिश करें', permTestSkip: 'बिना अनुमति आगे बढ़ें (सिर्फ़ टेस्ट मोड)',
     modConsent: 'कर्मचारी हाज़िरी के लिए लोकेशन और फ़ोटो देने के लिए सहमत है।', consentRequired: 'पंच के लिए सहमति ज़रूरी है।',
     noCamera: 'कैमरा नहीं मिला। फ़ोटो लेने के लिए नीचे का बटन दबाएं।', shutter: 'फ़ोटो लें',
+
+    registerTitle: 'रजिस्टर करें और PIN बनाएं', registerNew: 'नए हैं · {store} · {post}', registerSub: 'पहला लॉगिन आपको इस स्टोर और पद पर रजिस्टर करता है।',
+    fullName: 'आपका पूरा नाम', registerBtn: 'रजिस्टर करें और PIN सेव करें', storeNotFound: 'स्टोर कोड नहीं मिला। कोड जांचें।',
+    postTaken: '{store} का {post} पहले से {name} ({emp}) के नाम है। वे चले गए हैं तो AM से पद खाली करवाएं, फिर रजिस्टर करें।',
+    empElsewhere: 'यह Emp Code पहले से {where} के रूप में रजिस्टर है। पहले AM से खाली करवाएं।',
+    setupCode: 'इनवाइट ईमेल का सेटअप कोड', setupHint: 'एक बार का कोड · इनवाइट ईमेल में', badCode: 'सेटअप कोड गलत है।',
+    codeExpired: 'सेटअप कोड खत्म हो गया या मिला नहीं। एडमिन या ZFM से नया इनवाइट लें।', badNameReg: 'पूरा नाम अक्षरों में लिखें (3–60)।',
+    viewDesktop: '🖥 डेस्कटॉप', viewMobile: '📱 मोबाइल',
+    requestChange: 'बदलाव का अनुरोध', reasonReq: 'कारण (ज़रूरी)', sendToAm: 'AM को मंज़ूरी के लिए भेजें', myRequests: 'मेरे अनुरोध',
+    stPending: 'AM के पास', stApproved: 'मंज़ूर', stRejected: 'नामंज़ूर', nothingChanges: 'AM की मंज़ूरी तक कुछ नहीं बदलेगा।',
+    alreadyPending: 'इसका अनुरोध पहले से AM के पास है।', editTypeOff: 'यह बदलाव बंद है। एडमिन से पूछें।',
+    reasonRequired: 'कारण लिखें (कम से कम 5 अक्षर)।', compoffReq: 'कॉम्प-ऑफ़ अनुरोध', staffReq: 'स्टाफ़ की जानकारी बदलें', requestSent: 'AM को मंज़ूरी के लिए भेजा गया',
+    liveLook: 'कैमरे की तरफ़ सीधे देखें', liveBlink: '👁 पलक 2 बार झपकाएं', liveLeft: '↩ सिर बाईं ओर घुमाएं', liveRight: '↪ सिर दाईं ओर घुमाएं',
+    liveFound: 'चेहरा मिल गया ✓ रुके रहें', livePass: '✓ असली व्यक्ति', liveFail: 'लाइव जांच फ़ेल', liveLoading: 'चेहरा जांच शुरू हो रही है…',
+    liveFailWhy: '15 सेकंड में पलक या सिर नहीं हिला। फ़ोटो की फ़ोटो ऐसा नहीं कर सकती।', liveTry: 'दोबारा कोशिश ({n} बाकी)', liveNoFace: 'चेहरा अंडाकार के अंदर रखें',
+    liveSeen: 'देखा: {m} में से {n}', liveSaved: '“लाइव जांच फ़ेल” के रूप में सेव हुआ।',
     retake: 'दोबारा लें', usePhoto: 'यह फ़ोटो भेजें', outsideLogin: 'आप स्टोर से {d} m दूर हैं। स्टोर लॉगिन सिर्फ़ स्टोर के अंदर ({r} m) होगा।',
   },
 };
@@ -233,7 +265,9 @@ function errText(e) {
   return ({ NETWORK: t('network'), NOT_FOUND: t('notFound'), SESSION_EXPIRED: t('sessionExpired'),
     DUPLICATE: t('duplicate'), BAD_NAME: t('badName'), BRAND_REQUIRED: t('brandRequired'), CONSENT_REQUIRED: t('consentRequired'), NO_GPS: t('noGps'),
     READ_ONLY: 'View mode is read-only. Nothing was changed.', WEAK_PIN: t('weakPin'), WRONG_OLD_PIN: t('wrongOldPin'),
-    ADMIN_SETUP: t('adminSetup'), ADMIN_PROTECTED: 'Admin PIN cannot be reset here. Admin changes it with Change PIN.', FORBIDDEN: t('forbidden') })[e] || String(e || 'Error');
+    ADMIN_SETUP: t('adminSetup'), BAD_CODE: t('badCode'), CODE_EXPIRED: t('codeExpired'), STORE_NOT_FOUND: t('storeNotFound'),
+    ALREADY_PENDING: t('alreadyPending'), EDIT_TYPE_OFF: t('editTypeOff'), REASON_REQUIRED: t('reasonRequired'), POST_TAKEN: t('postTaken', { post: '', store: '', name: '', emp: '' }),
+    EMP_ELSEWHERE: t('empElsewhere', { where: '—' }), ALREADY_DECIDED: 'Already decided by someone else.', DUPLICATE_NAME: 'Another associate in this store already has this name.', ADMIN_PROTECTED: 'Admin PIN cannot be reset here. Admin changes it with Change PIN.', FORBIDDEN: t('forbidden') })[e] || String(e || 'Error');
 }
 function credit() { return `${CONFIG.version} · Designed &amp; Developed by Shubhendu Sinha · VMM Central Ops &amp; BI`; }
 
@@ -420,4 +454,43 @@ function changePinDialog(me) {
     if (!r || !r.ok) return bad(errText(r && r.error));
     el.remove(); toast(t('pinChanged'));
   });
+}
+
+/* ---------- v4: Desktop / Mobile layout (non-store users) ---------- */
+const POSTS = ['SM', 'ASM', 'DM Apps', 'DM FMCG', 'DM GM'];
+const Layout = {
+  get() { return store.get('vmm3p_layout', null); },
+  set(v) { store.set('vmm3p_layout', v); },
+  small() { return Math.min(screen.width || 9999, window.outerWidth || 9999) < 820; },
+  effective() { return this.get() || (this.small() ? 'mobile' : 'desktop'); },
+  apply() {
+    const m = this.get(), vp = document.querySelector('meta[name=viewport]');
+    if (vp && m === 'desktop' && this.small()) vp.setAttribute('content', 'width=1280');
+    document.documentElement.classList.toggle('force-mobile', m === 'mobile' && !this.small());
+  },
+  toggle(onChange) {
+    const el = document.createElement('div'); el.className = 'layoutseg';
+    const paint = () => { el.innerHTML = ['desktop', 'mobile'].map((v) => `<button type="button" data-l="${v}" class="${this.effective() === v ? 'on' : ''}">${t(v === 'desktop' ? 'viewDesktop' : 'viewMobile')}</button>`).join(''); };
+    el.addEventListener('click', (e) => { const b = e.target.closest('[data-l]'); if (!b) return; this.set(b.dataset.l); paint(); if (onChange) onChange(b.dataset.l); });
+    paint(); return el;
+  },
+};
+const WA_ICON = '<svg width="26" height="26" viewBox="0 0 32 32" aria-label="WhatsApp"><circle cx="16" cy="16" r="16" fill="#25D366"/><path d="M16 7.2a8.8 8.8 0 0 0-7.6 13.2L7.3 24.8l4.5-1.2A8.8 8.8 0 1 0 16 7.2z" fill="#fff"/><path d="M12.6 11.6c.2-.4.4-.4.7-.4h.5c.2 0 .4 0 .6.5l.8 1.9c.1.2.1.4 0 .6l-.5.7c-.1.2-.2.3 0 .6.5.9 1.6 2 2.7 2.5.3.1.4.1.6-.1l.7-.8c.2-.2.4-.2.6-.1l1.8.9c.3.1.4.2.4.4 0 .5-.2 1.2-.8 1.5-.5.3-1.4.5-3-.1-1.9-.8-3.5-2.6-4.2-3.9-.6-1.1-.6-2-.4-2.5z" fill="#25D366"/></svg>';
+
+/* simple modal: returns a Promise resolving to form values or null */
+function modal(html, onSubmit) {
+  const el = document.createElement('div'); el.className = 'dlg';
+  el.innerHTML = `<form class="box">${html}<div class="note r" data-err hidden></div><div class="row"><button type="button" class="btn o" data-x style="flex:1">✕</button><button class="btn" data-ok style="flex:2"></button></div></form>`;
+  document.body.appendChild(el);
+  const f = el.querySelector('form');
+  const close = () => el.remove();
+  el.querySelector('[data-x]').onclick = close;
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = el.querySelector('[data-ok]'); btn.disabled = true;
+    const err = await onSubmit(f, close);
+    btn.disabled = false;
+    if (err) { const n = el.querySelector('[data-err]'); n.hidden = false; n.textContent = err; }
+  });
+  return { el, form: f, okLabel: (s) => { el.querySelector('[data-ok]').textContent = s; } };
 }

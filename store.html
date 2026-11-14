@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://phyllziizajuphenpwxz.supabase.co; media-src 'self' blob:; connect-src https://phyllziizajuphenpwxz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://phyllziizajuphenpwxz.supabase.co; media-src 'self' blob:; connect-src 'self' https://phyllziizajuphenpwxz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Store Dashboard · 3rd Party Attendance</title>
@@ -59,6 +59,11 @@
     <div class="k2" id="mtdKpis"></div>
     <div class="list" id="mtdList"></div>
     <div class="row"><button class="btn o sm" id="btnXls">⬇ Excel</button></div>
+  </section>
+
+  <section id="reqBox" hidden style="display:flex;flex-direction:column;gap:8px">
+    <div class="sec" data-t="myRequests"></div>
+    <div class="list" id="reqList"></div>
   </section>
 
   <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
@@ -120,8 +125,9 @@ async function loadDay() {
       <span class="v">${v.p}/${v.req}</span><span class="p" style="color:${pctColor(p)}">${p}%</span>
       <div class="bar"><i style="width:${Math.min(p, 100)}%;background:${pctColor(p)}"></i></div></div>`; }).join('') || `<div class="empty">—</div>`;
   $('#presentList').innerHTML = r.present.map((a) => `<div class="li"><div class="m">${esc(a.name)} · ${esc(cn(a.c))}${a.brand ? ' ' + esc(a.brand) : ''}
-      <span>${esc(a.code)} · IN ${a.first_in || '—'}${a.last_out ? ' · OUT ' + a.last_out : ''}${a.hours ? ' · ' + a.hours + ' h' : ''}${a.via_mod ? ' · MOD' : ''}${a.photo === 'done' ? ' · 📷' : a.photo === 'pending' ? ' · 📷?' : ''}</span></div>
-      <span class="tag ${a.last_out ? 'i' : 'ok'}">${a.last_out ? 'OUT' : esc(t('present'))}</span></div>`).join('') || `<div class="empty">—</div>`;
+      <span>${esc(a.code)} · IN ${a.first_in || '—'}${a.last_out ? ' · OUT ' + a.last_out : ''}${a.hours ? ' · ' + a.hours + ' h' : ''}${a.via_mod ? ' · ' + esc(t('modMode')) : ''}${a.photo === 'done' ? ' · 📷' : a.photo === 'pending' ? ' · 📷?' : ''}</span></div>
+      <span style="display:flex;gap:6px;align-items:center"><span class="tag ${a.last_out ? 'i' : 'ok'}">${a.last_out ? 'OUT' : esc(t('present'))}</span>
+      ${editTypes.includes('staff') ? `<button class="btn o sm" data-ed="${a.id}" data-n="${esc(a.name)}" data-v="${esc(a.vendor || '')}" data-b="${esc(a.brand || '')}" title="${esc(t('staffReq'))}">✎</button>` : ''}</span></div>`).join('') || `<div class="empty">—</div>`;
 }
 
 function showMissing() {
@@ -130,7 +136,7 @@ function showMissing() {
   const slots = r.slots.filter((s) => s.req > s.p);
   $('#slotList').innerHTML = slots.map((s) => `<div class="li"><div class="m">${esc(cn(s.c))}${s.brand ? ' · ' + esc(s.brand) : ''} × ${s.req - s.p}<span>${esc(s.vendor || '')}</span></div><span class="tag r">${esc(t('missing'))}</span></div>`).join('') || `<div class="empty">✓</div>`;
   $('#regList').innerHTML = r.regulars_missing.map((a) => `<div class="li"><div class="m">${esc(a.name)} · ${esc(cn(a.c))}${a.brand ? ' ' + esc(a.brand) : ''}<span>${esc(t('cameDays', { n: a.days }))}</span></div>
-      <button class="btn o sm" data-co="${a.id}">${esc(t('markCompOff'))}</button></div>`).join('') || `<div class="empty">—</div>`;
+      ${editTypes.includes('compoff') ? `<button class="btn o sm" data-co="${a.id}" data-n="${esc(a.name)}">${esc(t('compoffReq'))}</button>` : ''}</div>`).join('') || `<div class="empty">—</div>`;
 }
 
 function waText() {
@@ -155,6 +161,28 @@ async function loadMtd() {
       <span>P ${a.present} · A ${a.absent} · CO ${a.compoff} · ${a.hours} h</span></div><span class="tag ${pctTag(p)}">${p}%</span></div>`; }).join('') || `<div class="empty">—</div>`;
 }
 
+let editTypes = ['compoff', 'staff'];
+function requestDialog(kind, assoc, inner, payload) {
+  const m = modal(`<h3>✎ ${esc(t(kind === 'compoff' ? 'compoffReq' : 'staffReq'))}</h3>${inner}
+    <label class="lbl">${esc(t('reasonReq'))}<textarea class="in" name="why" rows="2" maxlength="300"></textarea></label><p class="mini" style="margin:0">${esc(t('nothingChanges'))}</p>`, async (f, close) => {
+    if (f.why.value.trim().length < 5) return t('reasonRequired');
+    const extra = payload(f);
+    const r = await rpc('cr_create', { p_token: me.token, p_kind: kind, p_associate: assoc, p_date: extra.p_date, p_payload: extra.p_payload, p_reason: f.why.value.trim() });
+    if (r && r.ok) { close(); toast(t('requestSent')); loadRequests(); return null; }
+    return errText(r && r.error);
+  });
+  m.okLabel(t('sendToAm'));
+}
+async function loadRequests() {
+  const r = await rpc('cr_list', { p_token: me.token, p_status: 'all', p_days: 30 });
+  if (!r || !r.ok) return;
+  editTypes = r.edit_types || editTypes;
+  $('#reqBox').hidden = !r.rows.length;
+  const tag = { pending: ['w', 'stPending'], approved: ['ok', 'stApproved'], rejected: ['r', 'stRejected'] };
+  $('#reqList').innerHTML = r.rows.slice(0, 15).map((x) => `<div class="li"><div class="m">${esc(x.kind === 'compoff' ? t('compOff') : t('staffReq'))} · ${esc(x.assoc || '')}${x.date ? ' · ' + fmtDay(x.date) : ''}
+    <span>${esc(x.reason)}${x.note ? ' · AM: “' + esc(x.note) + '”' : ''}</span></div><span class="tag ${tag[x.status][0]}">${esc(t(tag[x.status][1]))}</span></div>`).join('');
+}
+
 (async function init() {
   me = await requireSession(['store']); if (!me) return;
   $('#langSlot').appendChild(langToggle(() => { if (mode === 'mtd') loadMtd(); else loadDay(); paintCal(); }));
@@ -175,11 +203,17 @@ async function loadMtd() {
   $('#banner').addEventListener('click', showMissing);
   $('#missBack').addEventListener('click', () => { $('#missing').hidden = true; $('#day').hidden = false; $('#calBox').hidden = mode !== 'pick'; });
   $('#btnWa').addEventListener('click', () => waShare(waText()));
-  $('#regList').addEventListener('click', async (e) => {
+  $('#regList').addEventListener('click', (e) => {
     const b = e.target.closest('[data-co]'); if (!b) return;
-    b.disabled = true; const r = await rpc('mark_compoff', { p_token: me.token, p_associate: Number(b.dataset.co), p_date: date, p_on: true });
-    if (r && r.ok) { toast(t('compOff') + ' ✓'); await loadDay(); showMissing(); } else { b.disabled = false; toast(errText(r && r.error)); }
+    requestDialog('compoff', Number(b.dataset.co), `<div class="note i" style="font-size:13px">${esc(b.dataset.n)} · ${fmtDate(date)} · Absent → ${esc(t('compOff'))}</div>`, () => ({ p_date: date, p_payload: { on: true } }));
   });
+  $('#presentList').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ed]'); if (!b) return;
+    requestDialog('staff', Number(b.dataset.ed), `<label class="lbl">${esc(t('yourName'))}<input class="in" name="nm" value="${esc(b.dataset.n)}" maxlength="40"></label>
+      <label class="lbl">${esc(t('vendor'))}<input class="in" name="vd" value="${esc(b.dataset.v)}" maxlength="60"></label>${b.dataset.b ? `<label class="lbl">${esc(t('brand'))}<input class="in" name="br" value="${esc(b.dataset.b)}" maxlength="30"></label>` : ''}`,
+      (f) => ({ p_date: null, p_payload: { name: f.nm.value.trim(), vendor: f.vd.value.trim(), brand: f.br ? f.br.value.trim() : b.dataset.b } }));
+  });
+  loadRequests();
   $('#mtdList').addEventListener('click', (e) => { const li = e.target.closest('[data-a]'); if (li) location.href = `statement.html?a=${li.dataset.a}&from=${mtdData.from}&to=${mtdData.to}`; });
   $('#btnXls').addEventListener('click', () => { if (!mtdData) return;
     downloadXlsx(mtdData.associates.map((a) => ({ Store: me.store_code, Code: a.code, Name: a.name, Category: cn(a.c), Brand: a.brand, Vendor: a.vendor, Present: a.present, Absent: a.absent, 'Comp-off': a.compoff, Hours: a.hours })),

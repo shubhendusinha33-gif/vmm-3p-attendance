@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://phyllziizajuphenpwxz.supabase.co; media-src 'self' blob:; connect-src https://phyllziizajuphenpwxz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://phyllziizajuphenpwxz.supabase.co; media-src 'self' blob:; connect-src 'self' https://phyllziizajuphenpwxz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3rd Party Attendance</title>
@@ -33,7 +33,7 @@
         <div class="field"><label class="lbl" for="emp" data-t="empCode"></label>
           <input class="in" id="emp" inputmode="numeric" maxlength="10" data-tp="empHint"></div>
         <div class="field" data-for="store"><label class="lbl" for="post" data-t="post"></label>
-          <select class="in" id="post"><option>SM</option><option>ASM</option><option>MOD</option></select></div>
+          <select class="in" id="post"><option>SM</option><option>ASM</option><option>DM Apps</option><option>DM FMCG</option><option>DM GM</option></select></div>
         <div class="field" data-for="store"><label class="lbl" for="storeCode" data-t="storeCode"></label>
           <input class="in" id="storeCode" maxlength="4" style="text-transform:uppercase" data-tp="storeHint"></div>
         <div class="field" data-for="hodept" hidden><label class="lbl" for="dept" data-t="department"></label>
@@ -54,6 +54,7 @@
         <div class="pins" id="pinLogin"></div>
         <div id="err2" class="note r" hidden></div>
         <button class="btn" id="btnLogin" type="button" data-t="login"></button>
+        <div data-layout-slot></div>
         <p class="sub" style="margin:0" data-t="forgotPin"></p>
         <button class="link" type="button" data-back data-t="back"></button>
       </div>
@@ -64,6 +65,16 @@
       <h1 class="ttl" data-t="createPin"></h1>
       <p class="sub" id="whoSub3" style="margin-top:2px"></p>
       <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+        <div id="regBox" hidden style="display:flex;flex-direction:column;gap:8px">
+          <div class="note i" style="text-align:left"><b id="regNote"></b><br><span style="font-size:12px" data-t="registerSub"></span></div>
+          <div class="lbl" data-t="fullName"></div>
+          <input class="in" id="regName" maxlength="60" autocomplete="name">
+        </div>
+        <div id="codeBox" hidden style="display:flex;flex-direction:column;gap:6px">
+          <div class="lbl" data-t="setupCode"></div>
+          <input class="in" id="setupCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" style="text-align:center;font-size:20px;font-weight:700;letter-spacing:6px">
+          <p class="sub" style="margin:0" data-t="setupHint"></p>
+        </div>
         <div class="lbl" data-t="answerQ"></div>
         <div class="math" id="mathQ"></div>
         <input class="in" id="mathA" inputmode="numeric" maxlength="3" style="text-align:center;font-size:20px;font-weight:700">
@@ -73,6 +84,7 @@
         <div class="pins" id="pinNew2"></div>
         <div id="err3" class="note r" hidden></div>
         <button class="btn" id="btnSave" type="button" data-t="savePin"></button>
+        <div data-layout-slot></div>
         <button class="link" type="button" data-back data-t="back"></button>
       </div>
     </section>
@@ -151,6 +163,20 @@ function subLine() {
   return role === 'store' ? `${i.p_post} · ${i.p_store}${checked.store_name ? ' · ' + checked.store_name : ''}` : `Emp ${i.p_emp}`;
 }
 
+let mode = 'pin';
+function createScreen(m) {
+  mode = m; newMath(); pinBoxes($('#pinNew')); pinBoxes($('#pinNew2')); err('err3');
+  $('#regBox').hidden = m !== 'register'; $('#codeBox').hidden = m !== 'code';
+  $('#s3 .ttl').textContent = t(m === 'register' ? 'registerTitle' : 'createPin');
+  $('#btnSave').textContent = t(m === 'register' ? 'registerBtn' : 'savePin');
+  if (m === 'register') { const i = ident(); $('#regNote').textContent = t('registerNew', { store: `${i.p_store} ${checked.store_name || ''}`.trim(), post: i.p_post }); $('#regName').value = ''; }
+  if (m === 'code') $('#setupCode').value = '';
+  show('s3');
+  setTimeout(() => (m === 'register' ? $('#regName') : m === 'code' ? $('#setupCode') : $('#mathA')).focus(), 50);
+}
+function layoutSlots() {
+  $$('[data-layout-slot]').forEach((el) => { el.innerHTML = ''; if (role !== 'store') el.appendChild(Layout.toggle()); });
+}
 async function doCheck() {
   const i = ident();
   if (!/^\d{5,}$/.test(i.p_emp)) return err('err1', t('empHint'));
@@ -159,11 +185,15 @@ async function doCheck() {
   $('#btnNext').disabled = true;
   const r = await rpc('auth_check', i);
   $('#btnNext').disabled = false;
+  if (r && r.error === 'POST_TAKEN') return err('err1', t('postTaken', { post: r.post, store: r.store, name: r.by_name, emp: r.by_emp }));
+  if (r && r.error === 'EMP_ELSEWHERE') return err('err1', t('empElsewhere', { where: r.where }));
   if (!r || !r.ok) return err('err1', errText(r && r.error));
   checked = r; err('err1');
+  layoutSlots();
+  if (r.register) { $('#whoSub3').textContent = `Emp ${i.p_emp}`; return createScreen('register'); }
   $('#who').textContent = r.name; $('#whoSub').textContent = subLine(); $('#whoSub3').textContent = subLine();
   if (r.locked_sec > 0) return lockedScreen(r.locked_sec);
-  if (!r.pin_set) { newMath(); pinBoxes($('#pinNew')); pinBoxes($('#pinNew2')); err('err3'); return show('s3'); }
+  if (!r.pin_set) return createScreen(r.need_code ? 'code' : 'pin');
   pinBoxes($('#pinLogin')); err('err2'); show('s2'); setTimeout(() => $('#pinLogin input').focus(), 50);
 }
 
@@ -186,7 +216,7 @@ async function doLogin() {
   if (e === 'LOCKED') return lockedScreen(r.locked_sec);
   if (e === 'OUT_OF_RANGE') return err('err2', t('outsideLogin', { d: r.dist_m, r: r.radius_m }));
   if (e === 'NO_GPS') return err('err2', t('noGps') + ' ' + t('permHow'));
-  if (e === 'PIN_NOT_SET') { newMath(); pinBoxes($('#pinNew')); pinBoxes($('#pinNew2')); return show('s3'); }
+  if (e === 'PIN_NOT_SET') return createScreen(role === 'store' ? 'pin' : 'code');
   if (e === 'STORE_BUSY') {
     $('#busyStore').textContent = ident().p_store;
     $('#busyWho').textContent = t('openOnPhone', { name: r.by_name, emp: r.by_emp, since: r.since });
@@ -202,17 +232,27 @@ async function doSave() {
   if (!/^\d{4}$/.test(p1)) return err('err3', t('newPin'));
   if (p1 !== p2) { pinBoxes($('#pinNew2')); return err('err3', t('pinMismatch')); }
   const id = ident(); let perm = { pos: null };
+  if (mode === 'register' && !/^[A-Za-z][A-Za-z .]{2,59}$/.test($('#regName').value.trim())) return err('err3', t('badNameReg'));
+  if (mode === 'code' && !/^\d{6}$/.test($('#setupCode').value.trim())) return err('err3', t('badCode'));
   if (role === 'store') {
     const ctx = await rpc('punch_context', { p_store: id.p_store });
     perm = (await permissionsReady('user', true)) || (await consentGate({ kind: 'user', store: id.p_store, emp: id.p_emp, testMode: ctx && ctx.test_mode, needCamera: true }));
   }
+  const geo = { p_lat: perm.pos ? perm.pos.lat : null, p_lng: perm.pos ? perm.pos.lng : null };
   $('#btnSave').disabled = true;
-  const r = await rpc('auth_set_pin', { ...id, p_pin: p1, p_lat: perm.pos ? perm.pos.lat : null, p_lng: perm.pos ? perm.pos.lng : null });
+  const r = mode === 'register'
+    ? await rpc('auth_register', { p_emp: id.p_emp, p_post: id.p_post, p_store: id.p_store, p_name: $('#regName').value.trim(), p_pin: p1, ...geo })
+    : await rpc('auth_set_pin', { ...id, p_pin: p1, ...geo, p_code: mode === 'code' ? $('#setupCode').value.trim() : null });
   $('#btnSave').disabled = false;
   if (r && r.error === 'OUT_OF_RANGE') return err('err3', t('outsideLogin', { d: r.dist_m, r: r.radius_m }));
+  if (r && r.error === 'LOCKED') return lockedScreen(r.locked_sec);
+  if (r && r.error === 'BAD_NAME') return err('err3', t('badNameReg'));
   if (!r || !r.ok) { if (r && r.error === 'WEAK_PIN') { pinBoxes($('#pinNew')); pinBoxes($('#pinNew2')); } return err('err3', errText(r && r.error)); }
   toast(t('pinSaved'));
+  if (mode === 'register') { checked.name = $('#regName').value.trim(); $('#who').textContent = checked.name; }
   checked.pin_set = true; pinBoxes($('#pinLogin')); err('err2'); show('s2');
+  $$('#pinLogin input').forEach((inp, k) => { inp.value = p1[k]; });
+  doLogin();
 }
 
 (async function init() {

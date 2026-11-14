@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://phyllziizajuphenpwxz.supabase.co; media-src 'self' blob:; connect-src https://phyllziizajuphenpwxz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://phyllziizajuphenpwxz.supabase.co; media-src 'self' blob:; connect-src 'self' https://phyllziizajuphenpwxz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Dashboard · 3rd Party Attendance</title>
@@ -21,14 +21,20 @@
 <script src="assets/dash.js"></script>
 <script>
 (async function () {
+  Layout.apply();
   const me = await requireSession(['am', 'zfm', 'hodept']); if (!me) return;
-  const items = [{ grp: 'OPERATE' }, { id: 'live', label: 'Live Dashboard' }, { id: 'churn', label: 'Staff Churn' }, { id: 'reports', label: 'Attendance Reports' }];
+  const items = [{ grp: 'OPERATE' }, { id: 'live', label: 'Live Dashboard' }];
+  if (me.role === 'am') items.push({ id: 'approvals', label: 'Approvals' }, { id: 'team', label: 'Store team' });
+  if (me.role === 'zfm') items.push({ id: 'team', label: 'Store team' });
+  items.push({ id: 'churn', label: 'Staff Churn' }, { id: 'reports', label: 'Attendance Reports' });
   if (me.role === 'zfm') items.push({ grp: 'MANAGE' }, { id: 'pins', label: 'Users & PIN' });
   const view = $('#view');
   Shell(me, items, (id) => {
     view.innerHTML = '';
     if (id === 'live') LiveDash(view, me);
     if (id === 'churn') ChurnView(view, me);
+    if (id === 'approvals') ApprovalsView(view, me);
+    if (id === 'team') StoreTeamView(view, me);
     if (id === 'pins') PinReset(view, me, async () => { const r = await rpc('zone_users', { p_token: me.token }); return (r && r.rows) || []; });
     if (id === 'reports') {
       view.innerHTML = `<div class="top"><h1>Attendance Reports</h1></div>

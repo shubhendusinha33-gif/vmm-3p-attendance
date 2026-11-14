@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://phyllziizajuphenpwxz.supabase.co; media-src 'self' blob:; connect-src https://phyllziizajuphenpwxz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://phyllziizajuphenpwxz.supabase.co; media-src 'self' blob:; connect-src 'self' https://phyllziizajuphenpwxz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Punch · 3rd Party Attendance</title>
@@ -53,8 +53,11 @@
   <section id="photo" hidden style="display:flex;flex-direction:column;gap:12px;align-items:stretch">
     <h2 class="ttl" data-t="photoToday"></h2>
     <p class="sub" id="photoWho" style="margin:0"></p>
-    <div class="camwrap"><video id="camVideo" autoplay playsinline muted></video><img id="photoPrev" alt="" hidden><div class="ring" id="photoRing"></div></div>
-    <p class="sub" style="margin:0" data-t="photoHint"></p>
+    <div class="camwrap"><video id="camVideo" autoplay playsinline muted></video><img id="photoPrev" alt="" hidden><div class="ring" id="photoRing"></div>
+      <div class="livebar" id="liveBar" hidden></div><div class="livesub" id="liveSub" hidden></div></div>
+    <div class="liveprog" id="liveProg" hidden><i></i><i></i><i></i></div>
+    <p class="sub" style="margin:0" id="photoHint" data-t="photoHint"></p>
+    <div id="liveFailBox" class="note r" hidden></div>
     <button class="shutter" id="btnShutter" aria-label="Capture"></button>
     <div class="row" id="reviewBtns" hidden><button class="btn o grow" id="btnRetake" data-t="retake"></button><button class="btn grow" id="btnUse" data-t="usePhoto"></button></div>
     <div id="camFallback" hidden style="display:flex;flex-direction:column;gap:8px">
@@ -154,10 +157,78 @@ async function doPunch() {
 }
 
 async function openCam() {
-  shot = null; $('#photoPrev').hidden = true; $('#camVideo').hidden = false; $('#photoRing').hidden = false;
-  $('#btnShutter').hidden = false; $('#reviewBtns').hidden = true; $('#camFallback').hidden = true;
+  shot = null; $('#photoPrev').hidden = true; $('#camVideo').hidden = false; $('#photoRing').hidden = false; $('#photoRing').className = 'ring';
+  $('#btnShutter').hidden = true; $('#reviewBtns').hidden = true; $('#camFallback').hidden = true; $('#liveFailBox').hidden = true;
   try { if (stopCam) stopCam(); stopCam = await startCamera($('#camVideo')); }
-  catch (e) { $('#btnShutter').hidden = true; $('#camVideo').hidden = true; $('#camFallback').hidden = false; }
+  catch (e) { $('#camVideo').hidden = true; $('#camFallback').hidden = false; liveResult = 'skip'; return; }
+  liveResult = await runLive();
+  if (liveResult === 'pass') { setTimeout(capture, 350); return; }
+  liveUi(null);                       // skip / fail: normal shutter, result is saved with the photo
+  $('#btnShutter').hidden = false;
+}
+
+/* ---------- live face check: one random challenge (blink / left / right), on the phone, free ---------- */
+let liveResult = null;
+const LIVE_TRIES = 3;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function loadFaceApi() {
+  if (!loadFaceApi.p) loadFaceApi.p = new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'assets/face/face-api.js'; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); })
+    .then(() => Promise.all([faceapi.nets.tinyFaceDetector.loadFromUri('assets/face'), faceapi.nets.faceLandmark68Net.loadFromUri('assets/face')]));
+  return loadFaceApi.p;
+}
+function liveUi(text, step, sub, cls) {
+  $('#liveBar').hidden = !text; $('#liveBar').textContent = text || '';
+  $('#liveSub').hidden = !sub; $('#liveSub').textContent = sub || '';
+  $('#liveProg').hidden = step == null; $$('#liveProg i').forEach((i, k) => i.classList.toggle('on', step != null && k < step));
+  $('#photoHint').hidden = !!text;
+  if (cls !== undefined) $('#photoRing').className = 'ring' + (cls ? ' ' + cls : '');
+}
+const pdist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const eyeOpen = (e) => (pdist(e[1], e[5]) + pdist(e[2], e[4])) / (2 * pdist(e[0], e[3]));
+async function runLive() {
+  liveUi(t('liveLoading'), 0, '', '');
+  try { await Promise.race([loadFaceApi(), sleep(20000).then(() => { throw new Error('slow'); })]); } catch (e) { return 'skip'; }
+  const opt = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.45 });
+  for (let n = 1; n <= LIVE_TRIES; n++) {
+    const ch = ['blink', 'left', 'right'][Math.floor(Math.random() * 3)];
+    const r = await liveChallenge(opt, ch);
+    if (r !== 'fail') return r;
+    if (n < LIVE_TRIES) {
+      liveUi(t('liveFail'), 1, '', 'bad');
+      $('#liveFailBox').hidden = false; $('#liveFailBox').innerHTML = `${esc(t('liveFailWhy'))}<br><button class="btn sm" id="liveAgain" style="margin-top:8px">${esc(t('liveTry', { n: LIVE_TRIES - n }))}</button>`;
+      await new Promise((res) => $('#liveAgain').addEventListener('click', res, { once: true }));
+      $('#liveFailBox').hidden = true;
+    }
+  }
+  $('#liveFailBox').hidden = false; $('#liveFailBox').textContent = `${t('liveFail')}. ${t('liveSaved')}`;
+  return 'fail';
+}
+async function liveChallenge(opt, ch) {
+  const v = $('#camVideo'), t0 = Date.now(); let stage = 0, still = 0, eyes = [], yaw0 = 0, blinks = 0, closed = false, base = 0;
+  liveUi(t('liveLook'), 1, '', '');
+  while (Date.now() - t0 < 15000) {
+    if (!v.videoWidth) { await sleep(150); continue; }
+    let d; try { d = await faceapi.detectSingleFace(v, opt).withFaceLandmarks(); } catch (e) { return 'skip'; }
+    if (!d) { still = 0; liveUi($('#liveBar').textContent, stage ? 2 : 1, t('liveNoFace')); await sleep(40); continue; }
+    const lm = d.landmarks, le = lm.getLeftEye(), re = lm.getRightEye(), nose = lm.getNose()[3];
+    const open = (eyeOpen(le) + eyeOpen(re)) / 2, iod = pdist(le[0], re[3]), yaw = (nose.x - (le[0].x + re[3].x) / 2) / iod;
+    if (stage === 0) {
+      eyes.push(open); yaw0 += yaw; still++; liveUi(t('liveLook'), 1, t('liveFound'));
+      if (still >= 4) { stage = 1; yaw0 /= still; base = eyes.sort((a, b) => a - b)[Math.floor(eyes.length / 2)];
+        liveUi(t(ch === 'blink' ? 'liveBlink' : ch === 'left' ? 'liveLeft' : 'liveRight'), 2, ch === 'blink' ? t('liveSeen', { n: 0, m: 2 }) : '', 'ask'); }
+    } else if (ch === 'blink') {
+      if (!closed && open < base * 0.75) closed = true;
+      else if (closed && open > base * 0.88) { closed = false; blinks++; liveUi($('#liveBar').textContent, 2, t('liveSeen', { n: blinks, m: 2 })); }
+      if (blinks >= 2) break;
+    } else {
+      const dy = yaw - yaw0;            // camera frames are not mirrored: turning to your LEFT moves the nose to the right of the frame
+      if ((ch === 'left' && dy > 0.22) || (ch === 'right' && dy < -0.22)) break;
+    }
+    await sleep(25);
+  }
+  if (Date.now() - t0 >= 15000) return 'fail';
+  liveUi(t('livePass'), 3, '', 'good');
+  return 'pass';
 }
 async function capture() {
   const v = $('#camVideo'); if (!v.videoWidth) return;
@@ -165,12 +236,13 @@ async function capture() {
   shot = await compressDrawable(v, v.videoWidth, v.videoHeight, 8, 240, 320, true);
   $('#btnShutter').disabled = false;
   if (stopCam) { stopCam(); stopCam = null; }
-  $('#photoPrev').src = shot.b64; $('#photoPrev').hidden = false; $('#camVideo').hidden = true; $('#photoRing').hidden = true;
+  $('#photoPrev').src = shot.b64; $('#photoPrev').hidden = false; $('#camVideo').hidden = true; $('#photoRing').hidden = true; liveUi(liveResult === 'pass' ? t('livePass') : null, liveResult === 'pass' ? 3 : null, '');
   $('#btnShutter').hidden = true; $('#reviewBtns').hidden = false;
 }
 async function sendPhoto() {
   if (!shot) return;
   err('', '#photoErr'); $('#btnUse').disabled = true;
+  await rpc('punch_live', { p_photo_token: punchRes.photo_token, p_result: liveResult || 'skip' });
   const r = await photoFn({ action: 'upload', token: punchRes.photo_token, b64: shot.b64 });
   $('#btnUse').disabled = false;
   if (!r || !r.ok) return err(t('photoFailed') + (r && r.error ? ` (${r.error})` : ''), '#photoErr');
@@ -192,9 +264,9 @@ function showDone() {
   $('#doneTitle').textContent = `${r.name} · ${r.kind} ${r.time}`;
   $('#doneSub').textContent = `${r.shift === 'M' ? t('morning') : t('evening')} · ${catName(cat)}${brand ? ' · ' + brand : ''} · ${r.code}`;
   const rows = [];
-  if (r.photoKB) rows.push(`<div class="li"><div class="m">${esc(t('photoSaved'))}<span>${r.photoKB} KB</span></div><span class="tag ok">✓</span></div>`);
+  if (r.photoKB) rows.push(`<div class="li"><div class="m">${esc(t('photoSaved'))}<span>${r.photoKB} KB${liveResult === 'pass' ? ' · ' + esc(t('livePass')) : liveResult === 'fail' ? ' · ' + esc(t('liveFail')) : ''}</span></div><span class="tag ${liveResult === 'fail' ? 'r' : 'ok'}">${liveResult === 'fail' ? '!' : '✓'}</span></div>`);
   rows.push(`<div class="li"><div class="m">📍<span>${r.dist_m != null ? r.dist_m + ' m' : (ctx.test_mode ? t('testMode') : '—')}</span></div><span class="tag ok">✓</span></div>`);
-  if (modToken) rows.push(`<div class="li"><div class="m">${esc(t('modMode'))}<span>${esc((Session.get() || {}).name || '')}</span></div><span class="tag w">MOD</span></div>`);
+  if (modToken) rows.push(`<div class="li"><div class="m">${esc(t('modMode'))}<span>${esc((Session.get() || {}).name || '')}</span></div><span class="tag w">${esc(t('modMode'))}</span></div>`);
   $('#doneList').innerHTML = rows.join('');
   show('done');
 }
