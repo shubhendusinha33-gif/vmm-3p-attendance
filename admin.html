@@ -586,6 +586,7 @@ async function SettingsView(root) {
         <label class="row"><span class="grow">Store auto-unlock (minutes idle)</span><input class="in" type="number" id="sIdle" min="5" max="240" style="width:90px"></label></div>
       <div class="panel"><h3>Geo-fence &amp; alerts</h3>
         <label class="row"><span class="grow">Test mode (no GPS check)</span><input type="checkbox" id="sTest" style="width:22px;height:22px"></label>
+        <label class="row"><span class="grow">Live face check on selfie (blink / turn)</span><input type="checkbox" id="sLive" style="width:22px;height:22px"></label>
         <label class="row"><span class="grow">Radius (metres)</span><input class="in" type="number" id="sRadius" min="50" max="3800000" style="width:120px"></label>
         <label class="row"><span class="grow">Storage alert at (%)</span><input class="in" type="number" id="sAlert" min="10" max="99" style="width:90px"></label></div>
     </div>
@@ -609,10 +610,10 @@ async function SettingsView(root) {
       <div class="row"><button class="btn red sm" id="tdDel">Delete all test data</button></div></div>`;
   const s = (await rpc('admin_get', { p_token: me.token, p_kind: 'settings' })).rows;
   $('#sTries').value = s.pin_max_tries; $('#sLock').value = s.pin_lock_min; $('#sIdle').value = s.store_idle_min;
-  $('#sTest').checked = s.test_mode; $('#sRadius').value = s.radius_m; $('#sAlert').value = s.storage_alert_pct; $('#testWarn').hidden = !s.test_mode;
+  $('#sTest').checked = s.test_mode; $('#sLive').checked = s.live_check !== false; $('#sRadius').value = s.radius_m; $('#sAlert').value = s.storage_alert_pct; $('#testWarn').hidden = !s.test_mode;
   $('#stSave').addEventListener('click', async () => {
     const r = await rpc('admin_settings_set', { p_token: me.token, p: { pin_max_tries: +$('#sTries').value, pin_lock_min: +$('#sLock').value, store_idle_min: +$('#sIdle').value,
-      test_mode: $('#sTest').checked, radius_m: +$('#sRadius').value, storage_alert_pct: +$('#sAlert').value,
+      test_mode: $('#sTest').checked, live_check: $('#sLive').checked, radius_m: +$('#sRadius').value, storage_alert_pct: +$('#sAlert').value,
       alert_m: $('#sAm').value, alert_e: $('#sAe').value, setup_days: +$('#sDays').value, edit_types: $$('[data-et]').filter((c) => c.checked).map((c) => c.dataset.et) } });
     $('#testWarn').hidden = !$('#sTest').checked; toast(r && r.ok ? 'Settings saved' : errText(r && r.error));
   });

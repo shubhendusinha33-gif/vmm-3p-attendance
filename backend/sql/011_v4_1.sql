@@ -2,3 +2,7 @@
 -- 1) _match_user lower-cases the mail id for role hodept; auth_check accepts a mail id for hodept
 -- 2) users_emp_code_check: 5+ digits, or (hodept and a lower-case mail id)
 -- 3) punch_open(p_store, p_cat, p_brand): people whose last punch today is IN (name, code, brand, vendor, IN time), granted to anon
+-- v4.2 (migration v4_2_phone_binding_no_roster_live_toggle):
+-- punch_open dropped (no public people list); punch_lookup(store,cat,brand,name,device,mod_token) only answers for the same phone or a store login;
+-- associates.device_id: one phone = one person (PHONE_IN_USE), a name bound to another phone is refused (OTHER_PHONE), store-login (MOD) punches are exempt;
+-- settings.live_check on/off (Admin → Settings), returned by punch_context

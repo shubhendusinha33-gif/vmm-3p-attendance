@@ -114,12 +114,11 @@ function paintVendors() {
   $('#vendorOther').hidden = true;
 }
 async function paintRoster() {
-  if (!cat || (!modToken && cat.brands.length && !brand)) { $('#rosterWrap').hidden = true; return; }
+  if (!modToken || !cat) { $('#rosterWrap').hidden = true; return; }   // only a store login (SM / ASM / DM) may see the people list
   $('#rosterWrap').hidden = false; $('#roster').innerHTML = '<div class="spin"></div>';
-  $('#rosterLbl').textContent = t(modToken ? 'selectAssociate' : 'openIn');
-  const r = modToken ? await rpc('store_roster', { p_token: modToken, p_cat: cat.id }) : await rpc('punch_open', { p_store: ctx.store.code, p_cat: cat.id, p_brand: brand });
+  const r = await rpc('store_roster', { p_token: modToken, p_cat: cat.id });
   const rows = (r && r.rows) || [];
-  $('#roster').innerHTML = rows.map((a) => { const k = modToken ? a.last_kind : 'IN', tm = modToken ? a.last_time : a.t; return `<div class="li click" data-n="${esc(a.name)}" data-b="${esc(a.brand)}" data-v="${esc(a.vendor || '')}" data-k="${k || ''}">
+  $('#roster').innerHTML = rows.map((a) => { const k = a.last_kind, tm = a.last_time; return `<div class="li click" data-n="${esc(a.name)}" data-b="${esc(a.brand)}" data-v="${esc(a.vendor || '')}" data-k="${k || ''}">
       <div class="m">${esc(a.name)}<span>${esc(a.code)}${a.brand ? ' · ' + esc(a.brand) : ''} · ${k ? k + ' ' + (tm || '') : '—'}</span></div>
       <span class="tag ${k === 'IN' ? 'w' : 'ok'}">${k === 'IN' ? 'OUT' : 'IN'}</span></div>`; }).join('')
     + `<div class="li click" data-new="1"><div class="m">${esc(t('newName'))}</div><span class="tag ok">+</span></div>`;
@@ -136,7 +135,7 @@ function fillFrom(o) {
 }
 async function paintQuick() {
   const m = modToken ? null : memGet(); $('#quick').hidden = true; if (!m || !ctx.categories.some((c) => c.id === m.cat)) return;
-  const r = await rpc('punch_lookup', { p_store: ctx.store.code, p_cat: m.cat, p_brand: m.brand || '', p_name: m.name });
+  const r = await rpc('punch_lookup', { p_store: ctx.store.code, p_cat: m.cat, p_brand: m.brand || '', p_name: m.name, p_device: deviceId() });
   if (!r || !r.ok || !r.exists) { memSet(null); return; }
   const c = ctx.categories.find((x) => x.id === m.cat);
   $('#quick').hidden = false;
@@ -150,7 +149,7 @@ async function paintQuick() {
 async function lookup() {
   const name = $('#name').value.trim();
   if (!cat || name.length < 2 || (cat.brands.length && !brand)) { $('#lookupNote').hidden = true; lastLookup = null; setBtn('IN'); return; }
-  const r = await rpc('punch_lookup', { p_store: ctx.store.code, p_cat: cat.id, p_brand: brand, p_name: name });
+  const r = await rpc('punch_lookup', { p_store: ctx.store.code, p_cat: cat.id, p_brand: brand, p_name: name, p_device: deviceId(), p_mod_token: modToken });
   if (!r || !r.ok) return;
   lastLookup = r; $('#lookupNote').hidden = false;
   $('#lookupNote').textContent = r.exists ? t('alreadyReg', { code: r.code }) : t('newReg');
@@ -212,9 +211,10 @@ function liveUi(text, step, sub, cls) {
 const pdist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const eyeOpen = (e) => (pdist(e[1], e[5]) + pdist(e[2], e[4])) / (2 * pdist(e[0], e[3]));
 async function runLive() {
+  if (ctx.live_check === false) return 'skip';
   liveUi(t('liveLoading'), 0, '', '');
   try { await Promise.race([loadFaceApi(), sleep(5000).then(() => { throw new Error('slow'); })]); } catch (e) { return 'skip'; }
-  const opt = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.45 });
+  const opt = new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.4 });
   for (let n = 1; n <= LIVE_TRIES; n++) {
     const ch = ['blink', 'left', 'right'][Math.floor(Math.random() * 3)];
     const r = await liveChallenge(opt, ch);
@@ -232,7 +232,7 @@ async function runLive() {
 async function liveChallenge(opt, ch) {
   const v = $('#camVideo'), t0 = Date.now(); let stage = 0, still = 0, eyes = [], yaw0 = 0, blinks = 0, closed = false, base = 0;
   liveUi(t('liveLook'), 1, '', '');
-  while (Date.now() - t0 < 8000) {
+  while (Date.now() - t0 < 10000) {
     if (!v.videoWidth) { await sleep(150); continue; }
     let d; try { d = await faceapi.detectSingleFace(v, opt).withFaceLandmarks(); } catch (e) { return 'skip'; }
     if (!d) { still = 0; liveUi($('#liveBar').textContent, stage ? 2 : 1, t('liveNoFace')); await sleep(40); continue; }
@@ -241,18 +241,18 @@ async function liveChallenge(opt, ch) {
     if (stage === 0) {
       eyes.push(open); yaw0 += yaw; still++; liveUi(t('liveLook'), 1, t('liveFound'));
       if (still >= 4) { stage = 1; yaw0 /= still; base = eyes.sort((a, b) => a - b)[Math.floor(eyes.length / 2)];
-        liveUi(t(ch === 'blink' ? 'liveBlink' : ch === 'left' ? 'liveLeft' : 'liveRight'), 2, ch === 'blink' ? t('liveSeen', { n: 0, m: 2 }) : '', 'ask'); }
+        liveUi(t(ch === 'blink' ? 'liveBlink' : ch === 'left' ? 'liveLeft' : 'liveRight'), 2, ch === 'blink' ? t('liveSeen', { n: 0, m: 1 }) : '', 'ask'); }
     } else if (ch === 'blink') {
-      if (!closed && open < base * 0.75) closed = true;
-      else if (closed && open > base * 0.88) { closed = false; blinks++; liveUi($('#liveBar').textContent, 2, t('liveSeen', { n: blinks, m: 2 })); }
-      if (blinks >= 2) break;
+      if (!closed && open < base * 0.82) closed = true;
+      else if (closed && open > base * 0.9) { closed = false; blinks++; liveUi($('#liveBar').textContent, 2, t('liveSeen', { n: blinks, m: 1 })); }
+      if (blinks >= 1) break;
     } else {
       const dy = yaw - yaw0;            // camera frames are not mirrored: turning to your LEFT moves the nose to the right of the frame
-      if ((ch === 'left' && dy > 0.22) || (ch === 'right' && dy < -0.22)) break;
+      if (Math.abs(dy) > 0.13) break;   // any clear head turn counts: no left/right polarity to get wrong
     }
-    await sleep(25);
+    await sleep(0);
   }
-  if (Date.now() - t0 >= 8000) return 'fail';
+  if (Date.now() - t0 >= 10000) return 'fail';
   liveUi(t('livePass'), 3, '', 'good');
   return 'pass';
 }
