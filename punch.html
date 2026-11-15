@@ -29,11 +29,12 @@
     <div id="gpsNote" class="note i" data-t="getLocation"></div>
     <div id="modNote" class="note w" hidden></div>
 
+    <div id="quick" hidden></div>
     <div><div class="lbl" data-t="department"></div><div class="pills" id="cats"></div></div>
     <div id="brandWrap" hidden><div class="lbl" data-t="brand"></div><div class="pills" id="brands"></div></div>
 
     <div id="rosterWrap" hidden>
-      <div class="lbl" data-t="selectAssociate"></div>
+      <div class="lbl" id="rosterLbl" data-t="selectAssociate"></div>
       <div class="list" id="roster"></div>
     </div>
 
@@ -84,14 +85,14 @@
 <script src="assets/app.js"></script>
 <script>
 const q = new URLSearchParams(location.search);
-let ctx = null, modToken = null, pos = null, cat = null, brand = '', lastLookup = null, punchRes = null, lookTimer = null, stopCam = null, shot = null;
+let posAt = 0, ctx = null, modToken = null, pos = null, cat = null, brand = '', lastLookup = null, punchRes = null, lookTimer = null, stopCam = null, shot = null;
 
 function show(id) { ['loading','form','photo','done'].forEach((s) => $('#' + s).hidden = s !== id); }
 function err(msg, el = '#err') { $(el).hidden = !msg; $(el).textContent = msg || ''; }
 
 async function locate() {
   $('#gpsNote').className = 'note i'; $('#gpsNote').textContent = t('getLocation');
-  pos = await getPosition();
+  pos = await getPosition(); posAt = Date.now();
   if (ctx.test_mode) { $('#gpsNote').className = 'note w'; $('#gpsNote').textContent = t('testMode'); return; }
   if (!pos) { $('#gpsNote').className = 'note r'; $('#gpsNote').innerHTML = esc(t('noGps')) + ' <button class="link" id="gpsRetry">↻</button>'; $('#gpsRetry').onclick = locate; return; }
   $('#gpsNote').className = 'note k';
@@ -113,14 +114,37 @@ function paintVendors() {
   $('#vendorOther').hidden = true;
 }
 async function paintRoster() {
-  if (!modToken || !cat) { $('#rosterWrap').hidden = true; return; }
+  if (!cat || (!modToken && cat.brands.length && !brand)) { $('#rosterWrap').hidden = true; return; }
   $('#rosterWrap').hidden = false; $('#roster').innerHTML = '<div class="spin"></div>';
-  const r = await rpc('store_roster', { p_token: modToken, p_cat: cat.id });
+  $('#rosterLbl').textContent = t(modToken ? 'selectAssociate' : 'openIn');
+  const r = modToken ? await rpc('store_roster', { p_token: modToken, p_cat: cat.id }) : await rpc('punch_open', { p_store: ctx.store.code, p_cat: cat.id, p_brand: brand });
   const rows = (r && r.rows) || [];
-  $('#roster').innerHTML = rows.map((a) => `<div class="li click" data-n="${esc(a.name)}" data-b="${esc(a.brand)}" data-v="${esc(a.vendor || '')}">
-      <div class="m">${esc(a.name)}<span>${esc(a.code)}${a.brand ? ' · ' + esc(a.brand) : ''} · ${a.last_kind ? a.last_kind + ' ' + a.last_time : '—'}</span></div>
-      <span class="tag ${a.last_kind === 'IN' ? 'w' : 'ok'}">${a.last_kind === 'IN' ? 'OUT' : 'IN'}</span></div>`).join('')
+  $('#roster').innerHTML = rows.map((a) => { const k = modToken ? a.last_kind : 'IN', tm = modToken ? a.last_time : a.t; return `<div class="li click" data-n="${esc(a.name)}" data-b="${esc(a.brand)}" data-v="${esc(a.vendor || '')}" data-k="${k || ''}">
+      <div class="m">${esc(a.name)}<span>${esc(a.code)}${a.brand ? ' · ' + esc(a.brand) : ''} · ${k ? k + ' ' + (tm || '') : '—'}</span></div>
+      <span class="tag ${k === 'IN' ? 'w' : 'ok'}">${k === 'IN' ? 'OUT' : 'IN'}</span></div>`; }).join('')
     + `<div class="li click" data-new="1"><div class="m">${esc(t('newName'))}</div><span class="tag ok">+</span></div>`;
+}
+
+/* same phone remembers who punched here: one tap for the next punch */
+const memKey = () => 'vmm3p_me_' + ctx.store.code;
+const memGet = () => { try { return JSON.parse(localStorage.getItem(memKey()) || 'null'); } catch (e) { return null; } };
+const memSet = (o) => { try { if (o) localStorage.setItem(memKey(), JSON.stringify(o)); else localStorage.removeItem(memKey()); } catch (e) {} };
+function fillFrom(o) {
+  cat = ctx.categories.find((c) => c.id === o.cat) || cat; brand = o.brand || ''; paintCats(); paintBrands(); paintVendors();
+  if (o.vendor) { if (![...$('#vendor').options].some((x) => x.value === o.vendor)) $('#vendor').insertAdjacentHTML('afterbegin', `<option>${esc(o.vendor)}</option>`); $('#vendor').value = o.vendor; }
+  $('#name').value = o.name;
+}
+async function paintQuick() {
+  const m = modToken ? null : memGet(); $('#quick').hidden = true; if (!m || !ctx.categories.some((c) => c.id === m.cat)) return;
+  const r = await rpc('punch_lookup', { p_store: ctx.store.code, p_cat: m.cat, p_brand: m.brand || '', p_name: m.name });
+  if (!r || !r.ok || !r.exists) { memSet(null); return; }
+  const c = ctx.categories.find((x) => x.id === m.cat);
+  $('#quick').hidden = false;
+  $('#quick').innerHTML = `<div class="list"><div class="li"><div class="m">${esc(m.name)}<span>${esc(catName(c))}${m.brand ? ' · ' + esc(m.brand) : ''} · ${esc(r.code)}</span></div>
+    <button type="button" class="btn sm${r.next === 'OUT' ? ' blue' : ''}" id="quickGo">${esc(t(r.next === 'OUT' ? 'punchOut' : 'punchIn'))}</button></div></div>
+    <button type="button" class="link" id="quickNo" style="margin-top:4px">${esc(t('notYou'))}</button>`;
+  $('#quickGo').onclick = () => { fillFrom(m); doPunch(); };
+  $('#quickNo').onclick = () => { memSet(null); $('#quick').hidden = true; };
 }
 
 async function lookup() {
@@ -141,7 +165,7 @@ async function doPunch() {
   const name = $('#name').value.trim();
   if (!/^[\p{L} .]{2,40}$/u.test(name)) return err(t('badName'));
   if (modToken && !$('#modConsent').checked) return err(t('consentRequired'));
-  if (!ctx.test_mode) { await locate(); if (!pos) return err(t('noGps')); }
+  if (!ctx.test_mode) { if (!pos || Date.now() - posAt > 300000) await locate(); if (!pos) return err(t('noGps')); }
   let vendor = $('#vendor').value; if (vendor === '__other') vendor = $('#vendorOther').value.trim();
   $('#btnPunch').disabled = true;
   const r = await rpc('punch_submit', { p_store: ctx.store.code, p_cat: cat.id, p_brand: brand, p_vendor: vendor || null, p_name: name,
@@ -171,7 +195,7 @@ async function openCam() {
 
 /* ---------- live face check: one random challenge (blink / left / right), on the phone, free ---------- */
 let liveResult = null;
-const LIVE_TRIES = 3;
+const LIVE_TRIES = 2;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function loadFaceApi() {
   if (!loadFaceApi.p) loadFaceApi.p = new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'assets/face/face-api.js'; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); })
@@ -189,7 +213,7 @@ const pdist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const eyeOpen = (e) => (pdist(e[1], e[5]) + pdist(e[2], e[4])) / (2 * pdist(e[0], e[3]));
 async function runLive() {
   liveUi(t('liveLoading'), 0, '', '');
-  try { await Promise.race([loadFaceApi(), sleep(20000).then(() => { throw new Error('slow'); })]); } catch (e) { return 'skip'; }
+  try { await Promise.race([loadFaceApi(), sleep(5000).then(() => { throw new Error('slow'); })]); } catch (e) { return 'skip'; }
   const opt = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.45 });
   for (let n = 1; n <= LIVE_TRIES; n++) {
     const ch = ['blink', 'left', 'right'][Math.floor(Math.random() * 3)];
@@ -208,7 +232,7 @@ async function runLive() {
 async function liveChallenge(opt, ch) {
   const v = $('#camVideo'), t0 = Date.now(); let stage = 0, still = 0, eyes = [], yaw0 = 0, blinks = 0, closed = false, base = 0;
   liveUi(t('liveLook'), 1, '', '');
-  while (Date.now() - t0 < 15000) {
+  while (Date.now() - t0 < 8000) {
     if (!v.videoWidth) { await sleep(150); continue; }
     let d; try { d = await faceapi.detectSingleFace(v, opt).withFaceLandmarks(); } catch (e) { return 'skip'; }
     if (!d) { still = 0; liveUi($('#liveBar').textContent, stage ? 2 : 1, t('liveNoFace')); await sleep(40); continue; }
@@ -228,7 +252,7 @@ async function liveChallenge(opt, ch) {
     }
     await sleep(25);
   }
-  if (Date.now() - t0 >= 15000) return 'fail';
+  if (Date.now() - t0 >= 8000) return 'fail';
   liveUi(t('livePass'), 3, '', 'good');
   return 'pass';
 }
@@ -263,6 +287,7 @@ async function onPhotoFile(file) {
 function showDone() {
   if (stopCam) { stopCam(); stopCam = null; }
   const r = punchRes;
+  if (!modToken) memSet({ name: r.name, cat: cat.id, brand, vendor: $('#vendor').value === '__other' ? $('#vendorOther').value.trim() : $('#vendor').value, code: r.code });
   $('#doneTitle').textContent = `${r.name} · ${r.kind} ${r.time}`;
   $('#doneSub').textContent = `${r.shift === 'M' ? t('morning') : t('evening')} · ${catName(cat)}${brand ? ' · ' + brand : ''} · ${r.code}`;
   const rows = [];
@@ -276,7 +301,7 @@ function showDone() {
 function resetForm(keepCat) {
   $('#name').value = ''; $('#modConsent').checked = false; lastLookup = null; $('#lookupNote').hidden = true; err(); setBtn('IN');
   if (!keepCat) { cat = null; brand = ''; paintCats(); paintBrands(); paintVendors(); }
-  if (modToken) paintRoster();
+  if (modToken) paintRoster(); else paintQuick();
   show('form');
 }
 
@@ -300,10 +325,11 @@ function resetForm(keepCat) {
     if (!ready) { $('#loading').hidden = true; await consentGate({ kind: 'associate', store: ctx.store.code, testMode: ctx.test_mode, needCamera: true }); }
   }
   $('#storeNote').textContent = `${ctx.store.code} · ${ctx.store.name} ✓ ${modToken ? '' : t('fromQr')}`;
-  paintCats(); paintBrands(); paintVendors(); setBtn('IN'); show('form'); locate();
+  paintCats(); paintBrands(); paintVendors(); setBtn('IN'); show('form'); locate(); if (!modToken) paintQuick();
+  setTimeout(() => loadFaceApi().catch(() => {}), 600);   // models load while the person fills the form: no wait at the selfie step
 
   $('#cats').addEventListener('click', (e) => { const b = e.target.closest('[data-c]'); if (!b) return; cat = ctx.categories.find((c) => c.id === b.dataset.c); brand = ''; paintCats(); paintBrands(); paintVendors(); paintRoster(); lookup(); });
-  $('#brands').addEventListener('click', (e) => { const b = e.target.closest('[data-b]'); if (!b) return; brand = b.dataset.b; paintBrands(); lookup(); });
+  $('#brands').addEventListener('click', (e) => { const b = e.target.closest('[data-b]'); if (!b) return; brand = b.dataset.b; paintBrands(); paintRoster(); lookup(); });
   $('#vendor').addEventListener('change', () => { $('#vendorOther').hidden = $('#vendor').value !== '__other'; });
   $('#name').addEventListener('input', () => { clearTimeout(lookTimer); lookTimer = setTimeout(lookup, 400); });
   $('#roster').addEventListener('click', (e) => {
@@ -311,6 +337,7 @@ function resetForm(keepCat) {
     if (li.dataset.new) { $('#name').value = ''; $('#name').focus(); lookup(); return; }
     $('#name').value = li.dataset.n; if (li.dataset.b) { brand = li.dataset.b; paintBrands(); }
     if (li.dataset.v) { if (![...$('#vendor').options].some((o) => o.value === li.dataset.v)) $('#vendor').insertAdjacentHTML('afterbegin', `<option>${esc(li.dataset.v)}</option>`); $('#vendor').value = li.dataset.v; }
+    if (li.dataset.k === 'IN') { doPunch(); return; }
     lookup(); $('#btnPunch').scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
   $('#btnPunch').addEventListener('click', doPunch);

@@ -134,7 +134,7 @@ function pinBoxes(el) {
 }
 const pinVal = (el) => $$('input', el).map((i) => i.value).join('');
 function ident() {
-  return { p_role: role, p_emp: $('#emp').value.trim(),
+  return { p_role: role, p_emp: role === 'hodept' ? $('#emp').value.trim().toLowerCase() : $('#emp').value.trim(),
     p_post: role === 'store' ? $('#post').value : null,
     p_store: role === 'store' ? $('#storeCode').value.trim().toUpperCase() : null,
     p_dept: role === 'hodept' ? (Number($('#dept').value) || null) : null };
@@ -144,6 +144,7 @@ function setRole(r) {
   $$('.role').forEach((b) => b.classList.toggle('on', b.dataset.role === r));
   $$('[data-for="store"]').forEach((e) => e.hidden = r !== 'store');
   $$('[data-for="hodept"]').forEach((e) => e.hidden = r !== 'hodept');
+  $('#emp').setAttribute('inputmode', r === 'hodept' ? 'email' : 'numeric'); $('#emp').maxLength = r === 'hodept' ? 80 : 10; $('#emp').placeholder = r === 'hodept' ? 'name@company.com' : ''; const el = document.querySelector('label[for="emp"]'); if (el) el.textContent = r === 'hodept' ? 'Mail id' : t('empCode');
   err('err1');
 }
 function newMath() {

@@ -183,13 +183,23 @@ function LiveDash(root, me) {
     const r = await rpc('dash_store', { p_token: me.token, p_store: code, p_date: st.date, p_shift: st.shift });
     if (!r || !r.ok) { $r('#ldStore').innerHTML = `<div class="note r">${esc(errText(r && r.error))}</div>`; return; }
     const slots = r.slots.filter((s) => catOk(s.c)), people = r.present.filter((a) => catOk(a.c));
+    // one table: each category / brand block shows Required, Present, Status once, with its people underneath
+    const gk = (c, b) => c + '|' + (b || ''); const groups = new Map();
+    slots.forEach((s) => groups.set(gk(s.c, s.brand), { c: s.c, brand: s.brand || '', vendor: s.vendor, req: s.req, p: s.p, people: [] }));
+    people.forEach((a) => { const k = gk(a.c, a.brand); if (!groups.has(k)) groups.set(k, { c: a.c, brand: a.brand || '', vendor: '', req: 0, p: 0, people: [] }); groups.get(k).people.push(a); });
+    const photoCell = (a) => a.photo === 'done' ? (a.live === 'fail' ? '📷 <span class="tag r">Live ✕</span>' : a.live === 'pass' ? '📷 <span class="tag ok">Live ✓</span>' : '📷') : a.photo === 'pending' ? '<span class="tag r">Due</span>' : '';
+    const rowsHtml = [...groups.values()].map((g) => {
+      const n = Math.max(g.people.length, 1);
+      const head = `<td rowspan="${n}" style="vertical-align:top"><b>${esc(cname(g.c))}</b>${g.brand ? `<div class="mini">${esc(g.brand)}</div>` : ''}${g.vendor ? `<div class="mini">Vendor: ${esc(g.vendor)}</div>` : ''}</td>
+        <td rowspan="${n}" style="vertical-align:top;text-align:center">${g.req}</td><td rowspan="${n}" style="vertical-align:top;text-align:center">${g.p}</td>
+        <td rowspan="${n}" style="vertical-align:top">${g.req > g.p ? `<span class="tag r">Missing ${g.req - g.p}</span>` : '<span class="tag ok">OK</span>'}</td>`;
+      if (!g.people.length) return `<tr style="border-top:2px solid var(--line)">${head}<td colspan="8" style="color:var(--red)">Nobody has punched</td></tr>`;
+      return g.people.map((a, i) => `<tr${i === 0 ? ' style="border-top:2px solid var(--line)"' : ''}>${i === 0 ? head : ''}<td>${esc(a.name)}</td><td>${esc(a.code)}</td><td>${esc(a.vendor || '—')}</td><td>${a.first_in || '—'}</td><td>${a.last_out || '—'}</td><td>${a.hours ?? '—'}</td><td>${a.via_mod ? '<span class="tag w">Store</span>' : 'Own'}</td>
+        <td>${photoCell(a)} <a href="statement.html?s=${code}&a=${a.id}&from=${monthStart(st.date)}&to=${st.date}">Statement</a></td></tr>`).join('');
+    }).join('');
     $r('#ldStore').innerHTML = `<div class="panel"><h3>${esc(name)} · ${fmtDate(st.date)}</h3>
-      <div class="tbl"><table><thead><tr><th>Category</th><th>Brand</th><th>Vendor</th><th>Required</th><th>Present</th><th>Status</th></tr></thead><tbody>
-      ${slots.map((s) => `<tr><td>${esc(cname(s.c))}</td><td>${esc(s.brand || '—')}</td><td>${esc(s.vendor || '—')}</td><td>${s.req}</td><td>${s.p}</td><td>${s.req > s.p ? `<span class="tag r">Missing ${s.req - s.p}</span>` : '<span class="tag ok">OK</span>'}</td></tr>`).join('')}</tbody></table></div>
-      <h3>People</h3><div class="tbl"><table><thead><tr><th>Name</th><th>Code</th><th>Category</th><th>Vendor</th><th>IN</th><th>OUT</th><th>Hours</th><th>Phone</th><th>Photo</th><th></th></tr></thead><tbody>
-      ${people.map((a) => `<tr><td>${esc(a.name)}</td><td>${esc(a.code)}</td><td>${esc(cname(a.c))}${a.brand ? ' · ' + esc(a.brand) : ''}</td><td>${esc(a.vendor || '—')}</td><td>${a.first_in || '—'}</td><td>${a.last_out || '—'}</td><td>${a.hours ?? '—'}</td><td>${a.via_mod ? '<span class="tag w">Store</span>' : 'Own'}</td>
-        <td>${a.photo === 'done' ? (a.live === 'fail' ? '📷 <span class="tag r">Live ✕</span>' : a.live === 'pass' ? '📷 <span class="tag ok">Live ✓</span>' : '📷') : a.photo === 'pending' ? '<span class="tag r">Due</span>' : ''}</td>
-        <td><a href="statement.html?s=${code}&a=${a.id}&from=${monthStart(st.date)}&to=${st.date}">Statement</a></td></tr>`).join('') || '<tr><td colspan="10" class="empty">Nobody has punched</td></tr>'}</tbody></table></div>
+      <div class="tbl"><table><thead><tr><th>Category</th><th>Required</th><th>Present</th><th>Status</th><th>Name</th><th>Code</th><th>Vendor</th><th>IN</th><th>OUT</th><th>Hours</th><th>Phone</th><th>Photo · Statement</th></tr></thead><tbody>
+      ${rowsHtml || '<tr><td colspan="12" class="empty">Nothing required, nobody punched</td></tr>'}</tbody></table></div>
       ${r.regulars_missing.length ? `<h3>Regulars not here</h3><div>${r.regulars_missing.filter((a) => catOk(a.c)).map((a) => `<span class="tag w" style="margin:2px;display:inline-block">${esc(a.name)} · ${esc(cname(a.c))} · ${a.days}/7</span>`).join('')}</div>` : ''}</div>`;
     $r('#ldStore').scrollIntoView({ behavior: 'smooth' });
   }

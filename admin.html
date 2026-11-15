@@ -105,6 +105,7 @@ function MasterView(root, cfg) {
   load();
   return { reload: load };
 }
+const empOk = (e, role) => /^\d{5,}$/.test(e) || (role === 'hodept' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
 const isEmail = (v) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 const yes = (v) => !['false', 'no', 'n', '0', 'inactive'].includes(String(v ?? 'true').trim().toLowerCase());
 
@@ -267,7 +268,7 @@ async function UsersView(root) {
       raw.forEach((r, i) => {
         const o = { emp_code: String(r.emp_code || r.emp || '').trim(), name: String(r.name || '').trim(), role: String(r.role || '').trim().toLowerCase(), post: String(r.post || '').trim(),
           store_code: String(r.store_code || '').trim().toUpperCase(), dept: String(r.dept || r.department || '').trim(), email: String(r.email || '').trim(), active: yes(r.active) };
-        const bad = !/^\d{5,}$/.test(o.emp_code) ? 'Emp Code must be 5+ digits' : !o.name ? 'Name missing' : !['store', 'am', 'zfm', 'hodept'].includes(o.role) ? 'Role must be store / am / zfm / hodept'
+        const bad = !empOk(o.emp_code, o.role) ? 'Emp Code must be 5+ digits (HO Dept: mail id)' : !o.name ? 'Name missing' : !['store', 'am', 'zfm', 'hodept'].includes(o.role) ? 'Role must be store / am / zfm / hodept'
           : o.role === 'store' && (!POSTS.includes(o.post) || !/^[A-Z]{2}\d{2}$/.test(o.store_code)) ? `Store users need Post (${POSTS.join(' / ')}) and Store Code`
           : o.role === 'hodept' && !depts.some((d) => d.name.toLowerCase() === o.dept.toLowerCase()) ? `Dept "${o.dept}" not found` : !isEmail(o.email) ? 'Email format wrong'
           : (cur.find((u) => u.emp_code === o.emp_code) || {}).role === 'admin' ? 'Admin users cannot be changed by Excel' : null;
@@ -288,7 +289,7 @@ async function UsersView(root) {
       { k: 'store_code', label: 'Store code (store only)', v: u ? u.store_code || '' : '', max: 4 },
       { k: 'dept', label: 'Dept (HO only)', type: 'select', v: u ? u.dept || '' : '', options: [['', '—']].concat(depts.map((d) => [d.name, d.name])) },
       { k: 'email', label: 'Email', type: 'email', v: u ? u.email || '' : '' }],
-    validate: (v, u, rows) => !/^\d{5,}$/.test(v.emp_code) ? 'Emp Code must be 5+ digits.' : !u && rows.some((x) => x.emp_code === v.emp_code) ? 'This Emp Code already exists.'
+    validate: (v, u, rows) => !empOk(v.emp_code, v.role) ? 'Emp Code must be 5+ digits (HO Dept: mail id).' : !u && rows.some((x) => x.emp_code === v.emp_code) ? 'This Emp Code already exists.'
       : !v.name ? 'Enter the name.' : v.role === 'store' && (!v.post || !/^[A-Z]{2}\d{2}$/i.test(v.store_code)) ? 'Store users need Post and Store code.'
       : v.role === 'hodept' && !v.dept ? 'Pick a Dept.' : !isEmail(v.email) ? 'Check the email format.' : null,
     saveOne: (v, u) => u && u.role === 'admin' ? Promise.resolve({ ok: false, error: 'Admin users are changed by the portal owner only.' })
@@ -314,39 +315,62 @@ async function DeptView(root) {
   MasterView(root, {
     title: 'HO Dept Master', unit: 'departments', file: 'HO_Departments', addLabel: 'Add dept', add: true, edit: true,
     searchHint: 'Search department',
-    note: 'A department sees only its categories. HO users log in with Emp Code + Dept + PIN (first PIN needs the setup code from the invite mail). Add HO users in Users & PIN.',
+    note: 'A department sees only its categories. HO users log in with their <b>Mail id</b> + Dept + PIN (first PIN needs the setup code: tap the ✉ icon below to get the invite .eml). Add people with Name + Mail id; one department can have many people.',
     load: async () => { const [d, u] = await Promise.all([rpc('admin_get', { p_token: me.token, p_kind: 'departments' }), rpc('admin_get', { p_token: me.token, p_kind: 'users' })]);
       users = ((u && u.rows) || []).filter((x) => x.role === 'hodept'); paintUsers(); return (d && d.rows) || []; },
     search: (d) => d.name,
     filters: [{ id: 'st', label: 'Status', options: () => [['1', 'Active'], ['0', 'Off']], match: (d, v) => String(d.active === false ? 0 : 1) === v }],
     columns: [{ h: 'Dept', v: (d) => `<b>${esc(d.name)}</b>` }, { h: 'Sees category', v: (d) => esc((d.category_ids || []).map(cn).join(', ') || '— (none yet)') },
       { h: 'Users', v: (d) => users.filter((u) => u.dept === d.name).length }, { h: 'Status', v: (d) => `<span class="tag ${d.active === false ? 'w' : 'ok'}">${d.active === false ? 'Off' : 'Active'}</span>` }],
-    template: () => [{ Dept: 'FMCG', Categories: 'FMCG', Active: 'TRUE' }],
+    template: () => [{ Dept: 'FMCG', Categories: 'FMCG', 'Person Name': 'Person Name', Mail: 'person@company.com', Active: 'TRUE' }],
     exportRows: (rs) => rs.map((d) => ({ Dept: d.name, Categories: (d.category_ids || []).join(', '), Active: d.active === false ? 'FALSE' : 'TRUE', Users: users.filter((u) => u.dept === d.name).length })),
+    // (one row per department; people are listed in the HO Dept users table below)
     parse: (raw, cur) => {
       const res = { good: [], errors: [], newCount: 0, updCount: 0, same: 0 };
       raw.forEach((r, i) => { const name = String(r.dept || r.name || '').trim(); const ids = String(r.categories || r.category || '').split(/[,;/]/).map((x) => x.trim()).filter(Boolean)
         .map((x) => (cats.find((c) => c.id.toLowerCase() === x.toLowerCase() || c.name.toLowerCase() === x.toLowerCase()) || {}).id || '?' + x);
-        const bad = name.length < 2 ? 'Dept name missing' : ids.find((x) => x.startsWith('?')) ? `Category ${ids.find((x) => x.startsWith('?')).slice(1)} unknown` : null;
+        const pn = String(r.name_ || r.person || r.person_name || r.user_name || '').trim(), pm = String(r.mail || r.email || r.mail_id || '').trim().toLowerCase();
+        const bad = (pn || pm) && (!pn || !pm) ? 'Name and Mail both needed' : pm && !isEmail(pm) ? 'Mail format wrong' : name.length < 2 ? 'Dept name missing' : ids.find((x) => x.startsWith('?')) ? `Category ${ids.find((x) => x.startsWith('?')).slice(1)} unknown` : null;
         if (bad) { res.errors.push({ row: i + 2, msg: bad, data: r }); return; }
         const ex = cur.find((d) => d.name.toLowerCase() === name.toLowerCase()); if (ex) res.updCount++; else res.newCount++;
-        res.good.push({ id: ex ? ex.id : null, name, cats: ids, active: yes(r.active) }); });
+        res.good.push({ id: ex ? ex.id : null, name, cats: ids, active: yes(r.active), person: pm ? { name: pn, mail: pm } : null }); });
       return res;
     },
-    save: async (rows) => { for (const d of rows) { const r = await rpc('admin_dept_save', { p_token: me.token, p_id: d.id, p_name: d.name, p_cats: d.cats, p_active: d.active }); if (!r || !r.ok) return r; } return { ok: true, msg: `${rows.length} departments` }; },
+    save: async (rows) => { for (const d of rows) { const r = await rpc('admin_dept_save', { p_token: me.token, p_id: d.id, p_name: d.name, p_cats: d.cats, p_active: d.active }); if (!r || !r.ok) return r; }
+      const ppl = rows.filter((d) => d.person).map((d) => ({ emp_code: d.person.mail, name: d.person.name, role: 'hodept', dept: d.name, email: d.person.mail, active: true }));
+      if (ppl.length) { const r = await rpc('admin_users_upsert', { p_token: me.token, p_rows: ppl }); if (!r || !r.ok) return r; }
+      return { ok: true, msg: `${rows.length} departments${ppl.length ? ' · ' + ppl.length + ' people' : ''}` }; },
     label: (d) => d.name,
     fields: (d) => [{ k: 'name', label: 'Department name', v: d ? d.name : '', wide: true }, { k: 'cats', label: 'Can see categories', type: 'multi', v: d ? d.category_ids || [] : [], options: cats.map((c) => [c.id, c.name]), wide: true },
-      { k: 'active', label: 'Status', type: 'select', v: d ? String(d.active !== false) : 'true', options: [['true', 'Active'], ['false', 'Off']] }],
-    validate: (v) => v.name.length < 2 ? 'Enter the department name.' : null,
-    saveOne: (v, d) => rpc('admin_dept_save', { p_token: me.token, p_id: d ? d.id : null, p_name: v.name, p_cats: v.cats, p_active: v.active === 'true' }),
+      { k: 'active', label: 'Status', type: 'select', v: d ? String(d.active !== false) : 'true', options: [['true', 'Active'], ['false', 'Off']] },
+      { k: 'pname', label: 'Person name (add HO user)', v: '' }, { k: 'pmail', label: 'Mail id (login id)', v: '', type: 'email' }],
+    validate: (v) => v.name.length < 2 ? 'Enter the department name.' : (v.pname || v.pmail) && (!v.pname || !isEmail(v.pmail) || !v.pmail) ? 'Person: enter name and a valid mail id.' : null,
+    saveOne: async (v, d) => { const r = await rpc('admin_dept_save', { p_token: me.token, p_id: d ? d.id : null, p_name: v.name, p_cats: v.cats, p_active: v.active === 'true' }); if (!r || !r.ok || !v.pmail) return r;
+      return rpc('admin_users_upsert', { p_token: me.token, p_rows: [{ emp_code: v.pmail.toLowerCase(), name: v.pname, role: 'hodept', dept: v.name, email: v.pmail.toLowerCase(), active: true }] }); },
     after: '<div class="panel"><h3>HO Dept users</h3><div class="tbl" id="hoUsers"></div></div>',
   });
   function paintUsers() {
     const el = root.querySelector('#hoUsers'); if (!el) return;
-    el.innerHTML = `<table><thead><tr><th>Emp</th><th>Name</th><th>Dept</th><th>Email</th><th>PIN</th><th>Last login</th></tr></thead><tbody>
-      ${users.map((u) => `<tr><td>${esc(u.emp_code)}</td><td>${esc(u.name)}</td><td>${esc(u.dept || '—')}</td><td>${esc(u.email || '—')}</td>
-        <td>${u.pin_set ? '<span class="tag ok">Set</span>' : u.has_code ? '<span class="tag i">Code sent</span>' : '<span class="tag w">Not set</span>'}</td><td>${esc(u.last_login || '—')}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">No HO users yet · add them in Users &amp; PIN</td></tr>'}</tbody></table>`;
+    el.innerHTML = `<table><thead><tr><th>Name</th><th>Mail id (login)</th><th>Dept</th><th>PIN</th><th>Last login</th><th>Invite</th></tr></thead><tbody>
+      ${users.map((u) => `<tr><td><b>${esc(u.name)}</b></td><td>${esc(u.email || u.emp_code)}</td><td>${esc(u.dept || '—')}</td>
+        <td>${u.pin_set ? '<span class="tag ok">Set</span>' : u.has_code ? '<span class="tag i">Code sent</span>' : '<span class="tag w">Not set</span>'}</td><td>${esc(u.last_login || '—')}</td>
+        <td><button class="btn o sm" data-eml="${esc(u.emp_code)}" title="Download invite .eml (opens as a draft in Outlook)" style="padding:2px 8px">✉</button></td></tr>`).join('') || '<tr><td colspan="6" class="empty">No HO users yet. Use Add dept → Person name + Mail id.</td></tr>'}</tbody></table>`;
   }
+  const b64u = (str) => { const bytes = new TextEncoder().encode(str); let bin = ''; bytes.forEach((b) => { bin += String.fromCharCode(b); }); return btoa(bin); };
+  root.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-eml]'); if (!b) return;
+    const u = users.find((x) => x.emp_code === b.dataset.eml); if (!u || !u.email) return toast('This user has no mail id');
+    b.disabled = true; let code = '', days = 7;
+    if (!u.pin_set) { const r = await rpc('admin_issue_codes', { p_token: me.token, p_emps: [u.emp_code] }); if (!r || !r.ok || !r.rows || !r.rows[0]) { b.disabled = false; return toast('Could not issue a setup code'); } code = r.rows[0].code; days = r.days || 7; }
+    const base = location.href.replace(/[^/]*$/, '');
+    const html = `<div style="font-family:Segoe UI,Arial,sans-serif;font-size:14px;color:#1A2130;max-width:640px"><div style="background:#1565C0;color:#fff;padding:12px 16px;font-weight:700;font-size:16px">3rd Party Staff Attendance · your login</div><div style="padding:16px;line-height:1.55">Dear ${esc(u.name)},<br><br>Your HO Dept login (${esc(u.dept || '')}) for the 3rd Party Staff Attendance portal is ready.
+      <table style="border-collapse:collapse;margin:8px 0"><tr><td style="padding:3px 14px 3px 0;color:#5A6472">Link</td><td><b>${base}</b></td></tr><tr><td style="padding:3px 14px 3px 0;color:#5A6472">Login id</td><td><b>${esc(u.email)}</b> (your mail id)</td></tr><tr><td style="padding:3px 14px 3px 0;color:#5A6472">Role</td><td><b>HO Dept · ${esc(u.dept || '')}</b></td></tr></table>
+      <ol style="margin:8px 0 8px 18px;padding:0"><li>Open the link on your phone and choose <b>HO Dept</b>.</li><li>Choose your department and enter your <b>mail id</b>, then Next.</li>${u.pin_set ? '<li>Enter your PIN.</li>' : `<li>Enter the one-time setup code <b style="font-size:18px;letter-spacing:3px">${code}</b> (valid ${days} days) and create your 4-digit PIN.</li>`}</ol>
+      Do not share your PIN${u.pin_set ? '' : ' or this code'}.</div><div style="padding:8px 16px;color:#98A1AE;font-size:11px">VMM Central Ops &amp; BI · Designed &amp; Developed by Shubhendu Sinha</div></div>`;
+    const eml = [`To: ${u.email}`, `Subject: =?UTF-8?B?${b64u('3rd Party Attendance portal · your HO Dept login')}?=`, 'MIME-Version: 1.0', 'X-Unsent: 1', 'Content-Type: text/html; charset=UTF-8', 'Content-Transfer-Encoding: base64', '', b64u(`<!doctype html><html><body>${html}</body></html>`).replace(/.{76}/g, '$&\r\n')].join('\r\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([eml], { type: 'message/rfc822' })); a.download = `Invite_${(u.email || u.emp_code).replace(/[^a-z0-9@._-]/gi, '_')}.eml`; document.body.appendChild(a); a.click(); a.remove();
+    toast('Invite .eml downloaded'); b.disabled = false; users = users.map((x) => x.emp_code === u.emp_code ? { ...x, has_code: !u.pin_set || x.has_code } : x); paintUsers();
+  });
 }
 
 /* ---------- v4: Mail Center (.eml files in one ZIP for the Outlook batch macro) ---------- */

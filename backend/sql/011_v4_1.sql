@@ -1,0 +1,4 @@
+-- v4.1 (applied as 2 migrations): HO Dept login by mail id + Punch OUT list for the QR page
+-- 1) _match_user lower-cases the mail id for role hodept; auth_check accepts a mail id for hodept
+-- 2) users_emp_code_check: 5+ digits, or (hodept and a lower-case mail id)
+-- 3) punch_open(p_store, p_cat, p_brand): people whose last punch today is IN (name, code, brand, vendor, IN time), granted to anon
