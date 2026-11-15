@@ -7,8 +7,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3rd Party Attendance</title>
 <meta name="theme-color" content="#1565C0">
+<link rel="preconnect" href="https://phyllziizajuphenpwxz.supabase.co" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="icon" href="assets/logo.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&family=Noto+Sans+Devanagari:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&family=Noto+Sans+Devanagari:wght@400;700&display=swap" media="print" onload="this.media=\'all\'">
 <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
@@ -262,12 +264,14 @@ async function doSave() {
   const q = new URLSearchParams(location.search);
   if (q.get('r') === 'expired') toast(t('sessionExpired'));
   const s = Session.get();
-  if (s && s.token) { const me = await rpc('auth_me', { p_token: s.token }); if (me && me.ok) { location.href = homeFor(me.role); return; } Session.clear(); }
   const last = store.get('vmm3p_last_login');
   if (last) { setRole(last.role || 'store'); $('#emp').value = last.emp || ''; if (last.post) $('#post').value = last.post; $('#storeCode').value = last.store || ''; }
-  const opts = await rpc('login_options');
-  if (opts && opts.departments) opts.departments.forEach((d) => $('#dept').insertAdjacentHTML('beforeend', `<option value="${d.id}">${esc(d.name)}</option>`));
-  if (last && last.dept) $('#dept').value = last.dept;
+  const fillDepts = (opts) => { if (!opts || !opts.departments) return; $('#dept').innerHTML = $('#dept').options[0] ? $('#dept').options[0].outerHTML : ''; opts.departments.forEach((d) => $('#dept').insertAdjacentHTML('beforeend', `<option value="${d.id}">${esc(d.name)}</option>`)); if (last && last.dept) $('#dept').value = last.dept; };
+  let cached = null; try { cached = JSON.parse(localStorage.getItem('vmm3p_opts') || 'null'); } catch (e) {}
+  fillDepts(cached);
+  // network calls run in the background: the form is usable straight away
+  rpc('login_options').then((opts) => { if (opts && opts.departments) { fillDepts(opts); try { localStorage.setItem('vmm3p_opts', JSON.stringify(opts)); } catch (e) {} } });
+  if (s && s.token) rpc('auth_me', { p_token: s.token }).then((me) => { if (me && me.ok) location.href = homeFor(me.role); else Session.clear(); });
 
   $('#roles').addEventListener('click', (e) => { const b = e.target.closest('.role'); if (b) setRole(b.dataset.role); });
   $('#card').addEventListener('submit', (e) => { e.preventDefault(); store.set('vmm3p_last_login', { role, emp: $('#emp').value, post: $('#post').value, store: $('#storeCode').value, dept: $('#dept').value }); doCheck(); });

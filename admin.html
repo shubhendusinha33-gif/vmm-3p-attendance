@@ -7,8 +7,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Admin · 3rd Party Attendance</title>
 <meta name="theme-color" content="#1565C0">
+<link rel="preconnect" href="https://phyllziizajuphenpwxz.supabase.co" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="icon" href="assets/logo.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&display=swap" media="print" onload="this.media=\'all\'">
 <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
@@ -16,8 +18,8 @@
   <nav class="nav" id="nav"></nav>
   <main class="main" id="view"><div class="spin"></div></main>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="assets/app.js"></script>
 <script src="assets/dash.js"></script>
 <script>
@@ -57,7 +59,7 @@ function MasterView(root, cfg) {
     st.pending = res;
     const errs = res.errors.slice(0, 4).map((e) => `row ${e.row}: ${e.msg}`).join(', ');
     $r('#mvImp').innerHTML = `<div class="note i" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b>Import check · ${esc(file)}</b>
-      <span>${res.newCount} new · ${res.updCount} updated${res.same ? ` · ${res.same} unchanged` : ''}</span>${res.errors.length ? `<span style="color:var(--red);font-weight:700">${res.errors.length} error${res.errors.length === 1 ? '' : 's'} (${esc(errs)}${res.errors.length > 4 ? ' …' : ''})</span>` : ''}
+      <span>${res.newCount} new · ${res.updCount} updated${res.same ? ` · ${res.same} unchanged` : ''}${res.note ? ' ' + esc(res.note) : ''}</span>${res.errors.length ? `<span style="color:var(--red);font-weight:700">${res.errors.length} error${res.errors.length === 1 ? '' : 's'} (${esc(errs)}${res.errors.length > 4 ? ' …' : ''})</span>` : ''}
       <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">${res.errors.length ? '<button class="btn o sm" data-act="errs">⬇ Download errors</button>' : ''}<button class="btn o sm" data-act="cancel">Cancel</button>
       ${res.good.length ? `<button class="btn sm" data-act="save" style="background:var(--blue)">Save ${res.good.length} good row${res.good.length === 1 ? '' : 's'}</button>` : ''}</span></div>`;
   }
@@ -115,7 +117,7 @@ async function StoresView(root) {
     title: 'Store Master', unit: 'stores', file: 'Store_Master', addLabel: 'Add store', add: true, edit: true,
     headExtra: '<a class="btn o sm" href="qr.html?all=1" style="text-decoration:none">🖨 All QR posters</a>',
     searchHint: 'Search code / name / city',
-    note: 'Sheet header: StoreCode · StoreName · SM Name · SM Mail · AM Name · AM Code · AM Mail · ZFM Name · ZFM Code · ZFM Email · City · State · Latitude · Longitude · Active · Updated By. SM Mail feeds the Mail Center store mails. Names and State are for reference. AM / ZFM Codes must exist in Users first. Lat / Lng are needed for the 500 m geo-fence.',
+    note: 'Sheet header: StoreCode · StoreName · SM Name · SM Mail · AM Name · AM Code · AM Mail · ZFM Name · ZFM Code · ZFM Email · City · State · Latitude · Longitude · Active · Updated By. SM Mail feeds the Mail Center store mails. Names and State are for reference. AM / ZFM not yet in Users are created from this sheet. Lat / Lng are needed for the 500 m geo-fence.',
     load: async () => { const r = await rpc('admin_get', { p_token: me.token, p_kind: 'stores' }); return (r && r.rows) || []; },
     search: (s) => `${s.store_code} ${s.name} ${s.city || ''}`,
     filters: [
@@ -135,26 +137,35 @@ async function StoresView(root) {
     exportRows: (rs) => { const sm = (c) => (users.find((u) => u.role === 'store' && u.store_code === c && u.post === 'SM') || {}).name || '';
       return rs.map((s) => ({ StoreCode: s.store_code, StoreName: s.name, 'SM Name': sm(s.store_code), 'SM Mail': s.store_email || '', 'AM Name': s.am_emp ? uname(s.am_emp) : '', 'AM Code': s.am_emp || '', 'AM Mail': s.am_email || '', 'ZFM Name': s.zfm_emp ? uname(s.zfm_emp) : '', 'ZFM Code': s.zfm_emp || '', 'ZFM Email': s.zfm_email || '', City: s.city || '', State: '', Latitude: s.lat ?? '', Longitude: s.lng ?? '', Active: s.active ? 'TRUE' : 'FALSE', 'Updated By': '' })); },
     parse: (raw, cur) => {
-      const res = { good: [], errors: [], newCount: 0, updCount: 0, same: 0 }; const seen = new Set();
+      const res = { good: [], errors: [], newCount: 0, updCount: 0, same: 0 }; const seen = new Set(); const people = new Map();
       raw.forEach((r, i) => {
         const g = (...ks) => { for (const k of ks) if (r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== '') return String(r[k]).trim(); return ''; };
         // accepts the Store Master sheet header: StoreCode, StoreName, SM Name, SM Mail, AM Name, AM Code, AM Mail, ZFM Name, ZFM Code, ZFM Email, City, State, Latitude, Longitude, Active, Updated By
         const o = { store_code: g('storecode', 'store_code', 'store').toUpperCase(), name: g('storename', 'name', 'store_name'), city: g('city'),
           am_emp: g('am_code', 'am_emp', 'am'), zfm_emp: g('zfm_code', 'zfm_emp', 'zfm'), lat: g('latitude', 'lat'), lng: g('longitude', 'lng', 'long'),
           active: yes(r.active), store_email: g('sm_mail', 'store_email'), am_email: g('am_mail', 'am_email'), zfm_email: g('zfm_email', 'zfm_mail') };
+        const clash = (e, role) => { const u = users.find((x) => x.emp_code === e); return u && u.role !== role ? u.role : ''; };
         const bad = !/^[A-Z]{2}\d{2}$/.test(o.store_code) ? 'Store Code must be 2 letters + 2 digits' : !o.name ? 'Name missing'
           : seen.has(o.store_code) ? 'Store Code repeated in file' : (o.lat && isNaN(+o.lat)) || (o.lng && isNaN(+o.lng)) ? 'Lat / Lng not a number'
-          : o.am_emp && !ams.some((u) => u.emp_code === o.am_emp) ? `AM ${o.am_emp} not found in Users` : o.zfm_emp && !zfms.some((u) => u.emp_code === o.zfm_emp) ? `ZFM ${o.zfm_emp} not found in Users`
+          : o.am_emp && clash(o.am_emp, 'am') ? `AM Code ${o.am_emp} already exists as ${clash(o.am_emp, 'am')} in Users` : o.zfm_emp && clash(o.zfm_emp, 'zfm') ? `ZFM Code ${o.zfm_emp} already exists as ${clash(o.zfm_emp, 'zfm')} in Users`
           : ![o.store_email, o.am_email, o.zfm_email].every(isEmail) ? 'Email format wrong' : null;
         if (bad) { res.errors.push({ row: i + 2, msg: bad, data: r }); return; }
+        // AM / ZFM not in Users yet: create them from this sheet (name, code, mail). PIN is set later via the setup code.
+        [['am', o.am_emp, g('am_name'), o.am_email], ['zfm', o.zfm_emp, g('zfm_name'), o.zfm_email]].forEach(([role, code, nm, em]) => {
+          if (!code || users.some((x) => x.emp_code === code)) return;
+          const k = people.get(code); if (!k) people.set(code, { emp_code: code, name: nm || code, role, email: em, active: true }); else if (!k.email && em) k.email = em;
+        });
         seen.add(o.store_code);
         const ex = cur.find((s) => s.store_code === o.store_code);
         if (!ex) res.newCount++; else if (['name', 'city', 'am_emp', 'zfm_emp', 'store_email', 'am_email', 'zfm_email'].some((k) => (ex[k] || '') !== o[k] && !(o[k] === '' && k.endsWith('email'))) || ex.active !== o.active || (o.lat && +o.lat !== +ex.lat)) res.updCount++; else { res.same++; return; }
         res.good.push(o);
       });
+      res.good.people = [...people.values()];
+      if (res.good.people.length) res.note = `+ ${res.good.people.filter((x) => x.role === 'am').length} AM and ${res.good.people.filter((x) => x.role === 'zfm').length} ZFM logins will be created (PIN via setup code)`;
       return res;
     },
-    save: async (rows) => { const r = await rpc('admin_stores_upsert', { p_token: me.token, p_rows: rows }); if (r && r.ok) r.msg = `${r.added} new · ${r.updated} updated`; return r; },
+    save: async (rows) => { if (rows.people && rows.people.length) { const pr = await rpc('admin_users_upsert', { p_token: me.token, p_rows: rows.people }); if (!pr || !pr.ok) return pr; }
+      const r = await rpc('admin_stores_upsert', { p_token: me.token, p_rows: rows }); if (r && r.ok) r.msg = `${r.added} new · ${r.updated} updated`; return r; },
     label: (s) => s.store_code,
     fields: (s) => [
       { k: 'store_code', label: 'Store code', v: s ? s.store_code : '', lock: !!s, max: 4 }, { k: 'name', label: 'Store name', v: s ? s.name : '' },
