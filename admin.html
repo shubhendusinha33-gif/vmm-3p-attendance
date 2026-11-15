@@ -115,7 +115,7 @@ async function StoresView(root) {
     title: 'Store Master', unit: 'stores', file: 'Store_Master', addLabel: 'Add store', add: true, edit: true,
     headExtra: '<a class="btn o sm" href="qr.html?all=1" style="text-decoration:none">🖨 All QR posters</a>',
     searchHint: 'Search code / name / city',
-    note: 'Store emails feed the Mail Center (store logins → Store Email, AM → AM Email, ZFM → ZFM Email). Lat / Lng are needed for the 500 m geo-fence.',
+    note: 'Sheet header: StoreCode · StoreName · SM Name · SM Mail · AM Name · AM Code · AM Mail · ZFM Name · ZFM Code · ZFM Email · City · State · Latitude · Longitude · Active · Updated By. SM Mail feeds the Mail Center store mails. Names and State are for reference. AM / ZFM Codes must exist in Users first. Lat / Lng are needed for the 500 m geo-fence.',
     load: async () => { const r = await rpc('admin_get', { p_token: me.token, p_kind: 'stores' }); return (r && r.rows) || []; },
     search: (s) => `${s.store_code} ${s.name} ${s.city || ''}`,
     filters: [
@@ -131,14 +131,17 @@ async function StoresView(root) {
       { h: 'Emails', v: (s) => s.store_email && s.am_email && s.zfm_email ? '<span class="tag ok">3 / 3</span>' : `<span class="tag w">${[s.store_email, s.am_email, s.zfm_email].filter(Boolean).length} / 3</span>` },
       { h: 'Status', v: (s) => `<span class="tag ${s.active ? 'ok' : 'w'}">${s.active ? 'Active' : 'Inactive'}</span>` },
       { h: 'QR', v: (s) => `<a href="qr.html?s=${esc(s.store_code)}">Poster</a>` }],
-    template: () => [{ 'Store Code': 'AA01', Name: 'Rajouri Garden', City: 'Delhi', 'AM Emp': '20117', 'ZFM Emp': '30001', Lat: 28.6415, Lng: 77.1209, Active: 'TRUE', 'Store Email': 'aa01@company.com', 'AM Email': 'am@company.com', 'ZFM Email': 'zfm@company.com' }],
-    exportRows: (rs) => rs.map((s) => ({ 'Store Code': s.store_code, Name: s.name, City: s.city, 'AM Emp': s.am_emp, 'ZFM Emp': s.zfm_emp, Lat: s.lat, Lng: s.lng, Active: s.active ? 'TRUE' : 'FALSE', 'Store Email': s.store_email, 'AM Email': s.am_email, 'ZFM Email': s.zfm_email })),
+    template: () => [{ StoreCode: 'AA01', StoreName: 'Rajouri Garden', 'SM Name': 'Store Manager', 'SM Mail': 'aa01@company.com', 'AM Name': 'AM Name', 'AM Code': '20117', 'AM Mail': 'am@company.com', 'ZFM Name': 'ZFM Name', 'ZFM Code': '30001', 'ZFM Email': 'zfm@company.com', City: 'Delhi', State: 'Delhi', Latitude: 28.6415, Longitude: 77.1209, Active: 'TRUE', 'Updated By': '' }],
+    exportRows: (rs) => { const sm = (c) => (users.find((u) => u.role === 'store' && u.store_code === c && u.post === 'SM') || {}).name || '';
+      return rs.map((s) => ({ StoreCode: s.store_code, StoreName: s.name, 'SM Name': sm(s.store_code), 'SM Mail': s.store_email || '', 'AM Name': s.am_emp ? uname(s.am_emp) : '', 'AM Code': s.am_emp || '', 'AM Mail': s.am_email || '', 'ZFM Name': s.zfm_emp ? uname(s.zfm_emp) : '', 'ZFM Code': s.zfm_emp || '', 'ZFM Email': s.zfm_email || '', City: s.city || '', State: '', Latitude: s.lat ?? '', Longitude: s.lng ?? '', Active: s.active ? 'TRUE' : 'FALSE', 'Updated By': '' })); },
     parse: (raw, cur) => {
       const res = { good: [], errors: [], newCount: 0, updCount: 0, same: 0 }; const seen = new Set();
       raw.forEach((r, i) => {
-        const o = { store_code: String(r.store_code || r.store || '').trim().toUpperCase(), name: String(r.name || r.store_name || '').trim(), city: String(r.city || '').trim(),
-          am_emp: String(r.am_emp || r.am || '').trim(), zfm_emp: String(r.zfm_emp || r.zfm || '').trim(), lat: String(r.lat ?? '').trim(), lng: String(r.lng ?? r.long ?? '').trim(),
-          active: yes(r.active), store_email: String(r.store_email || '').trim(), am_email: String(r.am_email || '').trim(), zfm_email: String(r.zfm_email || '').trim() };
+        const g = (...ks) => { for (const k of ks) if (r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== '') return String(r[k]).trim(); return ''; };
+        // accepts the Store Master sheet header: StoreCode, StoreName, SM Name, SM Mail, AM Name, AM Code, AM Mail, ZFM Name, ZFM Code, ZFM Email, City, State, Latitude, Longitude, Active, Updated By
+        const o = { store_code: g('storecode', 'store_code', 'store').toUpperCase(), name: g('storename', 'name', 'store_name'), city: g('city'),
+          am_emp: g('am_code', 'am_emp', 'am'), zfm_emp: g('zfm_code', 'zfm_emp', 'zfm'), lat: g('latitude', 'lat'), lng: g('longitude', 'lng', 'long'),
+          active: yes(r.active), store_email: g('sm_mail', 'store_email'), am_email: g('am_mail', 'am_email'), zfm_email: g('zfm_email', 'zfm_mail') };
         const bad = !/^[A-Z]{2}\d{2}$/.test(o.store_code) ? 'Store Code must be 2 letters + 2 digits' : !o.name ? 'Name missing'
           : seen.has(o.store_code) ? 'Store Code repeated in file' : (o.lat && isNaN(+o.lat)) || (o.lng && isNaN(+o.lng)) ? 'Lat / Lng not a number'
           : o.am_emp && !ams.some((u) => u.emp_code === o.am_emp) ? `AM ${o.am_emp} not found in Users` : o.zfm_emp && !zfms.some((u) => u.emp_code === o.zfm_emp) ? `ZFM ${o.zfm_emp} not found in Users`
