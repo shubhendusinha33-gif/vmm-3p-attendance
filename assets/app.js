@@ -109,7 +109,7 @@ const I18N = {
   en: {
     appTitle: '3rd Party Attendance', appSub: 'VMM Central Ops & BI',
     roleStore: 'Store', roleAm: 'AM', roleZfm: 'ZFM', roleHodept: 'HO Dept', roleAdmin: 'Admin',
-    stepDetails: 'Your details', stepPin: 'PIN', empCode: 'Enter your Emp Code', empHint: 'min 5 digits',
+    stepDetails: 'Your details', stepPin: 'PIN', empCode: 'Enter your Emp Code', empHint: 'min 5 digits', mailHint: 'Enter your full official mail id (name@company.com).', notFoundHo: 'No HO login found for this mail id + department. Check both, or ask Admin to add you in Users & PIN.',
     post: 'Post', storeCode: 'Store Code', storeHint: '2 letters + 2 digits (e.g. AA01)', department: 'Department', selectDept: '— Select department —',
     next: 'Next →', login: 'Login →', welcome: 'Welcome', verified: 'Emp Code verified ✓', enterPin: 'Enter your 4-digit PIN',
     forgotPin: 'Forgot PIN? Ask your ZFM or HO Admin to reset it.', back: '← Back',
@@ -168,7 +168,7 @@ const I18N = {
   hi: {
     appTitle: '3rd Party हाज़िरी', appSub: 'VMM Central Ops & BI',
     roleStore: 'स्टोर', roleAm: 'AM', roleZfm: 'ZFM', roleHodept: 'HO विभाग', roleAdmin: 'एडमिन',
-    stepDetails: 'आपकी जानकारी', stepPin: 'PIN', empCode: 'अपना Emp Code डालें', empHint: 'कम से कम 5 अंक',
+    stepDetails: 'आपकी जानकारी', stepPin: 'PIN', empCode: 'अपना Emp Code डालें', empHint: 'कम से कम 5 अंक', mailHint: 'अपना पूरा ऑफिशियल मेल आईडी डालें (name@company.com)।', notFoundHo: 'इस मेल आईडी + विभाग से कोई HO लॉगिन नहीं मिला। दोनों जांचें या Admin से Users & PIN में जुड़वाएं।',
     post: 'पद', storeCode: 'स्टोर कोड', storeHint: '2 अक्षर + 2 अंक (जैसे AA01)', department: 'विभाग', selectDept: '— विभाग चुनें —',
     next: 'आगे →', login: 'लॉगिन →', welcome: 'स्वागत है', verified: 'Emp Code सही है ✓', enterPin: 'अपना 4 अंकों का PIN डालें',
     forgotPin: 'PIN भूल गए? ZFM या HO एडमिन से रीसेट करवाएं।', back: '← पीछे',

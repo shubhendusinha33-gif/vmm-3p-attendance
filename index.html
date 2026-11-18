@@ -182,7 +182,7 @@ function layoutSlots() {
 }
 async function doCheck() {
   const i = ident();
-  if (!/^\d{5,}$/.test(i.p_emp)) return err('err1', t('empHint'));
+  if (role === 'hodept' ? !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(i.p_emp) : !/^\d{5,}$/.test(i.p_emp)) return err('err1', role === 'hodept' ? t('mailHint') : t('empHint'));
   if (role === 'store' && !/^[A-Z]{2}\d{2}$/.test(i.p_store)) return err('err1', t('storeHint'));
   if (role === 'hodept' && !i.p_dept) return err('err1', t('selectDept'));
   $('#btnNext').disabled = true;
@@ -190,7 +190,7 @@ async function doCheck() {
   $('#btnNext').disabled = false;
   if (r && r.error === 'POST_TAKEN') return err('err1', t('postTaken', { post: r.post, store: r.store, name: r.by_name, emp: r.by_emp }));
   if (r && r.error === 'EMP_ELSEWHERE') return err('err1', t('empElsewhere', { where: r.where }));
-  if (!r || !r.ok) return err('err1', errText(r && r.error));
+  if (!r || !r.ok) return err('err1', role === 'hodept' && r && r.error === 'NOT_FOUND' ? t('notFoundHo') : errText(r && r.error));
   checked = r; err('err1');
   layoutSlots();
   if (r.register) { $('#whoSub3').textContent = `Emp ${i.p_emp}`; return createScreen('register'); }
