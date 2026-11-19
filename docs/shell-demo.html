@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<base href="../">
+<title>Shell demo · 3rd Party Attendance</title>
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&display=swap">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div id="root"></div>
+<!-- Dev test page for the v5 shared layer (assets/app.js + app.css). No Supabase calls unless you click Change PIN.
+     docs/shell-demo.html          desktop sidebar shell
+     docs/shell-demo.html?m=1      phone-app shell (store login) -->
+<script src="assets/app.js"></script>
+<script>
+const mobile = /[?&]m=1\b/.test(location.search);
+const me = mobile
+  ? { role: 'store', name: 'Rahul Jain', post: 'SM', store_code: 'HY10', store_name: 'Indore', token: 'demo' }
+  : { role: 'admin', name: 'Shubhendu', emp: '50001', scope: 'All India', token: 'demo' };
+
+const PAGES = {
+  ld: 'Live Dashboard', ap: 'Approvals', stm: 'Statements', st: 'Store Master', mp: 'Manpower Master', set: 'Settings',
+  td: 'Today', pn: 'Punch', hks: 'HK split', rq: 'Requests', qr: 'QR',
+};
+let S;
+if (mobile) {
+  S = mobileShell('#root', { me, active: 'td', title: 'Today', onNav: go,
+    tabs: [['td', 'Today', 'td'], ['pn', 'Punch', 'pn'], ['hks', 'HK split', 'mp', true], ['rq', 'Requests', 'rq'], ['stm', 'Statement', 'stm'], ['qr', 'QR', 'qr']] });
+  S.setBadge('rq', 2);
+} else {
+  S = appShell('#root', { me, active: 'ld', title: 'Live Dashboard', onNav: go,
+    nav: [['ld', 'Live Dashboard', 'ld'], ['ap', 'Approvals (view)', 'ap', 3], ['stm', 'Statements', 'stm']],
+    adminNav: [['st', 'Store Master', 'st'], ['mp', 'Manpower Master', 'mp'], ['set', 'Settings', 'set']] });
+  S.bar.insertAdjacentHTML('beforeend', `<input class="f" type="date" value="${todayIST()}"><select><option>ZFM: All</option></select>
+    <span class="lvz"><span class="dot"></span>Live · 14:08</span><button class="btn s sm" id="ref">↻ Refresh</button><button class="btn sm" data-a="xls">⬇ Excel</button>`);
+}
+function go(id) { S.setTitle(PAGES[id] || id); render(id); }
+
+function render(id) {
+  S.wrap.innerHTML = `
+  <div class="toolrow"><div><h1 class="pt">${esc(PAGES[id] || id)}</h1><div class="sub">Demo of the shared v5 layer · theme <b id="palNow"></b></div></div>
+    <span class="pills"><button class="pill on">All</button><button class="pill">Housekeeping</button><button class="pill">Security</button>
+    <span class="seg"><button class="on">Morning</button><button>Evening</button><button>Both</button></span></span></div>
+  <div class="kpis">
+    <div class="kpi"><span class="l">Required</span><span class="v">1,284</span><span class="d">4 departments</span></div>
+    <div class="kpi"><span class="l">Present</span><span class="v" style="color:var(--ok)">1,102 <span class="tg ok">86%</span></span><span class="d">▲ 3 pts vs yesterday</span></div>
+    <div class="kpi"><span class="l">Not punched</span><span class="v" style="color:var(--red)">182</span><span class="d">by 14:08</span></div>
+    <div class="kpi"><span class="l">Stores at 100%</span><span class="v">412</span><span class="d">of 852</span></div>
+    <button class="kpi fl r"><span class="l">Stores below 70%</span><span class="v">38</span><span class="go">Show ›</span></button>
+    <button class="kpi fl a on"><span class="l">HK / SG nobody</span><span class="v">7</span><span class="go">Show ›</span></button>
+  </div>
+  <div class="astrip"><span class="t">Action needed</span><button class="ach r"><b>4</b>HK nobody</button><button class="ach r"><b>3</b>Security nobody</button><button class="ach a on"><b>5</b>SG mis-punch</button><button class="ach i"><b>12</b>HK split not set</button><button class="ach zero"><b>0</b>Selfie due</button></div>
+  <div class="cols">
+    <div class="card"><div class="hd"><h2>Where the gaps are</h2><span class="bc"><button>All India</button>›<b>Z1</b></span></div>
+      <div class="tw"><table><thead><tr><th class="l">Store</th><th>Required</th><th>Present</th><th>Gap</th><th>%</th><th class="l">Last 7 days</th></tr></thead><tbody>
+      ${[['HY10 · Indore', 12, 12], ['HJ13 · Ranchi', 10, 8], ['HR16 · Churu', 9, 4]].map(([s, r, p]) => { const v = pct(p, r); return `<tr class="click"><td class="l"><b>${s}</b><small>AM Ajay Kumar</small></td><td>${r}</td><td>${p}</td><td>${r - p}</td><td><span class="heat ${v >= 90 ? 'h1' : v >= 70 ? 'h2' : 'h3'}">${v}%</span></td><td class="l"><span class="hm"><i class="g">96</i><i class="g">92</i><i class="a">81</i><i class="r">55</i><i class="n"></i><i class="g">100</i><i class="${v >= 90 ? 'g' : v >= 70 ? 'a' : 'r'}">${v}</i></span></td></tr>`; }).join('')}
+      </tbody></table></div></div>
+    <div class="card"><h2>Dept-wise</h2><div class="lad">
+      ${[['Housekeeping', 92, 'var(--ok)'], ['Security', 78, 'var(--amb)'], ['Travel', 55, 'var(--red)']].map(([n, v, c]) => `<button class="rn">${n}</button><div class="stack"><span class="bm"></span><span class="pr" style="width:${v}%;background:${c}"></span></div><div class="nums"><b>${v}%</b> · 2 stores with 0</div>`).join('')}
+    </div><div class="leg"><span><i style="background:var(--ok)"></i>≥ 90%</span><span><i style="background:var(--amb)"></i>70–89%</span><span><i style="background:var(--red)"></i>&lt; 70%</span></div></div>
+  </div>
+  <div class="cols2">
+    <div class="card"><h2>PIN boxes</h2><div class="sub">Type / paste "1234", Backspace, arrows, Enter.</div>
+      <div style="margin-top:10px" class="pinrow"><span>PIN</span><div id="pinA"></div></div><div class="pinrow" style="margin-top:8px"><span>Again</span><div id="pinB"></div></div>
+      <div class="row" style="margin-top:10px"><button class="btn sm" data-a="pinread">Read</button><button class="btn s sm" data-a="pinclear">Clear</button><span id="pinOut" class="sub"></span></div></div>
+    <div class="card"><h2>Helpers</h2><div class="row" style="margin-top:10px">
+      <button class="btn" data-a="modal">Open modal</button><button class="btn s" data-a="pinc">Change PIN</button><button class="btn g" data-a="xls">⬇ Excel (styled)</button>
+      <button class="btn ghost" data-a="idle">Idle logout in 15 s</button><button class="btn r sm" data-a="toast">Toast</button></div>
+      <div class="tabs" style="margin-top:12px"><button class="on">Tab one</button><button>Tab two</button></div>
+      <div class="frm"><label>Store<select><option>HY10</option></select></label><label>Morning<input class="f" type="number" value="3"></label><label>Note<input class="f" placeholder="optional"></label></div>
+      <div class="tgl"><div><b>Live mode</b><span>Punches count immediately</span></div><button class="swi on" aria-label="toggle"></button></div>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><span class="tg ok">P</span><span class="tg amb">H</span><span class="tg red">A</span><span class="tg info">MP</span><span class="tg grey">—</span><span class="tg acc">P*</span><span class="tag ok">old .tag</span><span class="chip">chip ✕</span></div>
+      <div class="note" style="margin-top:8px">.note (info)</div><div class="note w" style="margin-top:6px">.note.w</div></div>
+  </div>
+  <div class="card"><h2>Inline edit</h2><div class="tw"><table class="edt"><thead><tr><th class="l">Store</th><th class="l">Name</th><th class="l">SG set</th><th class="l">Active</th></tr></thead><tbody>
+    <tr><td class="l"><b>HY10</b></td><td class="l chg"><input class="ci" value="Indore Central"></td><td class="l"><select class="ci"><option>8</option><option selected>12</option></select></td><td class="l"><span class="sw"><button class="on y">Y</button><button>N</button></span></td></tr>
+    <tr><td class="l"><b>HJ13</b></td><td class="l"><input class="ci" value="Ranchi"></td><td class="l"><select class="ci"><option>8</option></select></td><td class="l"><span class="sw"><button>Y</button><button class="on n">N</button></span></td></tr>
+  </tbody></table></div>
+  <div class="res2" style="margin-top:8px"><span class="tg ok">Updated 1</span><span class="tg info">Added 0</span><span class="tg red">Errors 0</span></div></div>
+  <div class="sticky-save"><b>1 change</b><button class="btn ghost sm">Discard</button><button class="btn sm">Save changes</button></div>`;
+  $('#palNow').textContent = (Theme.PALS.find((p) => p[0] === Theme.pal()) || [])[1] + (Theme.isDark() ? ' · dark' : '');
+  pinBoxes('#pinA'); pinBoxes('#pinB');
+  $('#pinA').onEnter = (v) => { $('#pinOut').textContent = 'Enter: ' + v; };
+  $('#pinB').onEnter = (v) => { $('#pinOut').textContent = 'Enter B: ' + v; };
+}
+document.addEventListener('themechange', () => { const e = $('#palNow'); if (e) e.textContent = (Theme.PALS.find((p) => p[0] === Theme.pal()) || [])[1] + (Theme.isDark() ? ' · dark' : ''); });
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-a]'); if (!b) return;
+  const a = b.dataset.a;
+  if (a === 'pinread') $('#pinOut').textContent = `A=${pinVal('#pinA')} B=${pinVal($('#pinB'))}`;
+  if (a === 'pinclear') { pinClear('#pinA'); pinClear('#pinB', false); }
+  if (a === 'modal') {
+    const md = modal(`<h3>Edit store HY10</h3><div class="frm"><label>Name<input class="f" value="Indore"></label><label>Mail<input class="f" value="indore@vishalmegamart.in"></label></div>
+      <div class="mx"><button class="btn s" data-close>Cancel</button><button class="btn" id="mdOk">Save</button></div>`);
+    md.querySelector('#mdOk').onclick = () => { closeModal(); toast('Saved'); };
+  }
+  if (a === 'pinc') changePinModal(me);
+  if (a === 'xls') downloadXlsx([{ 'Store Code': 'HY10', Name: 'Indore', Required: 12, Present: 12, Status: 'OK' }, { 'Store Code': 'HJ13', Name: 'Ranchi — a much longer store name to test width', Required: 10, Present: 8 }], 'Demo_export.xlsx', 'Live');
+  if (a === 'idle') { Idle.start({ minutes: 0.25, warn: 10, onLogout: () => { S.wrap.innerHTML = '<div class="note r">Logged out by Idle (demo onLogout).</div>'; } }); toast('Idle logout armed: 15 s, warning in the last 10 s'); }
+  if (a === 'toast') toast('Hello from toast()');
+});
+render(mobile ? 'td' : 'ld');
+</script>
+</body>
+</html>
