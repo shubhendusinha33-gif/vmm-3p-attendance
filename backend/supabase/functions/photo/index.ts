@@ -56,6 +56,25 @@ Deno.serve(async (req) => {
     return json({ ok: true, path, bytes: bytes.length });
   }
 
+  // ---------- view (any signed-in user whose scope covers the associate: admin / AM / ZFM / HO / RLPO / store) ----------
+  if (action === "view") {
+    const session = String(body.session || ""), date = String(body.date || ""), assoc = Number(body.associate || 0);
+    if (!/^[0-9a-f-]{36}$/i.test(session) || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !assoc) return json({ ok: false, error: "BAD_INPUT" }, 400);
+    const { data, error } = await sb.rpc("photo_paths", { p_token: session, p_associate: assoc, p_date: date });
+    if (error) return json({ ok: false, error: error.message }, 500);
+    // deno-lint-ignore no-explicit-any
+    const r = data as any;
+    if (!r || !r.ok) return json(r || { ok: false, error: "FORBIDDEN" }, 403);
+    const rows = r.rows || [];
+    const urls: Record<string, string> = {};
+    if (rows.length) {
+      const { data: s } = await sb.storage.from(BUCKET).createSignedUrls(rows.map((x: { path: string }) => x.path), 600);
+      (s || []).forEach((d) => { if (d.path && d.signedUrl) urls[d.path] = d.signedUrl; });
+    }
+    return json({ ok: true, name: r.name, code: r.code, store: r.store,
+      photos: rows.map((x: { path: string; kind: string; t: string; live: string }) => ({ url: urls[x.path], kind: x.kind, t: x.t, live: x.live })) });
+  }
+
   // ---------- admin actions ----------
   if (!(await adminOk(String(body.session || "")))) return json({ ok: false, error: "FORBIDDEN" }, 403);
 
