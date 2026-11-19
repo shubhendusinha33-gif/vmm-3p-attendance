@@ -1058,6 +1058,12 @@
         <div class="card"><h2>Consents</h2><div class="sub" data-r="cs">Checking…</div>
           <div class="tgl"><div><b>Delete TEST consents</b><span>Only consents from test stores / test users. Phones are not asked again.</span></div><button type="button" class="btn s sm" data-a="cdel" data-scope="test">Delete test</button></div>
           <div class="tgl"><div><b>Delete ALL consents + ask everyone again</b><span>Clears the whole consent log and every phone (yours too) sees the consent screen on next open. Use before go-live or after a policy change.</span></div><button type="button" class="btn r sm" data-a="cdel" data-scope="all">Delete all</button></div></div>
+        <div class="card"><h2>Clear trial data (live test)</h2><div class="sub" style="margin:4px 0 8px">Deletes staff activity only: punches, selfies, staff names, requests &amp; approvals, comp-offs, SG decisions, HK splits, consents, other-store tries. Keeps Store Master, Manpower, users, PINs, RLPOs and settings. Logged in the Access Log.</div>
+          <div class="acts"><label class="ck"><input type="radio" name="trs" value="all" checked> All stores</label><label class="ck"><input type="radio" name="trs" value="list"> Only these stores</label></div>
+          <textarea class="f" data-r="trl" rows="2" placeholder="Store codes, e.g. HY10, MP17 DL05 (comma / space / new line)" style="width:100%;margin-top:6px" hidden></textarea>
+          <div class="acts" style="margin-top:8px"><button type="button" class="btn s sm" data-a="trprev">Check what will be deleted</button></div>
+          <div data-r="trp" class="sub" style="margin-top:6px"></div>
+          <div class="acts" data-r="trgo" hidden style="margin-top:6px"><input class="f" data-r="trc" placeholder="Type DELETE" style="width:130px"><button type="button" class="btn r sm" data-a="trdel">Delete now</button></div></div>
       </div>
       <div class="card"><h2>Photo storage</h2><div class="toolrow" style="margin-top:6px"><span data-r="ps">Checking…</span><b data-r="psp"></b></div><div class="meter2"><i data-r="psb" style="width:0"></i></div>
         <div class="acts" style="margin-top:10px"><input class="f" type="date" data-r="pf"> to <input class="f" type="date" data-r="pt"><button type="button" class="btn s sm" data-a="pzip">⬇ Photos ZIP</button><button type="button" class="btn r sm" data-a="pdel">Downloaded, remove from portal</button></div>
@@ -1078,6 +1084,7 @@
       R('psp').textContent = p + '%'; R('psp').style.color = p >= lim ? 'var(--red)' : 'var(--ok)';
       R('psb').style.width = Math.min(p, 100) + '%'; R('psb').style.background = p >= lim ? 'var(--red)' : p >= 50 ? 'var(--amb)' : 'var(--ok)';
     }
+    root.addEventListener('change', (e) => { if (e.target.name === 'trs') { R('trl').hidden = e.target.value !== 'list'; R('trgo').hidden = true; R('trp').textContent = ''; } });
     root.addEventListener('click', async (e) => {
       const t = e.target.closest('[data-sw]'); if (t) { t.classList.toggle('on'); t.setAttribute('aria-pressed', t.classList.contains('on')); if (t.dataset.sw === 'test_mode') R('tw').hidden = !t.classList.contains('on'); return; }
       const b = e.target.closest('[data-a]'); if (!b) return;
@@ -1099,6 +1106,25 @@
         if (b.dataset.confirm !== '1') { b.dataset.confirm = '1'; b.textContent = sc === 'all' ? 'Tap again: delete ALL' : 'Tap again to delete'; return; }
         b.disabled = true; const r = await rpc('admin_consent_reset', { p_token: me.token, p_scope: sc }); b.disabled = false; b.dataset.confirm = ''; b.textContent = lbl;
         toast(r && r.ok ? `${nf(r.deleted)} consents deleted${sc === 'all' ? ' · everyone will be asked again' : ''}` : eText(r && r.error), 4000); csCount(); }
+      if (a === 'trprev' || a === 'trdel') {
+        const lst = root.querySelector('input[name="trs"]:checked').value === 'list' ? R('trl').value.toUpperCase().split(/[\s,;]+/).filter((x) => /^[A-Z]{2}\d{2}$/.test(x)) : null;
+        if (lst && !lst.length) return toast('Enter store codes like HY10', 3500);
+        if (a === 'trprev') {
+          b.disabled = true; const r = await rpc('admin_trial_reset', { p_token: me.token, p_stores: lst, p_confirm: null }); b.disabled = false;
+          if (!r || !r.ok) { R('trp').textContent = eText(r && r.error); return; }
+          R('trp').innerHTML = `<b>${r.all ? 'All stores' : nf(r.stores) + ' stores'}</b>: ${nf(r.punches)} punches · ${nf(r.photos)} selfies · ${nf(r.staff)} staff names · ${nf(r.requests)} requests · ${nf(r.consents)} consents will be deleted.${r.all ? ' Every phone will see the consent screen again.' : ''}`;
+          R('trgo').hidden = false; R('trc').value = ''; return;
+        }
+        if (R('trc').value.trim() !== 'DELETE') return toast('Type DELETE in capitals to confirm', 3500);
+        b.disabled = true; R('trp').textContent = 'Removing selfies…';
+        const ph = await photoFn({ action: 'delete', session: me.token, from: '2024-01-01', to: todayIST(), stores: lst || undefined });
+        R('trp').textContent = 'Deleting records…';
+        const r = await rpc('admin_trial_reset', { p_token: me.token, p_stores: lst, p_confirm: 'DELETE' }); b.disabled = false;
+        if (!r || !r.ok) { R('trp').textContent = 'Error: ' + eText(r && r.error); return; }
+        const d = r.deleted || {};
+        R('trp').innerHTML = `<span class="tg ok">Done</span> ${nf(d.punches || 0)} punches · ${nf((ph && ph.deleted) || 0)} selfies · ${nf(d.staff || 0)} staff · ${nf(d.requests || 0)} requests · ${nf(d.consents || 0)} consents deleted.`;
+        R('trgo').hidden = true; Object.keys(cache).forEach((k) => drop(k)); csCount(); usage(); return;
+      }
       if (a === 'pzip') {
         R('pm').textContent = 'Preparing list…';
         const l = await photoFn({ action: 'list', session: me.token, from: R('pf').value, to: R('pt').value });

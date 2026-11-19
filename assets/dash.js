@@ -357,7 +357,7 @@
         if (!g.ppl.length) return `<tr>${head}<td class="l" colspan="7" style="color:var(--red);font-weight:700">${g.req ? 'Nobody has punched' : '—'}</td></tr>`;
         return g.ppl.map((a, i) => `<tr>${i ? '' : head}<td class="l">${esc(a.name)}</td><td class="l">${esc(a.code || '')}</td>${sec
           ? `<td class="l" colspan="3">${SGT[a.st] || (a.st ? `<span class="tg grey">${esc(a.st)}</span>` : SGT.IN)}</td>`
-          : `<td>${esc(a.first_in || '—')}</td><td>${esc(a.last_out || '—')}</td><td>${a.hours ?? '—'}</td>`}
+          : `<td>${esc(a.first_in || '—')}</td><td>${a.last_out ? esc(a.last_out) : a.out_done ? 'OUT ✓' : '—'}</td><td>${a.hours ?? '—'}</td>`}
           <td class="l">${a.via_mod ? '<span class="tg amb">Store</span>' : 'Own'}</td><td class="l">${sec ? '' : photo(a)}${stm(a)}</td></tr>`).join('');
       }).join('');
       const hk = r.hk && hasCat('HK') && catOk('HK') ? (r.hk.set ? ` · HK split M ${r.hk.morning} / E ${r.hk.evening}` : ` · <span style="color:var(--amb)">HK split not set (total ${r.hk.total} in Morning)</span>`) : '';
@@ -425,13 +425,14 @@
   /* =====================================================================
      APPROVALS (Pending + History)
      ===================================================================== */
-  const CR_KIND = { compoff: 'Comp-off', staff: 'Staff detail change', missed_out: 'Missed OUT', missed_in: 'Missed IN', sg_mispunch: 'SG mis-punch', sg_edit: 'SG time edit' };
+  const CR_KIND = { compoff: 'Comp-off', staff: 'Staff detail change', missed_out: 'Missed OUT', missed_in: 'Missed IN', sg_mispunch: 'SG mis-punch', sg_edit: 'SG time edit', cross_store: 'Phone from other store (SM)' };
   const isSg = (k) => k === 'sg_mispunch' || k === 'sg_edit';
   function crChange(r) {
     const p = r.payload || {};
     if (r.kind === 'compoff') return p.on === false ? `Remove comp-off · ${r.date ? fmtDay(r.date) : ''}` : `Absent → Comp-off · ${r.date ? fmtDay(r.date) : ''}`;
     if (r.kind === 'staff') { const o = p.old || {}, n = p.new || {};
       return ['name', 'vendor', 'brand'].filter((k) => (o[k] || '') !== (n[k] || '')).map((k) => `${k}: ${o[k] || '—'} → ${n[k] || '—'}`).join(' · ') || 'No change'; }
+    if (r.kind === 'cross_store') return `Registered at ${p.home_store || '?'} · tried ${p.tries || 3}× at ${r.store} · ${r.date ? fmtDay(r.date) : ''} · today only`;
     if (isSg(r.kind)) {
       const bits = [r.date ? fmtDay(r.date) : '', p.in ? `IN ${p.in}` : '', p.out ? `OUT ${p.out}` : '', p.missing ? `missing ${p.missing}` : '', p.sg ? `now ${p.sg}` : ''].filter(Boolean);
       return bits.join(' · ');

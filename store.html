@@ -116,7 +116,7 @@ function paintDay() {
         ${v.brands.length ? `<div class="brs">${v.brands.map((s) => `<span class="tg ${tg(s.p, s.req)}">${esc(s.brand)} ${s.p}/${s.req}</span>`).join('')}</div>` : ''}
         <div class="dlist">${sec
           ? ppl.map((g) => `<div class="post"><b>${esc(g.name)}</b><span class="acts">${SG_TAG(g.st)}${past && g.st === 'MP' ? `<button class="btn s sm" data-a="sgreq" data-id="${g.id}">${esc(t('misPunchReq'))}</button>` : ''}</span></div>`).join('')
-          : ppl.map((a) => `<div class="post"><span><b>${esc(a.name)}</b>${a.brand ? ` <small>${esc(a.brand)}</small>` : ''}<br><small>IN ${esc(a.first_in || '—')}${a.last_out ? ' · OUT ' + esc(a.last_out) : ' · ' + esc(t('stillIn'))}${a.hours ? ' · ' + a.hours + ' h' : ''}${a.via_mod ? ' · ' + esc(t('punchedByStore')) : ''}</small></span>
+          : ppl.map((a) => `<div class="post"><span><b>${esc(a.name)}</b>${a.brand ? ` <small>${esc(a.brand)}</small>` : ''}<br><small>IN ${esc(a.first_in || '—')}${a.last_out ? ' · OUT ' + esc(a.last_out) : a.out_done ? ' · OUT ✓' : ' · ' + esc(t('stillIn'))}${a.hours ? ' · ' + a.hours + ' h' : ''}${a.via_mod ? ' · ' + esc(t('punchedByStore')) : ''}</small></span>
               <span class="acts">${a.photo === 'done' ? `${a.live === 'pass' ? `<span class="tg ok">${esc(t('liveOk'))}</span> ` : ''}<button class="btn ghost sm" style="padding:2px 6px" title="View selfie" data-selfie="${esc(a.id)}|${esc(date)}">📷</button>` : a.photo === 'pending' ? '<span class="tg amb">📷?</span>' : ''}
               ${editTypes.includes('staff') ? `<button class="btn s sm" data-a="staff" data-id="${a.id}" title="${esc(t('staffReq'))}" aria-label="${esc(t('staffReq'))}">✎</button>` : ''}</span></div>`).join('')}
           ${miss ? `<div class="post miss"><b>${esc(t(sec ? 'notOnDuty' : 'notPunchedN', { n: miss }))}</b>${!sec && !past ? `<button class="btn sm" data-a="go" data-to="pn">${esc(t('punchForStaffT'))}</button>` : ''}</div>` : ''}
@@ -149,7 +149,7 @@ async function loadMtd() {
   $('#mtdKpis').innerHTML = r.by_category.map((c) => { const p = pct(c.p, c.req); return `<div class="kpi"><span class="l">${esc(cn(c.c))}</span><span class="v">${c.p}/${c.req}</span><span class="d" style="color:${pctColor(p)};font-weight:700">${p}%</span></div>`; }).join('') || '<div class="empty">—</div>';
   $('#mtdList').innerHTML = r.associates.map((a) => { const days = a.present + a.absent, p = pct(a.present, days);
     return `<div class="li click" data-a="stm" data-id="${a.id}"><div class="m">${esc(a.name)} · ${esc(cn(a.c))}${a.brand ? ' ' + esc(a.brand) : ''}
-      <span>P ${a.present} · A ${a.absent} · CO ${a.compoff}${a.c !== 'SEC' ? ' · ' + a.hours + ' h' : ''}</span></div><span class="tag ${pctTag(p)}">${p}% ›</span></div>`; }).join('') || '<div class="empty">—</div>';
+      <span>P ${a.present} · A ${a.absent} · CO ${a.compoff}${a.c !== 'SEC' && a.hours != null ? ' · ' + a.hours + ' h' : ''}</span></div><span class="tag ${pctTag(p)}">${p}% ›</span></div>`; }).join('') || '<div class="empty">—</div>';
 }
 
 /* ---------------- Punch for staff ---------------- */
@@ -177,7 +177,7 @@ async function loadModToday() {
   if (!$('#pnMod')) return;
   if (!r || !r.ok) { $('#pnMod').innerHTML = `<div class="note r">${esc(err(r && r.error))}</div>`; return; }
   const L = r.present.filter((a) => a.via_mod);
-  $('#pnMod').innerHTML = L.map((a) => `<div class="post"><span><b>${esc(a.name)}</b> <small>· ${esc(cn(a.c))}</small>${a.c !== 'SEC' ? `<br><small>IN ${esc(a.first_in || '—')}${a.last_out ? ' · OUT ' + esc(a.last_out) : ''}</small>` : ''}</span>${a.c === 'SEC' ? SG_TAG(a.st) : `<span class="tg info">${esc(t('modMode'))}</span>`}</div>`).join('') || `<div class="sub">${esc(t('noneYet'))}</div>`;
+  $('#pnMod').innerHTML = L.map((a) => `<div class="post"><span><b>${esc(a.name)}</b> <small>· ${esc(cn(a.c))}</small>${a.c !== 'SEC' ? `<br><small>IN ${esc(a.first_in || '—')}${a.last_out ? ' · OUT ' + esc(a.last_out) : a.out_done ? ' · OUT ✓' : ''}</small>` : ''}</span>${a.c === 'SEC' ? SG_TAG(a.st) : `<span class="tg info">${esc(t('modMode'))}</span>`}</div>`).join('') || `<div class="sub">${esc(t('noneYet'))}</div>`;
 }
 
 /* ---------------- HK split ---------------- */
@@ -240,12 +240,12 @@ async function loadCr() {
 function paintBadge() { if (sh) sh.setBadge('rq', crs.filter((x) => x.status === 'pending').length); }
 function kindsAvail() { return Object.keys(KINDS).filter((k) => k.startsWith('sg_') || editTypes.includes(k)); }
 async function renderReq() {
-  W().innerHTML = `<h1 class="pt">${esc(t('reqTitle'))}</h1><div class="card"><div class="sub" style="margin-bottom:8px">${esc(t('reqHelp'))}</div><div id="rqForm"><div class="spin"></div></div></div>
+  W().innerHTML = `<h1 class="pt">${esc(t('reqTitle'))}</h1><div id="smAp"></div><div class="card"><div class="sub" style="margin-bottom:8px">${esc(t('reqHelp'))}</div><div id="rqForm"><div class="spin"></div></div></div>
     <div class="card"><div class="hd"><h2>${esc(t('myRequests'))}</h2></div><div class="seg" id="rqSeg" style="margin-top:8px"></div><div class="dlist" id="rqList"><div class="spin"></div></div></div>`;
   const [r] = await Promise.all([loadCr(), getAssoc()]);
   if (tab !== 'rq' || !$('#rqForm')) return;
   if (r && !r.ok) $('#rqList').innerHTML = `<div class="note r">${esc(err(r.error))}</div>`;
-  paintReqForm(); paintReqList();
+  paintReqForm(); paintReqList(); paintSmAp();
 }
 function paintReqForm(kind) {
   const ks = kindsAvail(); kind = kind && ks.includes(kind) ? kind : ($('#rqT') && ks.includes($('#rqT').value) ? $('#rqT').value : ks[0]);
@@ -267,9 +267,10 @@ function paintReqForm(kind) {
     <div class="note r" id="rqErr" hidden style="margin-top:8px"></div>`;
 }
 function paintReqList() {
-  const n = (s) => crs.filter((x) => s === 'all' || x.status === s).length;
+  const mine = crs.filter((x) => x.kind !== 'cross_store');
+  const n = (s) => mine.filter((x) => s === 'all' || x.status === s).length;
   $('#rqSeg').innerHTML = [['all', 'all'], ['pending', 'stPend'], ['approved', 'stApproved'], ['rejected', 'stRejected']].map(([k, l]) => `<button data-a="rqf" data-f="${k}" class="${rqFilter === k ? 'on' : ''}">${esc(t(l))} ${n(k)}</button>`).join('');
-  const L = crs.filter((x) => rqFilter === 'all' || x.status === rqFilter);
+  const L = mine.filter((x) => rqFilter === 'all' || x.status === rqFilter);
   const st = { pending: 'amb', approved: 'ok', rejected: 'red' };
   const lbl = { pending: 'stPend', approved: 'stApproved', rejected: 'stRejected' };
   $('#rqList').innerHTML = L.map((x) => {
@@ -282,6 +283,32 @@ function paintReqList() {
       ${x.note ? `<div class="sub">${esc(t('remark'))}: <b>“${esc(x.note)}”</b></div>` : ''}</div>
       <div class="rt"><span class="tg ${st[x.status] || 'grey'}">${esc(t(lbl[x.status] || x.status))}</span>${x.decision ? SG_TAG(x.decision) : ''}</div></div>`;
   }).join('') || `<div class="sub">${esc(t('noRequests'))}</div>`;
+}
+/* v5.2: other-store phone requests (3 blocked tries) → SM of this store approves for TODAY only */
+function paintSmAp() {
+  const el = $('#smAp'); if (!el) return;
+  const L = crs.filter((x) => x.kind === 'cross_store');
+  if (!L.length) { el.innerHTML = ''; return; }
+  const hi = lang() === 'hi', st = { pending: 'amb', approved: 'ok', rejected: 'red' };
+  el.innerHTML = `<div class="card"><div class="hd"><h2>${hi ? 'दूसरे स्टोर का फ़ोन · SM अप्रूवल' : 'Phone from another store · SM approval'}</h2></div>
+    <div class="sub" style="margin:4px 0 8px">${hi ? 'यह व्यक्ति दूसरे स्टोर में रजिस्टर है और यहाँ 3 बार पंच करने की कोशिश की। अप्रूव करने पर सिर्फ़ आज यहाँ पंच कर पाएगा।' : 'This person is registered at another store and tried 3 times to punch here. Approve = can punch at this store for today only.'}</div>
+    <div class="dlist">${L.map((x) => { const p = x.payload || {};
+      return `<div class="reqc"><div class="m"><b>${esc(x.assoc || p.typed_name || '')}</b> ${x.assoc_code ? '· ' + esc(x.assoc_code) : ''}
+        <div class="sub">${hi ? 'रजिस्टर स्टोर' : 'Registered at'}: <b>${esc(p.home_store || '')}${p.home_store_name ? ' · ' + esc(p.home_store_name) : ''}</b> · ${hi ? 'यहाँ लिखा नाम' : 'Name typed here'}: ${esc(p.typed_name || '')} · ${hi ? 'कोशिश' : 'tries'} ${esc(p.tries || 3)} · ${esc(x.at || '')}</div>
+        ${x.status !== 'pending' ? `<div class="sub">${esc(t('decidedBy', { who: x.decided_by || x.decided_by_emp || '' }))}${x.decided_at ? ' · ' + esc(x.decided_at) : ''}${x.note ? ' · “' + esc(x.note) + '”' : ''}</div>` : ''}
+        ${x.can_decide ? `<div class="frm" style="margin-top:6px"><input class="f" data-cxn="${x.id}" maxlength="300" placeholder="${hi ? 'रिमार्क (ज़रूरी नहीं)' : 'Remark (optional)'}">
+          <span class="acts"><button class="btn sm" data-a="cxok" data-id="${x.id}">${hi ? 'आज के लिए अप्रूव' : 'Approve for today'}</button><button class="btn r sm" data-a="cxno" data-id="${x.id}">${hi ? 'मना करें' : 'Reject'}</button></span></div>`
+          : x.status === 'pending' ? `<div class="sub">${hi ? 'SM के अप्रूवल का इंतज़ार' : 'Waiting for the SM of this store'}</div>` : ''}</div>
+        <div class="rt"><span class="tg ${st[x.status] || 'grey'}">${esc(x.status)}</span></div></div>`; }).join('')}</div></div>`;
+}
+async function cxDecide(id, ok, btn) {
+  const note = ($(`[data-cxn="${id}"]`) || {}).value || null;
+  btn.disabled = true;
+  const r = await rpc('cr_decide', { p_token: me.token, p_id: Number(id), p_approve: ok, p_note: note, p_status: null });
+  btn.disabled = false;
+  if (!r || !r.ok) return toast(err(r && r.error));
+  toast(ok ? (lang() === 'hi' ? 'अप्रूव हुआ · आज यहाँ पंच कर सकता है' : 'Approved · can punch here today') : (lang() === 'hi' ? 'मना कर दिया' : 'Rejected'));
+  await loadCr(); paintSmAp(); paintReqList();
 }
 async function sendRequest(kind, id, d, payload, reason, errEl, btn) {
   const show = (m) => { if (errEl) { errEl.hidden = false; errEl.textContent = m; } else toast(m); };
@@ -334,13 +361,14 @@ function wire() {
     else if (a === 'go') go(b.dataset.to);
     else if (a === 'mtd') { tdView = 'mtd'; renderMtd(); }
     else if (a === 'mtdback') { tdView = 'day'; renderToday(); }
-    else if (a === 'mtdxls') { if (!mtd) return; downloadXlsx(mtd.associates.map((x) => ({ Store: me.store_code, Code: x.code, Name: x.name, Dept: cn(x.c), Brand: x.brand || '', Vendor: x.vendor || '', Present: x.present, Absent: x.absent, 'Comp-off': x.compoff, Hours: x.c === 'SEC' ? '' : x.hours })), `${me.store_code}_${mtd.from}_${mtd.to}.xlsx`, 'Month'); }
+    else if (a === 'mtdxls') { if (!mtd) return; downloadXlsx(mtd.associates.map((x) => ({ Store: me.store_code, Code: x.code, Name: x.name, Dept: cn(x.c), Brand: x.brand || '', Vendor: x.vendor || '', Present: x.present, Absent: x.absent, 'Comp-off': x.compoff, Hours: x.c === 'SEC' || x.hours == null ? '' : x.hours })), `${me.store_code}_${mtd.from}_${mtd.to}.xlsx`, 'Month'); }
     else if (a === 'stm') location.href = `statement.html?a=${b.dataset.id}&from=${mtd.from}&to=${mtd.to}`;
     else if (a === 'staff' || a === 'compoff') { const x = find(b.dataset.id); if (x) quickRequest(a, x); }
     else if (a === 'sgreq') { const x = find(b.dataset.id); if (x) quickRequest('sg_mispunch', x); }
     else if (a === 'pncat') { pnCat = b.dataset.c; $$('#pnCats .pill').forEach((p) => p.classList.toggle('on', p === b)); $('#pnRoster').innerHTML = '<div class="spin"></div>'; loadRoster(); }
     else if (a === 'hksave') hkSave();
     else if (a === 'rqsend') rqSend();
+    else if (a === 'cxok' || a === 'cxno') cxDecide(b.dataset.id, a === 'cxok', b);
     else if (a === 'rqf') { rqFilter = b.dataset.f; paintReqList(); }
   });
   document.addEventListener('click', (e) => {

@@ -78,7 +78,7 @@ function posterHtml(code, name) {
     <div class="code">${esc(code)}${name ? ' · ' + esc(name) : ''}</div>
     <div class="stps"><div><b>1</b>Open phone camera<br>फ़ोन कैमरा खोलें</div><div><b>2</b>Scan this QR<br>QR स्कैन करें</div><div><b>3</b>Pick dept, vendor, name · selfie<br>विभाग, वेंडर, नाम · सेल्फी</div></div>
     <div class="depts">Housekeeping · Security · Travel · CDIT promoters</div>
-    <div class="nophone">No phone? Ask SM / ASM / DM to punch for you. · फ़ोन नहीं? SM / ASM / DM से पंच करवाएं।</div>
+    <div class="nophone">No phone? Ask the SMT to punch for you. · फ़ोन नहीं? SMT से पंच करवाएं।</div>
     <div class="url">${esc(base)}punch.html?s=${esc(code)}</div></section>`;
 }
 function drawQr(el, code) {
@@ -131,7 +131,7 @@ async function posterPng(code) {
     g.font = F(400, 29, true); g.fillText(hi, x + bwid / 2, y + 30 * mm, bwid - 6 * mm); });
   y += bh + 11 * mm;
   g.fillStyle = '#1A2130'; g.font = F(400, 32); g.fillText('Housekeeping · Security · Travel · CDIT promoters', W / 2, y);
-  y += 10 * mm; g.fillStyle = MUT; g.font = F(400, 27, true); g.fillText('No phone? Ask SM / ASM / DM to punch for you. · फ़ोन नहीं? SM / ASM / DM से पंच करवाएं।', W / 2, y, W - 24 * mm);
+  y += 10 * mm; g.fillStyle = MUT; g.font = F(400, 27, true); g.fillText('No phone? Ask the SMT to punch for you. · फ़ोन नहीं? SMT से पंच करवाएं।', W / 2, y, W - 24 * mm);
   y += 8 * mm; g.fillStyle = '#98A1AE'; g.font = F(400, 21); g.fillText(`${base}punch.html?s=${code}`, W / 2, y, W - 24 * mm);
   return cv.toDataURL('image/png');
 }

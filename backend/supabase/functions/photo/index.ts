@@ -105,8 +105,11 @@ Deno.serve(async (req) => {
   }
 
   if (action === "delete") {
-    const { data: rows, error } = await sb.from("punches").select("id, photo_path")
-      .eq("photo_status", "done").gte("work_date", from).lte("work_date", to).limit(20000);
+    const stores = Array.isArray(body.stores) ? (body.stores as unknown[]).map((x) => String(x).toUpperCase()).filter((x) => /^[A-Z]{2}\d{2}$/.test(x)) : [];
+    let q = sb.from("punches").select("id, photo_path")
+      .eq("photo_status", "done").gte("work_date", from).lte("work_date", to);
+    if (stores.length) q = q.in("store_code", stores);
+    const { data: rows, error } = await q.limit(50000);
     if (error) return json({ ok: false, error: error.message }, 500);
     const list = rows || [];
     for (let i = 0; i < list.length; i += 500) {
@@ -115,7 +118,7 @@ Deno.serve(async (req) => {
       if (rm.error) return json({ ok: false, error: rm.error.message, deleted: i }, 500);
       await sb.from("punches").update({ photo_status: "deleted" }).in("id", chunk.map((r) => r.id));
     }
-    await sb.from("access_log").insert({ event: "photos_deleted", role: "admin", detail: `${from}..${to}: ${list.length}` });
+    await sb.from("access_log").insert({ event: "photos_deleted", role: "admin", detail: `${from}..${to}${stores.length ? " stores " + stores.join(",") : ""}: ${list.length}` });
     return json({ ok: true, deleted: list.length });
   }
 
