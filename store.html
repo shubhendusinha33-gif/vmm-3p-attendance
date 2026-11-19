@@ -5,230 +5,373 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://phyllziizajuphenpwxz.supabase.co; media-src 'self' blob:; connect-src 'self' https://phyllziizajuphenpwxz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Store Dashboard · 3rd Party Attendance</title>
-<meta name="theme-color" content="#1565C0">
+<title>Store · 3rd Party Attendance</title>
+<meta name="theme-color" content="#1E293B">
 <link rel="preconnect" href="https://phyllziizajuphenpwxz.supabase.co" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="icon" href="assets/logo.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&family=Noto+Sans+Devanagari:wght@400;700&display=swap" media="print" onload="this.media=\'all\'">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&family=Noto+Sans+Devanagari:wght@400;700&display=swap" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="assets/app.css">
+<style>
+  .card .hd{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .post small{color:var(--mut)}
+  .post.miss{border-style:dashed;color:var(--red)}
+  .post .acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+  .brs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .kpi.click{cursor:pointer;font:inherit;color:inherit}
+  .kpi.click:hover{border-color:var(--acc)}
+  .reqc .m{min-width:0;flex:1}
+  .reqc .m .sub b{color:var(--ink)}
+  .reqc .rt{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+  .sumln{font-size:13px;font-weight:700}
+  .sumln.bad{color:var(--red)}.sumln.good{color:var(--ok)}
+  .hist td,.hist th{font-size:12.5px}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--mut);text-align:right;padding:6px 10px;background:var(--thead)}
+  th.l,td.l{text-align:left}
+  .wrap.mob .btn.big,.wrap.mob a.btn.big:visited{display:block;width:100%;padding:12px 16px;font-size:15px;border-radius:10px;text-decoration:none;color:#fff}
+  .hist td{white-space:normal}
+  .pills .pill{cursor:pointer}
+</style>
 </head>
 <body>
-<header class="hdr">
-  <div class="t"><b id="hTitle">Store</b><small id="hSub"></small></div>
-  <span id="langSlot"></span>
-  <button class="x" id="btnLogout" data-t="logout"></button>
-</header>
-
-<main class="wrap">
-  <div class="seg" id="mode">
-    <button data-m="today" class="on" data-t="today"></button>
-    <button data-m="pick" data-t="pickDate"></button>
-    <button data-m="mtd" data-t="mtd"></button>
-  </div>
-
-  <!-- calendar (pick date / month) -->
-  <section id="calBox" class="list" style="padding:12px" hidden>
-    <div class="calhd"><button id="calPrev" aria-label="Previous month">‹</button><span id="calTitle"></span><button id="calNext" aria-label="Next month">›</button></div>
-    <div class="cal" id="cal" style="margin-top:8px"></div>
-  </section>
-
-  <!-- day view -->
-  <section id="day" style="display:flex;flex-direction:column;gap:12px">
-    <div class="seg blue" id="shift">
-      <button data-s="M" data-t="morning"></button><button data-s="E" data-t="evening"></button><button data-s="B" class="on" data-t="both"></button>
-    </div>
-    <div class="crumb" id="dayLabel"></div>
-    <button class="banner" id="banner"></button>
-    <div class="k2" id="kpis"></div>
-    <div class="sec" data-t="present"></div>
-    <div class="list" id="presentList"></div>
-  </section>
-
-  <!-- missing detail -->
-  <section id="missing" hidden style="display:flex;flex-direction:column;gap:12px">
-    <button class="link" id="missBack" style="align-self:flex-start" data-t="back"></button>
-    <div class="sec" data-t="emptySlots"></div>
-    <div class="list" id="slotList"></div>
-    <div class="sec" data-t="regularsMissing"></div>
-    <div class="list" id="regList"></div>
-    <button class="btn wa" id="btnWa" data-t="shareWa"></button>
-  </section>
-
-  <!-- month to date -->
-  <section id="mtd" hidden style="display:flex;flex-direction:column;gap:12px">
-    <div class="crumb" id="mtdLabel"></div>
-    <div class="k2" id="mtdKpis"></div>
-    <div class="list" id="mtdList"></div>
-    <div class="row"><button class="btn o sm" id="btnXls">⬇ Excel</button></div>
-  </section>
-
-  <section id="reqBox" hidden style="display:flex;flex-direction:column;gap:8px">
-    <div class="sec" data-t="myRequests"></div>
-    <div class="list" id="reqList"></div>
-  </section>
-
-  <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
-    <button class="btn" id="btnMod" data-t="punchForStaff"></button>
-    <button class="btn o" id="btnQr" data-t="qrPoster"></button>
-    <button class="btn o" id="btnStmt" data-t="statement"></button>
-    <button class="link" id="btnPin" data-t="changePin" style="align-self:center"></button>
-  </div>
-  <p class="foot" id="credit"></p>
-</main>
-
-<script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<div id="root"></div>
 <script src="assets/app.js"></script>
+<script src="assets/store-app.js"></script>
 <script>
-let me = null, mode = 'today', shift = 'B', date = todayIST(), calMonth = todayIST().slice(0, 7), cats = {}, dayData = null, mtdData = null, lastTouch = Date.now();
+let me = null, sh = null, tab = 'td', date = todayIST(), shift = 'B', cats = {}, day = null, hk = null, crs = [], editTypes = ['compoff', 'staff'];
+let assoc = null, rqFilter = 'all', tdView = 'day', mtdMonth = todayIST().slice(0, 7), mtd = null, mtdPct = null, pnCat = null, lastRef = '', lastTouch = Date.now();
 const CATS = { HK: { name: 'Housekeeping', name_hi: 'हाउसकीपिंग' }, SEC: { name: 'Security', name_hi: 'सिक्योरिटी' }, TRAVEL: { name: 'Travel', name_hi: 'ट्रैवल' }, CDIT: { name: 'CDIT', name_hi: 'CDIT' } };
 const cn = (id) => catName(cats[id] || CATS[id] || { name: id });
+const W = () => sh.wrap;
+const hhmm = () => { const d = istNow(); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+const ERR = { BAD_DATE: () => t('badDate'), NOT_SECURITY: () => t('notSecurity'), BAD_VALUE: () => t('hkSum', { s: '?', t: '?' }), NO_HK_TOTAL: () => t('hkNoTotal') };
+const err = (e) => (ERR[e] ? ERR[e]() : errText(e));
 
-function setMode(m) {
-  mode = m;
-  $$('#mode button').forEach((b) => b.classList.toggle('on', b.dataset.m === m));
-  $('#calBox').hidden = m !== 'pick' && m !== 'mtd';
-  $('#cal').hidden = m === 'mtd';
-  $('#day').hidden = m === 'mtd'; $('#missing').hidden = true; $('#mtd').hidden = m !== 'mtd';
-  if (m === 'today') { date = todayIST(); loadDay(); }
-  if (m === 'pick') { paintCal(); loadDay(); }
-  if (m === 'mtd') { paintCal(); loadMtd(); }
+/* ---------------- shell + routing ---------------- */
+function buildShell() {
+  sh = storeShell('#root', me, tab, { onNav: (id) => { tdView = 'day'; go(id); }, onLang: () => { buildShell(); render(); }, checkHk: false });
+  if (hk) sh.setDot('hks', hk.has_hk && !hk.set);
+  paintBadge();
+}
+function go(id) {
+  if (!['td', 'pn', 'hks', 'rq'].includes(id)) id = 'td';
+  tab = id; sh.setActive(id); sh.setTitle(t(STORE_TABS.find((x) => x[0] === id)[1]));
+  if (location.hash !== '#' + id) history.replaceState(null, '', '#' + id);
+  render();
+}
+function render() {
+  if (tab === 'td') return tdView === 'mtd' ? renderMtd() : renderToday();
+  if (tab === 'pn') return renderPunch();
+  if (tab === 'hks') return renderHk();
+  if (tab === 'rq') return renderReq();
 }
 
-function paintCal() {
-  const [y, mo] = calMonth.split('-').map(Number);
-  const first = new Date(y, mo - 1, 1), days = new Date(y, mo, 0).getDate(), today = todayIST();
-  $('#calTitle').textContent = first.toLocaleDateString(lang() === 'hi' ? 'hi-IN' : 'en-GB', { month: 'long', year: 'numeric' });
-  $('#calNext').disabled = calMonth >= today.slice(0, 7);
-  const hd = ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d) => `<div class="h">${d}</div>`).join('');
-  let cells = '';
-  for (let i = 0; i < first.getDay(); i++) cells += '<div></div>';
-  for (let d = 1; d <= days; d++) {
-    const s = `${calMonth}-${String(d).padStart(2, '0')}`;
-    const on = mode === 'pick' ? s === date : false;
-    cells += `<button data-d="${s}" class="${on ? 'on' : ''}" ${s > today || mode === 'mtd' ? 'disabled' : ''}>${d}</button>`;
-  }
-  $('#cal').innerHTML = hd + cells;
+/* ---------------- Today ---------------- */
+function renderToday() {
+  const isToday = date === todayIST();
+  W().innerHTML = `<div class="mrow"><input class="f" type="date" id="tdDate" value="${date}" max="${todayIST()}" aria-label="${esc(t('date'))}">
+      <span class="lvz" style="margin:0"><span class="dot ${isToday ? '' : 'off'}"></span><span id="tdLive">${isToday ? esc(t('live')) + (lastRef ? ' · ' + lastRef : '') : esc(t('endOfDay'))}</span></span>
+      <button class="btn s sm" data-a="ref" title="${esc(t('refresh'))}" aria-label="${esc(t('refresh'))}">↻</button></div>
+    <div class="toolrow"><h1 class="pt">${esc(me.store_code)} · ${esc(me.store_name || '')}</h1>
+      <div class="seg" id="tdShift">${[['M', 'morning'], ['E', 'evening'], ['B', 'both']].map(([v, k]) => `<button data-s="${v}" class="${shift === v ? 'on' : ''}">${esc(t(k))}</button>`).join('')}</div></div>
+    <div id="tdBody" style="display:flex;flex-direction:column;gap:10px"><div class="spin"></div></div>`;
+  loadDay();
 }
-
 async function loadDay() {
-  $('#kpis').innerHTML = '<div class="spin"></div>'; $('#presentList').innerHTML = '';
+  const d0 = date, s0 = shift;
   const r = await rpc('dash_store', { p_token: me.token, p_store: me.store_code, p_date: date, p_shift: shift });
-  if (!r || !r.ok) { $('#kpis').innerHTML = `<div class="note r">${esc(errText(r && r.error))}</div>`; return; }
-  dayData = r;
-  $('#dayLabel').textContent = fmtDate(date) + (date === todayIST() ? ` · ${t('today')}` : '');
-  const byCat = {};
-  r.slots.forEach((s) => { const c = byCat[s.c] || (byCat[s.c] = { req: 0, p: 0 }); c.req += s.req; c.p += s.p; });
-  const missingN = r.slots.reduce((a, s) => a + Math.max(s.req - s.p, 0), 0);
-  $('#banner').className = 'banner' + (missingN ? '' : ' ok');
-  $('#banner').innerHTML = missingN ? `<span>⚠ ${esc(t('notPunched', { n: missingN }))}</span><span>›</span>` : `<span>✓ ${esc(t('allPunched'))}</span>`;
-  $('#banner').disabled = !missingN && !r.regulars_missing.length;
-  $('#kpis').innerHTML = Object.entries(byCat).map(([c, v]) => { const p = pct(v.p, v.req); return `<div class="kpi"><div class="l">${esc(cn(c))}</div>
-      <span class="v">${v.p}/${v.req}</span><span class="p" style="color:${pctColor(p)}">${p}%</span>
-      <div class="bar"><i style="width:${Math.min(p, 100)}%;background:${pctColor(p)}"></i></div></div>`; }).join('') || `<div class="empty">—</div>`;
-  $('#presentList').innerHTML = r.present.map((a) => `<div class="li"><div class="m">${esc(a.name)} · ${esc(cn(a.c))}${a.brand ? ' ' + esc(a.brand) : ''}
-      <span>${esc(a.code)} · IN ${a.first_in || '—'}${a.last_out ? ' · OUT ' + a.last_out : ''}${a.hours ? ' · ' + a.hours + ' h' : ''}${a.via_mod ? ' · ' + esc(t('modMode')) : ''}${a.photo === 'done' ? ' · 📷' : a.photo === 'pending' ? ' · 📷?' : ''}</span></div>
-      <span style="display:flex;gap:6px;align-items:center"><span class="tag ${a.last_out ? 'i' : 'ok'}">${a.last_out ? 'OUT' : esc(t('present'))}</span>
-      ${editTypes.includes('staff') ? `<button class="btn o sm" data-ed="${a.id}" data-n="${esc(a.name)}" data-v="${esc(a.vendor || '')}" data-b="${esc(a.brand || '')}" title="${esc(t('staffReq'))}">✎</button>` : ''}</span></div>`).join('') || `<div class="empty">—</div>`;
+  if (tab !== 'td' || tdView !== 'day' || d0 !== date || s0 !== shift || !$('#tdBody')) return;
+  if (!r || !r.ok) { $('#tdBody').innerHTML = `<div class="note r">${esc(err(r && r.error))}</div>`; return; }
+  day = r; lastRef = hhmm();
+  if (date === todayIST() && $('#tdLive')) $('#tdLive').textContent = `${t('live')} · ${lastRef}`;
+  if (r.hk) { hk = Object.assign(hk || {}, { has_hk: true, set: r.hk.set, total: r.hk.total }); sh.setDot('hks', !r.hk.set); }
+  paintDay();
+  if (mtdPct === null) loadMtdPct();
 }
-
-function showMissing() {
-  const r = dayData; if (!r) return;
-  $('#day').hidden = true; $('#calBox').hidden = true; $('#missing').hidden = false;
-  const slots = r.slots.filter((s) => s.req > s.p);
-  $('#slotList').innerHTML = slots.map((s) => `<div class="li"><div class="m">${esc(cn(s.c))}${s.brand ? ' · ' + esc(s.brand) : ''} × ${s.req - s.p}<span>${esc(s.vendor || '')}</span></div><span class="tag r">${esc(t('missing'))}</span></div>`).join('') || `<div class="empty">✓</div>`;
-  $('#regList').innerHTML = r.regulars_missing.map((a) => `<div class="li"><div class="m">${esc(a.name)} · ${esc(cn(a.c))}${a.brand ? ' ' + esc(a.brand) : ''}<span>${esc(t('cameDays', { n: a.days }))}</span></div>
-      ${editTypes.includes('compoff') ? `<button class="btn o sm" data-co="${a.id}" data-n="${esc(a.name)}">${esc(t('compoffReq'))}</button>` : ''}</div>`).join('') || `<div class="empty">—</div>`;
-}
-
-function waText() {
-  const r = dayData; const lines = [`${me.store_code} ${r.store_name} · ${fmtDate(date)} · ${t('notPunched', { n: r.slots.reduce((a, s) => a + Math.max(s.req - s.p, 0), 0) })}`];
-  r.slots.filter((s) => s.req > s.p).forEach((s) => lines.push(`• ${cn(s.c)}${s.brand ? ' ' + s.brand : ''} × ${s.req - s.p}${s.vendor ? ' (' + s.vendor + ')' : ''}`));
-  if (r.regulars_missing.length) { lines.push(t('regularsMissing') + ':'); r.regulars_missing.forEach((a) => lines.push(`• ${a.name} (${cn(a.c)})`)); }
-  return lines.join('\n');
-}
-
-async function loadMtd() {
-  const from = calMonth + '-01';
-  const [y, mo] = calMonth.split('-').map(Number); const to = ymd(new Date(y, mo, 0));
-  $('#mtdKpis').innerHTML = '<div class="spin"></div>'; $('#mtdList').innerHTML = '';
-  const r = await rpc('store_range', { p_token: me.token, p_store: me.store_code, p_from: from, p_to: to });
-  if (!r || !r.ok) { $('#mtdKpis').innerHTML = `<div class="note r">${esc(errText(r && r.error))}</div>`; return; }
-  mtdData = r;
-  $('#mtdLabel').textContent = `${fmtDay(r.from)} – ${fmtDate(r.to)}`;
-  $('#mtdKpis').innerHTML = r.by_category.map((c) => { const p = pct(c.p, c.req); return `<div class="kpi"><div class="l">${esc(cn(c.c))}</div>
-     <span class="v">${c.p}/${c.req}</span><span class="p" style="color:${pctColor(p)}">${p}%</span></div>`; }).join('') || `<div class="empty">—</div>`;
-  $('#mtdList').innerHTML = r.associates.map((a) => { const days = a.present + a.absent; const p = pct(a.present, days);
-    return `<div class="li click" data-a="${a.id}"><div class="m">${esc(a.name)} · ${esc(cn(a.c))}${a.brand ? ' ' + esc(a.brand) : ''}
-      <span>P ${a.present} · A ${a.absent} · CO ${a.compoff} · ${a.hours} h</span></div><span class="tag ${pctTag(p)}">${p}%</span></div>`; }).join('') || `<div class="empty">—</div>`;
-}
-
-let editTypes = ['compoff', 'staff'];
-function requestDialog(kind, assoc, inner, payload) {
-  const m = modal(`<h3>✎ ${esc(t(kind === 'compoff' ? 'compoffReq' : 'staffReq'))}</h3>${inner}
-    <label class="lbl">${esc(t('reasonReq'))}<textarea class="in" name="why" rows="2" maxlength="300"></textarea></label><p class="mini" style="margin:0">${esc(t('nothingChanges'))}</p>`, async (f, close) => {
-    if (f.why.value.trim().length < 5) return t('reasonRequired');
-    const extra = payload(f);
-    const r = await rpc('cr_create', { p_token: me.token, p_kind: kind, p_associate: assoc, p_date: extra.p_date, p_payload: extra.p_payload, p_reason: f.why.value.trim() });
-    if (r && r.ok) { close(); toast(t('requestSent')); loadRequests(); return null; }
-    return errText(r && r.error);
+function paintDay() {
+  const r = day; if (!r || !$('#tdBody')) return;
+  const by = {};
+  r.slots.forEach((s) => {
+    const c = by[s.c] || (by[s.c] = { req: 0, p: 0, co: 0, vendors: new Set(), brands: [] });
+    c.req += s.req; c.p += s.p; c.co += s.co || 0; if (s.vendor) c.vendors.add(s.vendor); if (s.brand) c.brands.push(s);
   });
-  m.okLabel(t('sendToAm'));
+  r.present.forEach((a) => { if (!by[a.c]) by[a.c] = { req: 0, p: 0, co: 0, vendors: new Set(a.vendor ? [a.vendor] : []), brands: [] }; });
+  const req = r.slots.reduce((a, s) => a + s.req, 0), pIn = r.slots.reduce((a, s) => a + Math.min(s.p, s.req), 0), pAll = r.slots.reduce((a, s) => a + s.p, 0);
+  const tp = pct(pIn, req), sgSet = r.sg_set || 8, past = date < todayIST();
+  const tg = (n, q) => (n >= q ? 'ok' : n ? 'amb' : 'red');
+  const order = Object.keys(by).sort((a, b) => (a === 'SEC') - (b === 'SEC') || a.localeCompare(b));
+  $('#tdBody').innerHTML = `
+    ${r.hk && !r.hk.set ? `<div class="note w">${esc(t('hkNotSet', { n: r.hk.total }))} <button class="btn sm" data-a="go" data-to="hks">${esc(t('hkEnter'))}</button></div>` : ''}
+    <div class="kpis k4">
+      <div class="kpi"><span class="l">${esc(t('required'))}</span><span class="v">${req}</span><span class="d">${esc(t(shift === 'M' ? 'morning' : shift === 'E' ? 'evening' : 'both'))}</span></div>
+      <div class="kpi"><span class="l">${esc(t('present'))}</span><span class="v">${pIn} <span class="tg ${pctTag(tp) === 'w' ? 'amb' : pctTag(tp) === 'r' ? 'red' : 'ok'}" style="vertical-align:4px">${tp}%</span></span>${pAll > pIn ? `<span class="d">${esc(t('extra', { n: pAll - pIn }))}</span>` : ''}</div>
+      <div class="kpi"><span class="l">${esc(t('notPunchedK'))}</span><span class="v" style="color:${req - pIn ? 'var(--red)' : 'var(--ok)'}">${req - pIn}</span></div>
+      <button type="button" class="kpi click" data-a="mtd"><span class="l">${esc(t('monthToDate'))}</span><span class="v" id="mtdPct">${mtdPct === null ? '…' : mtdPct + '%'}</span><span class="d">${fmtDay(monthStart(todayIST()))} – ${fmtDay(todayIST())} ›</span></button>
+    </div>
+    <div class="cols2">${order.map((c) => {
+      const v = by[c], sec = c === 'SEC', ppl = r.present.filter((a) => a.c === c), miss = Math.max(v.req - v.p, 0);
+      const vend = [...v.vendors].join(', ');
+      return `<div class="card"><div class="hd"><div><h2>${esc(cn(c))}</h2><div class="sub">${vend ? esc(t('vendor')) + ' ' + esc(vend) : ''}${sec ? ` · ${esc(t('hrSet', { n: sgSet }))} · ${esc(t('statusOnly'))}` : ''}${v.co ? ` · ${esc(t('compoffShort'))} ${v.co}` : ''}</div></div><span class="tg ${tg(v.p, v.req)}">${v.p} / ${v.req}</span></div>
+        ${v.brands.length ? `<div class="brs">${v.brands.map((s) => `<span class="tg ${tg(s.p, s.req)}">${esc(s.brand)} ${s.p}/${s.req}</span>`).join('')}</div>` : ''}
+        <div class="dlist">${sec
+          ? ppl.map((g) => `<div class="post"><b>${esc(g.name)}</b><span class="acts">${SG_TAG(g.st)}${past && g.st === 'MP' ? `<button class="btn s sm" data-a="sgreq" data-id="${g.id}">${esc(t('misPunchReq'))}</button>` : ''}</span></div>`).join('')
+          : ppl.map((a) => `<div class="post"><span><b>${esc(a.name)}</b>${a.brand ? ` <small>${esc(a.brand)}</small>` : ''}<br><small>IN ${esc(a.first_in || '—')}${a.last_out ? ' · OUT ' + esc(a.last_out) : ' · ' + esc(t('stillIn'))}${a.hours ? ' · ' + a.hours + ' h' : ''}${a.via_mod ? ' · ' + esc(t('punchedByStore')) : ''}</small></span>
+              <span class="acts">${a.photo === 'done' && a.live === 'pass' ? `<span class="tg ok">${esc(t('liveOk'))}</span>` : a.photo === 'done' ? '<span class="tg ok">📷</span>' : a.photo === 'pending' ? '<span class="tg amb">📷?</span>' : ''}
+              ${editTypes.includes('staff') ? `<button class="btn s sm" data-a="staff" data-id="${a.id}" title="${esc(t('staffReq'))}" aria-label="${esc(t('staffReq'))}">✎</button>` : ''}</span></div>`).join('')}
+          ${miss ? `<div class="post miss"><b>${esc(t(sec ? 'notOnDuty' : 'notPunchedN', { n: miss }))}</b>${!sec && !past ? `<button class="btn sm" data-a="go" data-to="pn">${esc(t('punchForStaffT'))}</button>` : ''}</div>` : ''}
+          ${!ppl.length && !miss ? '<div class="sub">—</div>' : ''}</div></div>`;
+    }).join('') || `<div class="card"><div class="empty">—</div></div>`}</div>
+    ${r.regulars_missing.length ? `<div class="card"><h2>${esc(t('regularsMissing'))}</h2><div class="dlist">${r.regulars_missing.map((a) => `<div class="post"><span><b>${esc(a.name)}</b> <small>· ${esc(cn(a.c))}${a.brand ? ' ' + esc(a.brand) : ''}</small><br><small>${esc(t('cameDays', { n: a.days }))}</small></span>
+        ${editTypes.includes('compoff') ? `<button class="btn s sm" data-a="compoff" data-id="${a.id}">${esc(t('compoffReq'))}</button>` : ''}</div>`).join('')}</div></div>` : ''}`;
 }
-async function loadRequests() {
-  const r = await rpc('cr_list', { p_token: me.token, p_status: 'all', p_days: 30 });
+async function loadMtdPct() {
+  const r = await rpc('store_range', { p_token: me.token, p_store: me.store_code, p_from: monthStart(todayIST()), p_to: todayIST() });
   if (!r || !r.ok) return;
-  editTypes = r.edit_types || editTypes;
-  $('#reqBox').hidden = !r.rows.length;
-  const tag = { pending: ['w', 'stPending'], approved: ['ok', 'stApproved'], rejected: ['r', 'stRejected'] };
-  $('#reqList').innerHTML = r.rows.slice(0, 15).map((x) => `<div class="li"><div class="m">${esc(x.kind === 'compoff' ? t('compOff') : t('staffReq'))} · ${esc(x.assoc || '')}${x.date ? ' · ' + fmtDay(x.date) : ''}
-    <span>${esc(x.reason)}${x.note ? ' · AM: “' + esc(x.note) + '”' : ''}</span></div><span class="tag ${tag[x.status][0]}">${esc(t(tag[x.status][1]))}</span></div>`).join('');
+  const q = r.by_category.reduce((a, c) => a + c.req, 0), p = r.by_category.reduce((a, c) => a + c.p, 0);
+  mtdPct = pct(p, q); if ($('#mtdPct')) $('#mtdPct').textContent = mtdPct + '%';
+}
+
+/* month to date (kept from v4: per associate P / A / CO, opens the statement) */
+function renderMtd() {
+  W().innerHTML = `<div class="mrow"><button class="btn s sm" data-a="mtdback">${esc(t('back2'))}</button><input class="f" type="month" id="mtdMonth" value="${mtdMonth}" max="${todayIST().slice(0, 7)}" aria-label="${esc(t('month'))}"><button class="btn sm" data-a="mtdxls" style="margin-left:auto">${esc(t('excel'))}</button></div>
+    <h1 class="pt">${esc(t('monthToDate'))}</h1><div class="crumb" id="mtdLabel"></div>
+    <div class="kpis k4" id="mtdKpis"><div class="spin"></div></div><div class="list" id="mtdList"></div>`;
+  loadMtd();
+}
+async function loadMtd() {
+  const [y, m] = mtdMonth.split('-').map(Number);
+  const r = await rpc('store_range', { p_token: me.token, p_store: me.store_code, p_from: `${mtdMonth}-01`, p_to: ymd(new Date(y, m, 0)) });
+  if (!$('#mtdKpis')) return;
+  if (!r || !r.ok) { $('#mtdKpis').innerHTML = `<div class="note r">${esc(err(r && r.error))}</div>`; return; }
+  mtd = r;
+  $('#mtdLabel').textContent = `${fmtDay(r.from)} – ${fmtDate(r.to)}`;
+  $('#mtdKpis').innerHTML = r.by_category.map((c) => { const p = pct(c.p, c.req); return `<div class="kpi"><span class="l">${esc(cn(c.c))}</span><span class="v">${c.p}/${c.req}</span><span class="d" style="color:${pctColor(p)};font-weight:700">${p}%</span></div>`; }).join('') || '<div class="empty">—</div>';
+  $('#mtdList').innerHTML = r.associates.map((a) => { const days = a.present + a.absent, p = pct(a.present, days);
+    return `<div class="li click" data-a="stm" data-id="${a.id}"><div class="m">${esc(a.name)} · ${esc(cn(a.c))}${a.brand ? ' ' + esc(a.brand) : ''}
+      <span>P ${a.present} · A ${a.absent} · CO ${a.compoff}${a.c !== 'SEC' ? ' · ' + a.hours + ' h' : ''}</span></div><span class="tag ${pctTag(p)}">${p}% ›</span></div>`; }).join('') || '<div class="empty">—</div>';
+}
+
+/* ---------------- Punch for staff ---------------- */
+function renderPunch() {
+  const list = Object.values(cats);
+  if (!pnCat && list.length) pnCat = list[0].id;
+  W().innerHTML = `<h1 class="pt">${esc(t('punchForStaffT'))}</h1>
+    <div class="card"><div class="sub" style="margin-bottom:10px">${esc(t('punchHelp'))}</div><a class="btn big" href="punch.html?mod=1">${esc(t('openPunch'))}</a></div>
+    <div class="card"><h2>${esc(t('whoIn'))}</h2><div class="pills" style="margin-top:8px" id="pnCats">${list.map((c) => `<button class="pill ${pnCat === c.id ? 'on' : ''}" data-a="pncat" data-c="${esc(c.id)}">${esc(catName(c))}</button>`).join('')}</div><div class="dlist" id="pnRoster"><div class="spin"></div></div></div>
+    <div class="card"><h2>${esc(t('byStoreToday'))}</h2><div class="dlist" id="pnMod"><div class="spin"></div></div></div>`;
+  loadRoster(); loadModToday();
+}
+async function loadRoster() {
+  if (!pnCat) { $('#pnRoster').innerHTML = `<div class="sub">${esc(t('noneYet'))}</div>`; return; }
+  const c0 = pnCat, r = await rpc('store_roster', { p_token: me.token, p_cat: pnCat });
+  if (!$('#pnRoster') || c0 !== pnCat) return;
+  if (!r || !r.ok) { $('#pnRoster').innerHTML = `<div class="note r">${esc(err(r && r.error))}</div>`; return; }
+  const sec = pnCat === 'SEC';
+  const rows = r.rows.slice().sort((a, b) => (b.last_kind === 'IN') - (a.last_kind === 'IN') || a.name.localeCompare(b.name));
+  $('#pnRoster').innerHTML = rows.map((a) => `<div class="post"><span><b>${esc(a.name)}</b> <small>${esc(a.code)}${a.brand ? ' · ' + esc(a.brand) : ''}</small><br><small>${a.last_kind ? (sec ? esc(t('lastPunch')) + ' ' + esc(a.last_kind) : esc(t('lastPunch')) + ' ' + esc(a.last_kind) + ' ' + esc(a.last_time || '')) : esc(t('notToday'))}</small></span>
+    ${a.last_kind === 'IN' ? '<span class="tg ok">IN</span>' : a.last_kind === 'OUT' ? '<span class="tg grey">OUT</span>' : '<span class="tg grey">—</span>'}</div>`).join('') || `<div class="sub">${esc(t('noneYet'))}</div>`;
+}
+async function loadModToday() {
+  const r = await rpc('dash_store', { p_token: me.token, p_store: me.store_code, p_date: todayIST(), p_shift: 'B' });
+  if (!$('#pnMod')) return;
+  if (!r || !r.ok) { $('#pnMod').innerHTML = `<div class="note r">${esc(err(r && r.error))}</div>`; return; }
+  const L = r.present.filter((a) => a.via_mod);
+  $('#pnMod').innerHTML = L.map((a) => `<div class="post"><span><b>${esc(a.name)}</b> <small>· ${esc(cn(a.c))}</small>${a.c !== 'SEC' ? `<br><small>IN ${esc(a.first_in || '—')}${a.last_out ? ' · OUT ' + esc(a.last_out) : ''}</small>` : ''}</span>${a.c === 'SEC' ? SG_TAG(a.st) : `<span class="tg info">${esc(t('modMode'))}</span>`}</div>`).join('') || `<div class="sub">${esc(t('noneYet'))}</div>`;
+}
+
+/* ---------------- HK split ---------------- */
+async function loadHk() {
+  const r = await rpc('hk_split_get', { p_token: me.token });
+  if (r && r.ok) { hk = r; sh.setDot('hks', r.has_hk && !r.set); }
+  return r;
+}
+async function renderHk() {
+  W().innerHTML = `<h1 class="pt">${esc(t('hkTitle'))} · ${esc(me.store_code)}</h1><div id="hkBody"><div class="spin"></div></div>`;
+  const r = await loadHk();
+  if (tab !== 'hks' || !$('#hkBody')) return;
+  if (!r || !r.ok) { $('#hkBody').innerHTML = `<div class="note r">${esc(err(r && r.error))}</div>`; return; }
+  if (!r.has_hk) { $('#hkBody').innerHTML = `<div class="card"><div class="note">${esc(t('hkNoTotal'))}</div></div>`; return; }
+  const today = todayIST(), minD = ymd(new Date(parseYmd(today).getTime() - 31 * 864e5)), maxD = ymd(new Date(parseYmd(today).getTime() + 90 * 864e5));
+  $('#hkBody').innerHTML = `<div class="card"><div class="sub">${esc(t('hkHelp'))}</div>
+    <div class="kpis k4" style="margin-top:10px"><div class="kpi"><span class="l">${esc(t('hkTotal'))}</span><span class="v">${r.total}</span>${r.vendor ? `<span class="d">${esc(t('hkVendor'))} ${esc(r.vendor)}</span>` : ''}</div>
+      <div class="kpi"><span class="l">${esc(t('morning'))} / ${esc(t('evening'))}</span><span class="v">${r.set ? `${r.morning} / ${r.evening}` : '—'}</span>${r.set && r.effective_from ? `<span class="d">${esc(t('effFrom'))} ${fmtDate(r.effective_from)}</span>` : ''}</div></div>
+    <div class="frm" style="margin-top:10px"><label>${esc(t('morning'))}<input class="f" type="number" inputmode="numeric" min="0" max="${r.total}" id="hkM" value="${r.set ? r.morning : ''}"></label>
+      <label>${esc(t('evening'))}<input class="f" type="number" inputmode="numeric" min="0" max="${r.total}" id="hkE" value="${r.set ? r.evening : ''}"></label>
+      <label>${esc(t('effFrom'))}<input class="f" type="date" id="hkD" value="${today}" min="${minD}" max="${maxD}"></label>
+      <label>&nbsp;<button class="btn" data-a="hksave" id="hkSave">${esc(t('saveSplit'))}</button></label></div>
+    <div id="hkSum" class="sumln" style="margin-top:8px"></div>
+    <div id="hkMsg" class="sub" style="margin-top:6px">${r.set ? esc(t('hkCurrent', { m: r.morning, e: r.evening, t: r.total })) : `<span style="color:var(--amb);font-weight:700">${esc(t('hkNotYet'))}</span>`}</div>
+    <div class="note r" id="hkErr" hidden style="margin-top:8px"></div></div>
+    <div class="card"><h2>${esc(t('hkHistory'))}</h2>${r.history.length ? `<div class="tw"><table class="hist"><thead><tr><th class="l">${esc(t('effFrom'))}</th><th>${esc(t('morning'))}</th><th>${esc(t('evening'))}</th><th class="l">${esc(t('setBy'))}</th></tr></thead><tbody>
+      ${r.history.map((h) => `<tr><td class="l">${fmtDate(h.effective_from)}</td><td>${h.morning}</td><td>${h.evening}</td><td class="l">${esc(h.by_name || h.by || '')}<small>${esc(h.at || '')}</small></td></tr>`).join('')}</tbody></table></div>` : `<div class="sub" style="margin-top:6px">${esc(t('noneYet'))}</div>`}</div>`;
+  hkSum();
+}
+function hkSum() {
+  const m = $('#hkM'), e = $('#hkE'); if (!m || !hk) return;
+  const a = Number(m.value || 0), b = Number(e.value || 0), ok = m.value !== '' && e.value !== '' && a + b === hk.total;
+  $('#hkSum').className = 'sumln ' + (ok ? 'good' : 'bad');
+  $('#hkSum').textContent = (ok ? '✓ ' : '') + t('hkSum', { s: a + b, t: hk.total });
+  $('#hkSave').disabled = !ok;
+}
+async function hkSave() {
+  const m = Number($('#hkM').value), e = Number($('#hkE').value), d = $('#hkD').value || todayIST();
+  if (m + e !== hk.total) { $('#hkErr').hidden = false; $('#hkErr').textContent = t('sumMismatch', { t: hk.total }); return; }
+  $('#hkSave').disabled = true;
+  const r = await rpc('hk_split_set', { p_token: me.token, p_morning: m, p_evening: e, p_effective: d });
+  if (!r || !r.ok) { $('#hkSave').disabled = false; $('#hkErr').hidden = false; $('#hkErr').textContent = r && r.error === 'SUM_MISMATCH' ? t('sumMismatch', { t: r.total }) : err(r && r.error); return; }
+  toast(t('hkSaved')); day = null; renderHk();
+}
+
+/* ---------------- Requests ---------------- */
+const KINDS = { compoff: ['kCompoff', 'am'], staff: ['kStaff', 'am'], sg_mispunch: ['kSgMis', 'rlpo'], sg_edit: ['kSgEdit', 'rlpo'] };
+async function getAssoc() {
+  if (assoc) return assoc;
+  const r = await rpc('associates_list', { p_token: me.token, p_store: me.store_code });
+  assoc = r && r.ok ? r.rows : [];
+  return assoc;
+}
+async function loadCr() {
+  const r = await rpc('cr_list', { p_token: me.token, p_status: 'all', p_days: 60 });
+  if (!r || !r.ok) return r;
+  crs = r.rows || []; editTypes = r.edit_types || editTypes; paintBadge();
+  return r;
+}
+function paintBadge() { if (sh) sh.setBadge('rq', crs.filter((x) => x.status === 'pending').length); }
+function kindsAvail() { return Object.keys(KINDS).filter((k) => k.startsWith('sg_') || editTypes.includes(k)); }
+async function renderReq() {
+  W().innerHTML = `<h1 class="pt">${esc(t('reqTitle'))}</h1><div class="card"><div class="sub" style="margin-bottom:8px">${esc(t('reqHelp'))}</div><div id="rqForm"><div class="spin"></div></div></div>
+    <div class="card"><div class="hd"><h2>${esc(t('myRequests'))}</h2></div><div class="seg" id="rqSeg" style="margin-top:8px"></div><div class="dlist" id="rqList"><div class="spin"></div></div></div>`;
+  const [r] = await Promise.all([loadCr(), getAssoc()]);
+  if (tab !== 'rq' || !$('#rqForm')) return;
+  if (r && !r.ok) $('#rqList').innerHTML = `<div class="note r">${esc(err(r.error))}</div>`;
+  paintReqForm(); paintReqList();
+}
+function paintReqForm(kind) {
+  const ks = kindsAvail(); kind = kind && ks.includes(kind) ? kind : ($('#rqT') && ks.includes($('#rqT').value) ? $('#rqT').value : ks[0]);
+  const sg = kind.startsWith('sg_'), staff = assoc.filter((a) => (sg ? a.c === 'SEC' : true));
+  const prevW = $('#rqW') ? $('#rqW').value : '';
+  const today = todayIST(), minD = ymd(new Date(parseYmd(today).getTime() - 45 * 864e5));
+  const yday = ymd(new Date(parseYmd(today).getTime() - 864e5));
+  const sel = staff.find((a) => String(a.id) === prevW);
+  $('#rqForm').innerHTML = `<div class="frm">
+    <label>${esc(t('reqType'))}<select id="rqT">${ks.map((k) => `<option value="${k}" ${k === kind ? 'selected' : ''}>${esc(t(KINDS[k][0]))}</option>`).join('')}</select></label>
+    <label>${esc(t('staff'))}<select id="rqW"><option value="">${esc(t('pickStaff'))}</option>${staff.map((a) => `<option value="${a.id}" ${sel && sel.id === a.id ? 'selected' : ''}>${esc(a.name)} · ${esc(cn(a.c))}${a.brand ? ' ' + esc(a.brand) : ''} · ${esc(a.code)}</option>`).join('')}</select></label>
+    ${kind !== 'staff' ? `<label>${esc(t('date'))}<input class="f" type="date" id="rqD" value="${sg ? yday : today}" min="${minD}" max="${today}"></label>` : ''}
+    ${kind === 'staff' ? `<label>${esc(t('yourName'))}<input class="f" id="rqNm" maxlength="40" value="${esc(sel ? sel.name : '')}"></label><label>${esc(t('vendor'))}<input class="f" id="rqVd" maxlength="60" value="${esc(sel ? sel.vendor || '' : '')}"></label>${sel && sel.brand ? `<label>${esc(t('brand'))}<input class="f" id="rqBr" maxlength="30" value="${esc(sel.brand)}"></label>` : ''}` : ''}
+    ${kind === 'sg_mispunch' ? `<label>${esc(t('missingPunch'))}<select id="rqMs"><option value="OUT">OUT</option><option value="IN">IN</option></select></label>` : ''}
+    ${sg ? `<label>${esc(t('actualIn'))}<input class="f" type="time" id="rqIn"></label><label>${esc(t('actualOut'))}<input class="f" type="time" id="rqOut"></label>` : ''}
+    <label style="grid-column:1/-1">${esc(t('reasonReq'))}<textarea class="f" id="rqR" rows="2" maxlength="300"></textarea></label>
+    <label>&nbsp;<button class="btn" data-a="rqsend" id="rqSend">${esc(t('send'))} · ${esc(t(KINDS[kind][1] === 'am' ? 'toAm' : 'toRlpo'))}</button></label></div>
+    ${sg && !staff.length ? `<div class="note w" style="margin-top:8px">${esc(t('noSecStaff'))}</div>` : ''}
+    <div class="note r" id="rqErr" hidden style="margin-top:8px"></div>`;
+}
+function paintReqList() {
+  const n = (s) => crs.filter((x) => s === 'all' || x.status === s).length;
+  $('#rqSeg').innerHTML = [['all', 'all'], ['pending', 'stPend'], ['approved', 'stApproved'], ['rejected', 'stRejected']].map(([k, l]) => `<button data-a="rqf" data-f="${k}" class="${rqFilter === k ? 'on' : ''}">${esc(t(l))} ${n(k)}</button>`).join('');
+  const L = crs.filter((x) => rqFilter === 'all' || x.status === rqFilter);
+  const st = { pending: 'amb', approved: 'ok', rejected: 'red' };
+  const lbl = { pending: 'stPend', approved: 'stApproved', rejected: 'stRejected' };
+  $('#rqList').innerHTML = L.map((x) => {
+    const p = x.payload || {}, sg = x.group === 'sg' || /^sg_/.test(x.kind);
+    const det = x.kind === 'staff' && p.new ? `${esc((p.old || {}).name || '')} → <b>${esc(p.new.name || '')}</b>${p.new.vendor ? ' · ' + esc(p.new.vendor) : ''}${p.new.brand ? ' · ' + esc(p.new.brand) : ''}`
+      : sg ? [p.missing ? `${esc(t('missingPunch'))}: ${esc(p.missing)}` : '', p.in ? 'IN ' + esc(p.in) : '', p.out ? 'OUT ' + esc(p.out) : ''].filter(Boolean).join(' · ') : '';
+    return `<div class="reqc"><div class="m"><b>${esc(t((KINDS[x.kind] || [x.kind])[0]))}</b> · ${esc(x.assoc || '')}${x.date ? ' · ' + fmtDay(x.date) : ''}
+      <div class="sub">${esc(x.reason || '')}${det ? ' · ' + det : ''}</div>
+      <div class="sub">${esc(t(sg ? 'toRlpo' : 'toAm'))} · ${esc(x.at || '')}${x.status !== 'pending' && (x.decided_by || x.decided_by_emp) ? ` · ${esc(t('decidedBy', { who: x.decided_by || x.decided_by_emp }))}${x.decided_by_role ? ' (' + esc(roleLabel(x.decided_by_role)) + ')' : ''}${x.decided_at ? ' · ' + esc(x.decided_at) : ''}` : ''}</div>
+      ${x.note ? `<div class="sub">${esc(t('remark'))}: <b>“${esc(x.note)}”</b></div>` : ''}</div>
+      <div class="rt"><span class="tg ${st[x.status] || 'grey'}">${esc(t(lbl[x.status] || x.status))}</span>${x.decision ? SG_TAG(x.decision) : ''}</div></div>`;
+  }).join('') || `<div class="sub">${esc(t('noRequests'))}</div>`;
+}
+async function sendRequest(kind, id, d, payload, reason, errEl, btn) {
+  const show = (m) => { if (errEl) { errEl.hidden = false; errEl.textContent = m; } else toast(m); };
+  if (!id) { show(t('selectAssociate')); return false; }
+  if ((reason || '').trim().length < 5) { show(t('reasonRequired')); return false; }
+  if (btn) btn.disabled = true;
+  const r = await rpc('cr_create', { p_token: me.token, p_kind: kind, p_associate: Number(id), p_date: d || null, p_payload: payload || {}, p_reason: reason.trim() });
+  if (btn) btn.disabled = false;
+  if (!r || !r.ok) { show(err(r && r.error)); return false; }
+  toast(r.no_rlpo ? t('noRlpo') : r.route === 'rlpo' ? t('sentRlpo') : t('requestSent'));
+  await loadCr();
+  return true;
+}
+async function rqSend() {
+  const kind = $('#rqT').value, id = $('#rqW').value, d = $('#rqD') ? $('#rqD').value : null;
+  let payload = {};
+  if (kind === 'compoff') payload = { on: true };
+  if (kind === 'staff') payload = { name: $('#rqNm').value.trim(), vendor: $('#rqVd').value.trim(), brand: $('#rqBr') ? $('#rqBr').value.trim() : undefined };
+  if (kind.startsWith('sg_')) payload = { in: $('#rqIn').value || null, out: $('#rqOut').value || null, missing: $('#rqMs') ? $('#rqMs').value : null };
+  if (kind !== 'staff' && !d) { $('#rqErr').hidden = false; $('#rqErr').textContent = t('badDate'); return; }
+  $('#rqErr').hidden = true;
+  if (await sendRequest(kind, id, d, payload, $('#rqR').value, $('#rqErr'), $('#rqSend'))) { paintReqForm(kind); $('#rqR') && ($('#rqR').value = ''); rqFilter = 'all'; paintReqList(); }
+}
+
+/* quick request dialogs from Today (comp-off for a missing regular, staff detail edit, SG mis-punch) */
+function quickRequest(kind, a) {
+  const d = date;
+  const fields = kind === 'staff'
+    ? `<div class="frm"><label>${esc(t('yourName'))}<input class="f" name="nm" maxlength="40" value="${esc(a.name)}"></label><label>${esc(t('vendor'))}<input class="f" name="vd" maxlength="60" value="${esc(a.vendor || '')}"></label>${a.brand ? `<label>${esc(t('brand'))}<input class="f" name="br" maxlength="30" value="${esc(a.brand)}"></label>` : ''}</div>`
+    : kind === 'compoff' ? `<div class="note">${esc(a.name)} · ${fmtDate(d)} · ${esc(t('absentQ'))} → ${esc(t('compOff'))}</div>`
+    : `<div class="note">${esc(a.name)} · ${fmtDate(d)} · MP</div><div class="frm"><label>${esc(t('missingPunch'))}<select name="ms"><option>OUT</option><option>IN</option></select></label><label>${esc(t('actualIn'))}<input class="f" type="time" name="tin"></label><label>${esc(t('actualOut'))}<input class="f" type="time" name="tout"></label></div>`;
+  const md = modal(`<h3>✎ ${esc(t(KINDS[kind][0]))}</h3>${fields}
+    <label class="lbl" style="font-size:12px;color:var(--mut)">${esc(t('reasonReq'))}<textarea class="f" name="why" rows="2" maxlength="300" style="width:100%"></textarea></label>
+    <p class="mini" style="margin:0">${esc(t('nothingChanges'))}</p><div class="note r" data-e hidden></div>
+    <div class="mx"><button type="button" class="btn s" data-close>✕</button><button type="button" class="btn" data-ok>${esc(t(KINDS[kind][1] === 'am' ? 'sendToAm' : 'toRlpo'))}</button></div>`);
+  const q = (n) => md.querySelector(`[name="${n}"]`);
+  md.querySelector('[data-ok]').addEventListener('click', async (e) => {
+    const payload = kind === 'staff' ? { name: q('nm').value.trim(), vendor: q('vd').value.trim(), brand: q('br') ? q('br').value.trim() : a.brand }
+      : kind === 'compoff' ? { on: true } : { missing: q('ms').value, in: q('tin').value || null, out: q('tout').value || null };
+    if (await sendRequest(kind, a.id, kind === 'staff' ? null : d, payload, q('why').value, md.querySelector('[data-e]'), e.currentTarget)) md.close();
+  });
+}
+
+/* ---------------- events ---------------- */
+function wire() {
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-a]'); if (!b || !W().contains(b)) return;
+    const a = b.dataset.a, find = (id) => day && (day.present.find((x) => String(x.id) === id) || day.regulars_missing.find((x) => String(x.id) === id));
+    if (a === 'ref') { if (tdView === 'day') { $('#tdBody').innerHTML = '<div class="spin"></div>'; loadDay(); } }
+    else if (a === 'go') go(b.dataset.to);
+    else if (a === 'mtd') { tdView = 'mtd'; renderMtd(); }
+    else if (a === 'mtdback') { tdView = 'day'; renderToday(); }
+    else if (a === 'mtdxls') { if (!mtd) return; downloadXlsx(mtd.associates.map((x) => ({ Store: me.store_code, Code: x.code, Name: x.name, Dept: cn(x.c), Brand: x.brand || '', Vendor: x.vendor || '', Present: x.present, Absent: x.absent, 'Comp-off': x.compoff, Hours: x.c === 'SEC' ? '' : x.hours })), `${me.store_code}_${mtd.from}_${mtd.to}.xlsx`, 'Month'); }
+    else if (a === 'stm') location.href = `statement.html?a=${b.dataset.id}&from=${mtd.from}&to=${mtd.to}`;
+    else if (a === 'staff' || a === 'compoff') { const x = find(b.dataset.id); if (x) quickRequest(a, x); }
+    else if (a === 'sgreq') { const x = find(b.dataset.id); if (x) quickRequest('sg_mispunch', x); }
+    else if (a === 'pncat') { pnCat = b.dataset.c; $$('#pnCats .pill').forEach((p) => p.classList.toggle('on', p === b)); $('#pnRoster').innerHTML = '<div class="spin"></div>'; loadRoster(); }
+    else if (a === 'hksave') hkSave();
+    else if (a === 'rqsend') rqSend();
+    else if (a === 'rqf') { rqFilter = b.dataset.f; paintReqList(); }
+  });
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('#tdShift button'); if (!b) return;
+    shift = b.dataset.s; $$('#tdShift button').forEach((x) => x.classList.toggle('on', x === b)); $('#tdBody').innerHTML = '<div class="spin"></div>'; loadDay();
+  });
+  document.addEventListener('change', (e) => {
+    const id = e.target.id;
+    if (id === 'tdDate') { const v = e.target.value; if (!v || v > todayIST()) { e.target.value = date; return; } date = v; renderToday(); }
+    else if (id === 'mtdMonth') { if (e.target.value) { mtdMonth = e.target.value; $('#mtdKpis').innerHTML = '<div class="spin"></div>'; loadMtd(); } }
+    else if (id === 'rqT') paintReqForm(e.target.value);
+    else if (id === 'rqW' && $('#rqT').value === 'staff') paintReqForm('staff');
+  });
+  document.addEventListener('input', (e) => { if (e.target.id === 'hkM' || e.target.id === 'hkE') hkSum(); });
+  window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (h && h !== tab) { if (h === 'stm' || h === 'qr') return; tdView = 'day'; go(h); } });
 }
 
 (async function init() {
   me = await requireSession(['store']); if (!me) return;
-  $('#langSlot').appendChild(langToggle(() => { if (mode === 'mtd') loadMtd(); else loadDay(); paintCal(); }));
-  $('#credit').innerHTML = credit(); applyI18n();
-  $('#hTitle').textContent = `${me.store_code} · ${me.store_name || ''}`;
-  $('#hSub').textContent = `${me.post || ''} ${me.name}`;
-  const ctx = await rpc('punch_context', { p_store: me.store_code });
-  if (ctx && ctx.categories) ctx.categories.forEach((c) => cats[c.id] = c);
+  const h = location.hash.slice(1); tab = ['td', 'pn', 'hks', 'rq'].includes(h) ? h : 'td';
+  buildShell();
+  Idle.start({ minutes: me.idle_min || 60 });
   shift = istNow().getHours() < 14 ? 'M' : 'B';
-  $$('#shift button').forEach((b) => b.classList.toggle('on', b.dataset.s === shift));
-  setMode('today');
-
-  $('#mode').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setMode(b.dataset.m); });
-  $('#shift').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; shift = b.dataset.s; $$('#shift button').forEach((x) => x.classList.toggle('on', x === b)); loadDay(); });
-  $('#cal').addEventListener('click', (e) => { const b = e.target.closest('button[data-d]'); if (!b || b.disabled) return; date = b.dataset.d; paintCal(); loadDay(); });
-  $('#calPrev').addEventListener('click', () => { const [y, m] = calMonth.split('-').map(Number); calMonth = ymd(new Date(y, m - 2, 1)).slice(0, 7); paintCal(); if (mode === 'mtd') loadMtd(); });
-  $('#calNext').addEventListener('click', () => { const [y, m] = calMonth.split('-').map(Number); calMonth = ymd(new Date(y, m, 1)).slice(0, 7); paintCal(); if (mode === 'mtd') loadMtd(); });
-  $('#banner').addEventListener('click', showMissing);
-  $('#missBack').addEventListener('click', () => { $('#missing').hidden = true; $('#day').hidden = false; $('#calBox').hidden = mode !== 'pick'; });
-  $('#btnWa').addEventListener('click', () => waShare(waText()));
-  $('#regList').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-co]'); if (!b) return;
-    requestDialog('compoff', Number(b.dataset.co), `<div class="note i" style="font-size:13px">${esc(b.dataset.n)} · ${fmtDate(date)} · Absent → ${esc(t('compOff'))}</div>`, () => ({ p_date: date, p_payload: { on: true } }));
-  });
-  $('#presentList').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-ed]'); if (!b) return;
-    requestDialog('staff', Number(b.dataset.ed), `<label class="lbl">${esc(t('yourName'))}<input class="in" name="nm" value="${esc(b.dataset.n)}" maxlength="40"></label>
-      <label class="lbl">${esc(t('vendor'))}<input class="in" name="vd" value="${esc(b.dataset.v)}" maxlength="60"></label>${b.dataset.b ? `<label class="lbl">${esc(t('brand'))}<input class="in" name="br" value="${esc(b.dataset.b)}" maxlength="30"></label>` : ''}`,
-      (f) => ({ p_date: null, p_payload: { name: f.nm.value.trim(), vendor: f.vd.value.trim(), brand: f.br ? f.br.value.trim() : b.dataset.b } }));
-  });
-  loadRequests();
-  $('#mtdList').addEventListener('click', (e) => { const li = e.target.closest('[data-a]'); if (li) location.href = `statement.html?a=${li.dataset.a}&from=${mtdData.from}&to=${mtdData.to}`; });
-  $('#btnXls').addEventListener('click', () => { if (!mtdData) return;
-    downloadXlsx(mtdData.associates.map((a) => ({ Store: me.store_code, Code: a.code, Name: a.name, Category: cn(a.c), Brand: a.brand, Vendor: a.vendor, Present: a.present, Absent: a.absent, 'Comp-off': a.compoff, Hours: a.hours })),
-      `${me.store_code}_${mtdData.from}_${mtdData.to}.xlsx`); });
-  $('#btnMod').addEventListener('click', () => location.href = 'punch.html?mod=1');
-  $('#btnQr').addEventListener('click', () => location.href = 'qr.html');
-  $('#btnStmt').addEventListener('click', () => { setMode('mtd'); toast(t('statement') + ': ' + t('associate') + ' ›'); });
-  $('#btnLogout').addEventListener('click', logout);
-  $('#btnPin').addEventListener('click', () => changePinDialog(me));
-
-  // refresh every 2 min only while someone is using the page (so the store lock can still auto-release)
-  ['click', 'touchstart', 'keydown', 'scroll'].forEach((ev) => addEventListener(ev, () => lastTouch = Date.now(), { passive: true }));
-  setInterval(() => { if (!document.hidden && Date.now() - lastTouch < 25 * 60000 && mode !== 'mtd' && $('#missing').hidden) loadDay(); }, 120000);
+  const [ctx] = await Promise.all([rpc('punch_context', { p_store: me.store_code }), loadCr()]);
+  if (ctx && ctx.categories) ctx.categories.forEach((c) => { cats[c.id] = c; });
+  wire();
+  go(tab);
+  if (tab !== 'hks') loadHk();
+  // refresh Today every 2 min while someone is using the page (so the store lock can still auto-release)
+  ['click', 'touchstart', 'keydown', 'scroll'].forEach((ev) => addEventListener(ev, () => { lastTouch = Date.now(); }, { passive: true }));
+  setInterval(() => { if (!document.hidden && Date.now() - lastTouch < 25 * 60000 && tab === 'td' && tdView === 'day' && date === todayIST() && !document.querySelector('.ov')) loadDay(); }, 120000);
 })();
 </script>
 </body>

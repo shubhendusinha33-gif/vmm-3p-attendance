@@ -6,150 +6,297 @@
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3rd Party Attendance</title>
-<meta name="theme-color" content="#1565C0">
+<meta name="theme-color" content="#1E293B">
 <link rel="preconnect" href="https://phyllziizajuphenpwxz.supabase.co" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="icon" href="assets/logo.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&family=Noto+Sans+Devanagari:wght@400;700&display=swap" media="print" onload="this.media=\'all\'">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&family=Noto+Sans+Devanagari:wght@400;700&display=swap" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="assets/app.css">
+<style>
+  body{margin:0;background:var(--side)}
+  .lshell{align-items:center}
+  .lstats{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .lstats b{font-variant-numeric:tabular-nums}
+  .lcard{display:flex;flex-direction:column;position:relative}
+  .lcard section{display:flex;flex-direction:column}
+  .lcard section[hidden]{display:none}
+  .lcard .lc-logo img{height:34px;display:block}
+  .lcard .lang{align-self:flex-end;margin:-8px -10px 2px 0;border-color:#E2E6EC}
+  .lcard .lang+section .lc-logo{margin-top:-28px}
+  @media(max-width:420px){.lcard .lang+section .lc-logo{margin-top:-6px}}
+  .lcard .lang button{color:#5A6472}.lcard .lang button.on{background:#334155;color:#fff}
+  .lcard .rc{margin-top:2px}
+  .lcard .lsel{appearance:auto}
+  .lcard input[type=password]{color:#1A2130}
+  .lcard .lmsg.i{background:#EEF2F6;color:#0F172A}
+  .lcard .lmsg.k{background:#E9F5EC;color:#1E8E3E}
+  .lcard .lmsg.w{background:#FFF4E0;color:#B26A00}
+  .lcard .lbtn:disabled{opacity:.6;cursor:wait}
+  .lcard .lbtn.o{background:#fff;color:#334155;border:1.5px solid #334155;box-shadow:none}
+  .lcard a{cursor:pointer}
+  .lcard .big{font-size:40px;font-weight:800;text-align:center;color:#0F172A;font-variant-numeric:tabular-nums;margin:6px 0}
+  .lcard .pins{margin:4px 0}
+  .lcard .capr .cap svg{display:block}
+  .lcard .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .lcard input.code{text-align:center;letter-spacing:6px;font-weight:800}
+  .bnr .slide .st{min-width:0}
+  .bnr{min-height:232px}
+  @media(max-width:760px){.lstats{grid-template-columns:repeat(3,minmax(0,1fr))}.lstats div{padding:8px 10px}.lstats b{font-size:17px}
+    .lshell{padding:20px 16px;gap:18px}.hero{order:2}.lcard{order:1;width:100%;flex-basis:auto}.hero h2{font-size:26px}.bnr{min-height:0}.slide .st{flex-basis:auto}}
+  @media(max-width:380px){.lcard .pins input{width:48px;height:52px}}
+</style>
 </head>
 <body>
-<div class="blue-page">
-  <form class="card" id="card" autocomplete="off" novalidate>
-    <div id="langSlot" style="display:flex;justify-content:flex-end"></div>
-    <img class="logo" src="assets/logo.png" alt="Vishal Mega Mart">
+<div class="login2" id="lg">
+  <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
+  <div class="lshell">
+    <div class="hero">
+      <span class="llogo">VMM</span>
+      <div class="eyb">Vishal Mega Mart · Central Operations</div>
+      <h2>Every guard, cleaner and promoter. <em>On duty, on time.</em></h2>
+      <p class="ld">One live view of your third-party staff: security guards, housekeeping crew and brand promoters, from every vendor, in every store, every shift.</p>
+      <div class="bnr"><span class="lv"><i></i>LIVE</span><div id="slides"></div><div class="dots" id="dots"></div></div>
+      <div class="lstats" id="lstats"></div>
+    </div>
 
-    <!-- step 1: details -->
-    <section id="s1">
-      <h1 class="ttl" data-t="appTitle"></h1>
-      <p class="sub" data-t="appSub"></p>
-      <div class="roles" id="roles" role="tablist" style="margin-top:12px">
-        <button type="button" class="role on" data-role="store"><span class="ic">🏪</span><span data-t="roleStore"></span></button>
-        <button type="button" class="role" data-role="am"><span class="ic">🧭</span><span data-t="roleAm"></span></button>
-        <button type="button" class="role" data-role="zfm"><span class="ic">🗺️</span><span data-t="roleZfm"></span></button>
-        <button type="button" class="role" data-role="hodept"><span class="ic">🏢</span><span data-t="roleHodept"></span></button>
-        <button type="button" class="role" data-role="admin"><span class="ic">🛡️</span><span data-t="roleAdmin"></span></button>
-      </div>
-      <div class="steps" style="margin:12px 0"><b class="on">1</b><span data-t="stepDetails"></span><span>—</span><b>2</b><span data-t="stepPin"></span></div>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <div class="field"><label class="lbl" for="emp" data-t="empCode"></label>
-          <input class="in" id="emp" inputmode="numeric" maxlength="10" data-tp="empHint"></div>
-        <div class="field" data-for="store"><label class="lbl" for="post" data-t="post"></label>
-          <select class="in" id="post"><option>SM</option><option>ASM</option><option>DM Apps</option><option>DM FMCG</option><option>DM GM</option></select></div>
-        <div class="field" data-for="store"><label class="lbl" for="storeCode" data-t="storeCode"></label>
-          <input class="in" id="storeCode" maxlength="4" style="text-transform:uppercase" data-tp="storeHint"></div>
-        <div class="field" data-for="hodept" hidden><label class="lbl" for="dept" data-t="department"></label>
-          <select class="in" id="dept"><option value="" data-t="selectDept"></option></select></div>
-        <div id="err1" class="note r" hidden></div>
-        <button class="btn" id="btnNext" type="submit" data-t="next"></button>
-      </div>
-    </section>
+    <form class="lcard" id="card" autocomplete="off" novalidate>
+      <span id="langSlot"></span>
 
-    <!-- step 2: PIN -->
-    <section id="s2" hidden>
-      <h1 class="ttl"><span data-t="welcome"></span>, <span id="who"></span></h1>
-      <p class="sub" id="whoSub" style="margin-top:2px"></p>
-      <div class="steps" style="margin:12px 0"><b>1</b><span data-t="stepDetails"></span><span>—</span><b class="on">2</b><span data-t="stepPin"></span></div>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div class="note k" data-t="verified"></div>
-        <div class="lbl" style="text-align:center" data-t="enterPin"></div>
+      <!-- step 1: who are you -->
+      <section id="s1">
+        <div class="lc-logo"><img src="assets/logo.png" alt="Vishal Mega Mart"></div>
+        <div class="ey">Store · AM · ZFM · HO · RLPO</div>
+        <h1 data-t="appTitle"></h1>
+        <div class="sb" id="s1sub"></div>
+        <div id="reason" class="lmsg i" hidden style="margin:0 0 10px"></div>
+        <div class="rc" id="roles" role="tablist"></div>
+        <label class="lb" for="emp" id="empLbl"></label>
+        <div class="lin" id="empWrap"><span id="empIc"></span><input type="text" id="emp" autocomplete="username"></div>
+        <div class="row2" data-for="store">
+          <div><label class="lb" for="post" data-t="post"></label><select class="lsel" id="post"></select></div>
+          <div><label class="lb" for="storeCode" data-t="storeCode"></label><div class="lin"><span id="stIc"></span><input type="text" id="storeCode" maxlength="4" placeholder="HY10" style="text-transform:uppercase"></div></div>
+        </div>
+        <div data-for="hodept" hidden><label class="lb" for="dept" data-t="department"></label><select class="lsel" id="dept"><option value="" data-t="selectDept"></option></select></div>
+        <label class="lb" for="capIn" data-t="capLbl"></label>
+        <div class="capr"><span class="cap" id="capImg"></span><button type="button" id="capNew" aria-label="New characters" title="New characters">↻</button><input type="text" id="capIn" maxlength="5" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
+        <div class="lrow"><label><input type="checkbox" id="rem"> <span data-t="rememberMe"></span></label><a data-forgot data-t="forgotQ"></a></div>
+        <div id="err1" class="lmsg" hidden></div>
+        <button class="lbtn" id="btnNext" type="submit" data-t="next"></button>
+        <div class="lfirst"><span data-t="firstTime"></span> <a id="lnkFirst" data-t="setYourPin"></a></div>
+      </section>
+
+      <!-- step 2: PIN -->
+      <section id="s2" hidden>
+        <div class="ey" data-t="step2of2"></div>
+        <h1><span data-t="welcome"></span>, <span id="who"></span></h1>
+        <div class="sb" id="whoSub"></div>
+        <div class="lsec" style="margin:2px 0 10px"><i></i><span data-t="detailsOk"></span></div>
+        <label class="lb" style="text-align:center" data-t="enterPin"></label>
         <div class="pins" id="pinLogin"></div>
-        <div id="err2" class="note r" hidden></div>
-        <button class="btn" id="btnLogin" type="button" data-t="login"></button>
-        <div data-layout-slot></div>
-        <p class="sub" style="margin:0" data-t="forgotPin"></p>
-        <button class="link" type="button" data-back data-t="back"></button>
-      </div>
-    </section>
+        <div id="err2" class="lmsg" hidden></div>
+        <button class="lbtn" id="btnLogin" type="button" data-t="signIn"></button>
+        <div class="lrow"><a data-back data-t="changeDetails"></a><a data-forgot data-t="forgotQ"></a></div>
+      </section>
 
-    <!-- create PIN -->
-    <section id="s3" hidden>
-      <h1 class="ttl" data-t="createPin"></h1>
-      <p class="sub" id="whoSub3" style="margin-top:2px"></p>
-      <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
-        <div id="regBox" hidden style="display:flex;flex-direction:column;gap:8px">
-          <div class="note i" style="text-align:left"><b id="regNote"></b><br><span style="font-size:12px" data-t="registerSub"></span></div>
-          <div class="lbl" data-t="fullName"></div>
-          <input class="in" id="regName" maxlength="60" autocomplete="name">
+      <!-- step 3: create PIN / register / setup code -->
+      <section id="s3" hidden>
+        <div class="ey" data-t="firstSet"></div>
+        <h1 id="s3ttl"></h1>
+        <div class="sb" id="whoSub3"></div>
+        <div id="regBox" hidden>
+          <div class="lmsg i" style="margin-top:0"><b id="regNote"></b><br><span style="font-size:12px" data-t="registerSub"></span></div>
+          <label class="lb" for="regName" data-t="fullName"></label>
+          <input type="text" id="regName" maxlength="60" autocomplete="name">
         </div>
-        <div id="codeBox" hidden style="display:flex;flex-direction:column;gap:6px">
-          <div class="lbl" data-t="setupCode"></div>
-          <input class="in" id="setupCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" style="text-align:center;font-size:20px;font-weight:700;letter-spacing:6px">
-          <p class="sub" style="margin:0" data-t="setupHint"></p>
+        <div id="codeBox" hidden>
+          <label class="lb" for="setupCode" data-t="setupCodeMail"></label>
+          <input type="text" class="code" id="setupCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6-digit code">
+          <div class="sb" style="margin:4px 0 0;text-align:left" data-t="setupHint"></div>
         </div>
-        <div class="lbl" data-t="answerQ"></div>
-        <div class="math" id="mathQ"></div>
-        <input class="in" id="mathA" inputmode="numeric" maxlength="3" style="text-align:center;font-size:20px;font-weight:700">
-        <div class="lbl" data-t="newPin"></div>
+        <label class="lb" data-t="newPin"></label>
         <div class="pins" id="pinNew"></div>
-        <div class="lbl" data-t="confirmPin"></div>
+        <label class="lb" data-t="confirmPin"></label>
         <div class="pins" id="pinNew2"></div>
-        <div id="err3" class="note r" hidden></div>
-        <button class="btn" id="btnSave" type="button" data-t="savePin"></button>
-        <div data-layout-slot></div>
-        <button class="link" type="button" data-back data-t="back"></button>
-      </div>
-    </section>
+        <div id="err3" class="lmsg" hidden></div>
+        <button class="lbtn" id="btnSave" type="button"></button>
+        <div class="lrow"><a data-back data-t="backLink"></a><span></span></div>
+      </section>
 
-    <!-- locked -->
-    <section id="s4" hidden>
-      <h1 class="ttl" data-t="loginLocked"></h1>
-      <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
-        <div class="note r" data-t="lockedWhy"></div>
+      <!-- locked -->
+      <section id="s4" hidden>
+        <div class="ey" data-t="loginLocked"></div>
+        <h1 data-t="loginLocked"></h1>
+        <div class="lmsg" data-t="lockedWhy"></div>
         <div class="big" id="countdown">05:00</div>
-        <p class="sub" style="margin:0" data-t="tryAfter"></p>
-        <div class="note i" data-t="forgotPin"></div>
-        <button class="link" type="button" data-back data-t="back"></button>
-      </div>
-    </section>
+        <div class="sb" data-t="tryAfter"></div>
+        <div class="lmsg i" data-t="forgotPin"></div>
+        <div class="lrow"><a data-back data-t="backLink"></a><span></span></div>
+      </section>
 
-    <!-- store busy -->
-    <section id="s5" hidden>
-      <h1 class="ttl"><span id="busyStore"></span> <span data-t="storeOpen"></span></h1>
-      <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
-        <div class="note w" id="busyWho"></div>
-        <div class="note i" id="busyHow"></div>
-        <button class="btn o" id="btnRetry" type="button" data-t="checkAgain"></button>
-        <button class="link" type="button" data-back data-t="back"></button>
-      </div>
-    </section>
+      <!-- store busy on another phone -->
+      <section id="s5" hidden>
+        <div class="ey" data-t="storeLogin"></div>
+        <h1><span id="busyStore"></span> <span data-t="storeOpen"></span></h1>
+        <div class="lmsg w" id="busyWho"></div>
+        <div class="lmsg i" id="busyHow"></div>
+        <button class="lbtn o" id="btnRetry" type="button" data-t="checkAgain"></button>
+        <div class="lrow"><a data-back data-t="backLink"></a><span></span></div>
+      </section>
 
-    <p class="credit" id="credit"></p>
-  </form>
+      <div class="lsplit"><span id="credit"></span><div class="lsec"><i></i><span data-t="secureLine"></span></div></div>
+    </form>
+  </div>
 </div>
 
 <script src="assets/app.js"></script>
 <script>
-let role = 'store', checked = null, timer = null, mathAns = 0;
+/* ---------- page strings (EN / हिंदी) ---------- */
+Object.assign(I18N.en, {
+  capLbl: 'Type the characters you see', rememberMe: 'Remember me', forgotQ: 'Forgot PIN?', firstTime: 'First time here?', setYourPin: 'Set your PIN',
+  step2of2: 'Step 2 of 2', detailsOk: 'Details verified', signIn: 'Sign in', signingIn: 'Signing in…', changeDetails: '‹ Change details', backLink: '‹ Back',
+  firstSet: 'First time · set your PIN', setupCodeMail: 'Setup code from your invite mail', savePinIn: 'Save PIN & sign in', storeLogin: 'Store login',
+  secureLine: 'Secure sign-in · PIN stored encrypted · auto logout when idle',
+  subStore: 'Sign in with your Emp Code and store', subMail: 'Sign in with your official mail id', subBoth: 'Sign in with your Emp Code or official mail id',
+  lblEmp: 'Emp Code', lblMail: 'Mail ID', lblBoth: 'Emp Code or Mail ID',
+  capWrong: 'The characters do not match. Try the new ones.', capEmpty: 'Type the 5 characters you see.',
+  bothHint: 'Enter your Emp Code (5+ digits) or your full official mail id.',
+  notFoundRlpo: 'No RLPO login found for this mail id. Ask Admin to add you in RLPO Master.',
+  notFoundUser: 'No login found for these details. Check them, or ask Admin to add you in Users & PIN.',
+  rIdle: 'Logged out after inactivity. Please sign in again.', rExpired: 'Your session expired. Please sign in again.', rOut: 'You are logged out.',
+  pinAlreadySet: 'Your PIN is already set. Enter it below. Forgot it? Ask your ZFM or HO Admin to reset it.',
+  slSg: 'Security guards', slSgT: '12-hr and 8-hr shifts · A / H / P by hours', slHk: 'Housekeeping', slHkT: 'Morning and evening crew, store by store', slPr: 'Promoters', slPrT: 'QR scan + selfie punch in 1 second',
+  stGuards: 'security guards', stHk: 'housekeeping', stProm: 'promoters', stVendors: 'vendors', stStores: 'stores',
+});
+Object.assign(I18N.hi, {
+  capLbl: 'जो अक्षर दिख रहे हैं वो लिखें', rememberMe: 'याद रखें', forgotQ: 'PIN भूल गए?', firstTime: 'पहली बार?', setYourPin: 'अपना PIN बनाएं',
+  step2of2: 'चरण 2 / 2', detailsOk: 'विवरण सही है', signIn: 'साइन इन', signingIn: 'साइन इन हो रहा है…', changeDetails: '‹ विवरण बदलें', backLink: '‹ वापस',
+  firstSet: 'पहली बार · PIN बनाएं', setupCodeMail: 'इनवाइट मेल का सेटअप कोड', savePinIn: 'PIN सेव करें और साइन इन', storeLogin: 'स्टोर लॉगिन',
+  secureLine: 'सुरक्षित साइन-इन · PIN एन्क्रिप्टेड · निष्क्रिय होने पर ऑटो लॉगआउट',
+  subStore: 'अपने Emp Code और स्टोर से साइन इन करें', subMail: 'अपनी ऑफिशियल मेल आईडी से साइन इन करें', subBoth: 'Emp Code या ऑफिशियल मेल आईडी से साइन इन करें',
+  lblEmp: 'Emp Code', lblMail: 'मेल आईडी', lblBoth: 'Emp Code या मेल आईडी',
+  capWrong: 'अक्षर मेल नहीं खाते। नए अक्षर लिखें।', capEmpty: 'दिख रहे 5 अक्षर लिखें।',
+  bothHint: 'Emp Code (5+ अंक) या पूरी ऑफिशियल मेल आईडी लिखें।',
+  notFoundRlpo: 'इस मेल आईडी से RLPO लॉगिन नहीं मिला। Admin से RLPO Master में जुड़वाएं।',
+  notFoundUser: 'इन विवरण से लॉगिन नहीं मिला। जांचें, या Admin से Users & PIN में जुड़वाएं।',
+  rIdle: 'कुछ देर इस्तेमाल न होने से लॉगआउट हुआ। फिर से साइन इन करें।', rExpired: 'सेशन समाप्त। फिर से साइन इन करें।', rOut: 'आप लॉगआउट हो गए।',
+  pinAlreadySet: 'आपका PIN पहले से बना है। नीचे डालें। भूल गए? ZFM या HO Admin से रीसेट करवाएं।',
+  slSg: 'सिक्योरिटी गार्ड', slSgT: '12 घंटे और 8 घंटे की शिफ्ट · घंटों से A / H / P', slHk: 'हाउसकीपिंग', slHkT: 'सुबह और शाम की टीम, हर स्टोर', slPr: 'प्रमोटर', slPrT: 'QR स्कैन + सेल्फी, 1 सेकंड में पंच',
+  stGuards: 'सिक्योरिटी गार्ड', stHk: 'हाउसकीपिंग', stProm: 'प्रमोटर', stVendors: 'वेंडर', stStores: 'स्टोर',
+});
 
-function show(id) { ['s1','s2','s3','s4','s5'].forEach((s) => $('#' + s).hidden = s !== id); }
-function err(id, msg) { const e = $('#' + id); e.hidden = !msg; e.textContent = msg || ''; }
-function pinBoxes(el) {
-  el.innerHTML = [0,1,2,3].map(() => '<input type="password" inputmode="numeric" maxlength="1" autocomplete="one-time-code">').join('');
-  const ins = $$('input', el);
-  ins.forEach((i, k) => {
-    i.addEventListener('input', () => { i.value = i.value.replace(/\D/g, '').slice(0, 1); if (i.value && ins[k + 1]) ins[k + 1].focus(); });
-    i.addEventListener('keydown', (e) => { if (e.key === 'Backspace' && !i.value && ins[k - 1]) ins[k - 1].focus(); });
-  });
+/* ---------- hero: 3rd-party staff illustrations (guards · housekeeping · promoters), Store Live motion ---------- */
+function person(x, y, uni, cap, prop, delay) {
+  return `<g class="pp" style="animation-delay:${delay}s" transform="translate(${x} ${y})"><ellipse cx="0" cy="62" rx="18" ry="4" fill="rgba(0,0,0,.25)"/>
+  <rect x="-13" y="16" width="26" height="34" rx="10" fill="${uni}"/><rect x="-11" y="46" width="9" height="16" rx="3" fill="#2B3445"/><rect x="2" y="46" width="9" height="16" rx="3" fill="#2B3445"/>
+  <circle cx="0" cy="6" r="10" fill="#E6B98F"/>${cap}${prop}</g>`;
 }
-const pinVal = (el) => $$('input', el).map((i) => i.value).join('');
+const CAP = { guard: '<path d="M-11 0 Q0 -10 11 0 L11 2 L-11 2 Z" fill="#1F2A44"/><rect x="-13" y="1" width="26" height="3" rx="1.5" fill="#1F2A44"/><circle cx="0" cy="-2" r="2" fill="#FBBF24"/>',
+  hk: '<path d="M-10 0 Q0 -9 10 0 Z" fill="#0EA5A4"/>', prom: '<path d="M-10 -1 Q0 -11 10 -1 L13 1 L-10 1 Z" fill="#F97316"/>' };
+const PROP = { shield: '<g transform="translate(14 22)"><path d="M0 0 L9 3 L9 10 Q9 17 0 20 Q-9 17 -9 10 L-9 3 Z" fill="#FBBF24"/><path d="M-4 10 L-1 13 L5 6" stroke="#1F2A44" stroke-width="2" fill="none"/></g>',
+  mop: '<g class="mop"><line x1="13" y1="20" x2="22" y2="62" stroke="#A16207" stroke-width="3" stroke-linecap="round"/><rect x="15" y="58" width="16" height="6" rx="2" fill="#5EEAD4"/></g>',
+  badge: '<g transform="translate(-6 24)"><rect width="12" height="9" rx="2" fill="#fff"/><rect x="2" y="3" width="8" height="1.5" fill="#F97316"/><rect x="2" y="6" width="5" height="1.5" fill="#94A3B8"/></g>',
+  phone: '<g transform="translate(13 18)"><rect width="12" height="20" rx="2.5" fill="#0F172A" stroke="#fff" stroke-width="1"/><rect x="2" y="3" width="8" height="12" rx="1" fill="#38BDF8"/></g>' };
+const SL = [['slSg', 'slSgT', 'sg'], ['slHk', 'slHkT', 'hk'], ['slPr', 'slPrT', 'pr']];
+function slideSvg(k) {
+  if (k === 'sg') {
+    const tick = [...Array(12).keys()].map((i) => { const a = i * 30 * Math.PI / 180; return `<line x1="${200 + Math.sin(a) * 40}" y1="${78 - Math.cos(a) * 40}" x2="${200 + Math.sin(a) * 46}" y2="${78 - Math.cos(a) * 46}" stroke="rgba(255,255,255,.5)" stroke-width="${i % 3 ? 1 : 2}"/>`; }).join('');
+    return `<svg viewBox="0 0 300 170" role="img" aria-label="Security guards">${person(48, 58, '#334155', CAP.guard, PROP.shield, 0)}${person(102, 62, '#334155', CAP.guard, '', .15)}
+     <circle cx="200" cy="78" r="52" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.18)"/><circle class="arc" cx="200" cy="78" r="52" fill="none" stroke="#4CEB8B" stroke-width="6" stroke-linecap="round" stroke-dasharray="327" transform="rotate(-90 200 78)"/>${tick}
+     <line class="hand" x1="200" y1="78" x2="200" y2="44" stroke="#fff" stroke-width="3" stroke-linecap="round" style="transform-origin:200px 78px"/><circle cx="200" cy="78" r="4" fill="#fff"/>
+     <text x="200" y="146" text-anchor="middle" style="font-weight:700">12-hr shift</text>
+     <g class="pop" style="animation-delay:1.4s"><rect x="252" y="26" width="38" height="20" rx="10" fill="#4CEB8B"/><text x="271" y="40" text-anchor="middle" style="fill:#0F172A;font-weight:800">P</text></g>
+     <g class="pop" style="animation-delay:1.7s"><rect x="252" y="54" width="38" height="20" rx="10" fill="#FFD27A"/><text x="271" y="68" text-anchor="middle" style="fill:#0F172A;font-weight:800">H</text></g>
+     <g class="pop" style="animation-delay:2s"><rect x="252" y="82" width="38" height="20" rx="10" fill="#FFB3A7"/><text x="271" y="96" text-anchor="middle" style="fill:#0F172A;font-weight:800">A</text></g></svg>`;
+  }
+  if (k === 'hk') return `<svg viewBox="0 0 300 170" role="img" aria-label="Housekeeping">${person(40, 58, '#0F766E', CAP.hk, PROP.mop, 0)}${person(96, 62, '#0F766E', CAP.hk, '', .15)}
+     <text x="150" y="30" style="font-weight:700">Morning</text><text x="150" y="88" style="font-weight:700">Evening</text>
+     ${[0, 1, 2].map((i) => `<g class="pop" style="animation-delay:${.3 + i * .15}s"><circle cx="${160 + i * 26}" cy="52" r="10" fill="#5EEAD4"/><rect x="${152 + i * 26}" y="60" width="16" height="10" rx="4" fill="#5EEAD4"/></g>`).join('')}
+     ${[0, 1].map((i) => `<g class="pop" style="animation-delay:${.8 + i * .15}s"><circle cx="${160 + i * 26}" cy="110" r="10" fill="#99F6E4"/><rect x="${152 + i * 26}" y="118" width="16" height="10" rx="4" fill="#99F6E4"/></g>`).join('')}
+     <g class="pop" style="animation-delay:1.3s"><rect x="232" y="94" width="58" height="38" rx="8" fill="rgba(255,255,255,.1)" stroke="rgba(255,255,255,.25)"/><text x="261" y="110" text-anchor="middle" style="font-size:10px">Total</text><text x="261" y="126" text-anchor="middle" style="font-weight:800;font-size:15px">3 + 2</text></g>
+     <text x="150" y="160" style="font-size:10px;opacity:.8">Admin sets the total · store splits it</text></svg>`;
+  return `<svg viewBox="0 0 300 170" role="img" aria-label="Promoters">${person(36, 58, '#C2410C', CAP.prom, PROP.badge, 0)}${person(86, 62, '#7C3AED', '<path d="M-10 -1 Q0 -11 10 -1 L13 1 L-10 1 Z" fill="#A78BFA"/>', PROP.phone, .15)}
+     <g transform="translate(150 18)"><rect width="62" height="112" rx="12" fill="#0F172A" stroke="rgba(255,255,255,.5)"/><rect x="6" y="12" width="50" height="80" rx="6" fill="#1E293B"/>
+      <ellipse cx="31" cy="50" rx="15" ry="20" fill="none" stroke="#4CEB8B" stroke-width="2"/><circle cx="31" cy="46" r="8" fill="#E6B98F"/><rect x="21" y="56" width="20" height="12" rx="6" fill="#C2410C"/>
+      <rect class="scan" x="8" y="20" width="46" height="2" fill="#4CEB8B"/><g class="pop" style="animation-delay:1.5s"><circle cx="31" cy="100" r="7" fill="#4CEB8B"/><path d="M27 100 L30 103 L35 97" stroke="#0F172A" stroke-width="2" fill="none"/></g></g>
+     <g transform="translate(232 30)">${[[0, 0], [16, 0], [0, 16]].map(([x, y]) => `<rect x="${x}" y="${y}" width="12" height="12" fill="none" stroke="#fff" stroke-width="2"/><rect x="${x + 4}" y="${y + 4}" width="4" height="4" fill="#fff"/>`).join('')}<rect x="18" y="18" width="4" height="4" fill="#fff"/><rect x="24" y="22" width="4" height="4" fill="#fff"/></g>
+     <text x="246" y="80" text-anchor="middle" style="font-size:10px">Store QR</text>
+     <g class="pop" style="animation-delay:1.8s"><rect x="222" y="98" width="72" height="22" rx="11" fill="#4CEB8B"/><text x="258" y="113" text-anchor="middle" style="fill:#0F172A;font-weight:800;font-size:11px">IN 08:02 ✓</text></g></svg>`;
+}
+let slide = 0, slideTimer = null;
+function paintHero() {
+  $('#slides').innerHTML = SL.map(([a, b, k], i) => `<div class="slide${i === slide ? ' on' : ''}"><div class="st"><b>${esc(t(a))}</b><h3>${esc(t(b))}</h3></div>${slideSvg(k)}</div>`).join('');
+  $('#dots').innerHTML = SL.map((_, i) => `<button type="button" data-hs="${i}" class="${i === slide ? 'on' : ''}" aria-label="Slide ${i + 1}"></button>`).join('');
+}
+function goSlide(i) {
+  slide = (i + SL.length) % SL.length;
+  $$('#slides .slide').forEach((e, k) => e.classList.toggle('on', k === slide));
+  $$('#dots button').forEach((e, k) => e.classList.toggle('on', k === slide));
+}
+function startSlides() { clearInterval(slideTimer); slideTimer = setInterval(() => goSlide(slide + 1), 4500); }
+let stats = null;
+function paintStats() {
+  const f = (v) => (v == null ? '—' : Number(v).toLocaleString('en-IN'));
+  const s = stats || {};
+  $('#lstats').innerHTML = [['guards', 'stGuards'], ['housekeeping', 'stHk'], ['promoters', 'stProm'], ['vendors', 'stVendors'], ['stores', 'stStores']]
+    .map(([k, l]) => `<div><b>${f(s[k])}</b><span>${esc(t(l))}</span></div>`).join('');
+}
+
+/* ---------- captcha (client side, SVG) ---------- */
+let capCode = '';
+function capNew() {
+  const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const rnd = (n) => (window.crypto && crypto.getRandomValues ? crypto.getRandomValues(new Uint32Array(1))[0] % n : Math.floor(Math.random() * n));
+  capCode = Array.from({ length: 5 }, () => c[rnd(c.length)]).join('');
+  const rot = Array.from({ length: 5 }, () => -12 + rnd(25));
+  $('#capImg').innerHTML = `<svg viewBox="0 0 150 44" width="150" height="44" aria-label="Captcha image"><rect width="150" height="44" rx="8" fill="#EEF2F6"/>${[0, 1, 2, 3].map((i) => `<path d="M0 ${8 + i * 10} Q 40 ${(i * 17 + rnd(10)) % 44} 75 ${20 + i * 5} T 150 ${10 + i * 8}" stroke="${['#94A3B8', '#F59E0B', '#64748B', '#CBD5E1'][i]}" stroke-width="1.2" fill="none"/>`).join('')}${capCode.split('').map((ch, i) => `<text x="${16 + i * 26}" y="${30 + (i % 2 ? -4 : 4)}" font-family="Verdana,sans-serif" font-size="${20 + (i % 3) * 2}" font-weight="800" fill="${['#334155', '#EA580C', '#0F172A', '#C2410C', '#475569'][i]}" transform="rotate(${rot[i]} ${16 + i * 26} 26)">${ch}</text>`).join('')}</svg>`;
+  $('#capIn').value = '';
+}
+
+/* ---------- state ---------- */
+const ROLES = ['store', 'am', 'zfm', 'hodept', 'rlpo', 'admin'];
+const MAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const ICN = {
+  mail: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+  user: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
+  store: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/></svg>',
+};
+let role = 'store', checked = null, timer = null, mode = 'pin', busy = false, lastPin = '', wantFirst = false;
+const REM_KEY = '3pa_remember';
+const mailOnly = (r) => r === 'hodept' || r === 'rlpo';
+
+function show(id) { ['s1', 's2', 's3', 's4', 's5'].forEach((s) => { $('#' + s).hidden = s !== id; }); }
+function err(id, msg, cls) { const e = $('#' + id); e.hidden = !msg; e.className = 'lmsg' + (cls ? ' ' + cls : ''); e.textContent = msg || ''; }
 function ident() {
-  return { p_role: role, p_emp: role === 'hodept' ? $('#emp').value.trim().toLowerCase() : $('#emp').value.trim(),
+  const raw = $('#emp').value.trim();
+  return {
+    p_role: role,
+    p_emp: role === 'store' ? raw : (mailOnly(role) || raw.includes('@') ? raw.toLowerCase() : raw),
     p_post: role === 'store' ? $('#post').value : null,
     p_store: role === 'store' ? $('#storeCode').value.trim().toUpperCase() : null,
-    p_dept: role === 'hodept' ? (Number($('#dept').value) || null) : null };
+    p_dept: role === 'hodept' ? (Number($('#dept').value) || null) : null,
+  };
 }
-function setRole(r) {
-  role = r;
-  $$('.role').forEach((b) => b.classList.toggle('on', b.dataset.role === r));
-  $$('[data-for="store"]').forEach((e) => e.hidden = r !== 'store');
-  $$('[data-for="hodept"]').forEach((e) => e.hidden = r !== 'hodept');
-  $('#emp').setAttribute('inputmode', r === 'hodept' ? 'email' : 'numeric'); $('#emp').maxLength = r === 'hodept' ? 80 : 10; $('#emp').placeholder = r === 'hodept' ? 'name@company.com' : ''; const el = document.querySelector('label[for="emp"]'); if (el) el.textContent = r === 'hodept' ? 'Mail id' : t('empCode');
+function paintRoles() { $('#roles').innerHTML = ROLES.map((r) => `<button type="button" role="tab" data-lr="${r}" class="${r === role ? 'on' : ''}" aria-selected="${r === role}">${esc(roleLabel(r))}</button>`).join(''); }
+function setRole(r, keepId) {
+  if (!ROLES.includes(r)) r = 'store';
+  role = r; paintRoles();
+  $$('[data-for="store"]').forEach((e) => { e.hidden = r !== 'store'; });
+  $$('[data-for="hodept"]').forEach((e) => { e.hidden = r !== 'hodept'; });
+  const m = mailOnly(r), emp = $('#emp');
+  emp.setAttribute('inputmode', r === 'store' ? 'numeric' : m ? 'email' : 'text');
+  emp.maxLength = r === 'store' ? 10 : 80;
+  emp.placeholder = r === 'store' ? '5+ digits' : m ? 'name@vishalretail.co.in' : '51234 or name@vishalretail.co.in';
+  $('#empLbl').textContent = t(r === 'store' ? 'lblEmp' : m ? 'lblMail' : 'lblBoth');
+  $('#empIc').innerHTML = m ? ICN.mail : ICN.user;
+  $('#s1sub').textContent = t(r === 'store' ? 'subStore' : m ? 'subMail' : 'subBoth');
+  if (!keepId) { const rem = store.get(REM_KEY); emp.value = rem && rem.role === r ? rem.id || '' : ''; }
   err('err1');
 }
-function newMath() {
-  const a = 2 + Math.floor(Math.random() * 9), b = 1 + Math.floor(Math.random() * 9);
-  mathAns = a + b; $('#mathQ').textContent = `${a} + ${b} = ?`; $('#mathA').value = '';
+function subLine() {
+  const i = ident();
+  if (role === 'store') return `${i.p_post} · ${i.p_store}${checked && checked.store_name ? ' · ' + checked.store_name : ''} · Emp ${i.p_emp}`;
+  const d = role === 'hodept' ? $('#dept').selectedOptions[0] : null;
+  return `${roleLabel(role)} · ${i.p_emp}${d && d.value ? ' · ' + d.textContent : ''}`;
 }
 function lockedScreen(sec) {
   show('s4'); clearInterval(timer);
@@ -157,71 +304,105 @@ function lockedScreen(sec) {
   const tick = () => {
     const left = Math.max(0, Math.round((end - Date.now()) / 1000));
     $('#countdown').textContent = `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(left % 60).padStart(2, '0')}`;
-    if (!left) { clearInterval(timer); show('s2'); pinBoxes($('#pinLogin')); }
+    if (!left) { clearInterval(timer); openPin(); }
   };
   tick(); timer = setInterval(tick, 1000);
 }
-function subLine() {
-  const i = ident();
-  return role === 'store' ? `${i.p_post} · ${i.p_store}${checked.store_name ? ' · ' + checked.store_name : ''}` : `Emp ${i.p_emp}`;
+function openPin(note) {
+  pinBoxes($('#pinLogin'));
+  $('#pinLogin').onEnter = () => doLogin(); $('#pinLogin').onComplete = () => doLogin();
+  if (note) err('err2', note, 'i'); else err('err2');
+  show('s2'); setTimeout(() => { const f = $('#pinLogin input'); if (f) f.focus(); }, 60);
 }
-
-let mode = 'pin';
 function createScreen(m) {
-  mode = m; newMath(); pinBoxes($('#pinNew')); pinBoxes($('#pinNew2')); err('err3');
+  mode = m; pinBoxes($('#pinNew')); pinBoxes($('#pinNew2')); err('err3');
+  $('#pinNew2').onComplete = () => $('#btnSave').focus();
+  $('#pinNew2').onEnter = () => doSave();
   $('#regBox').hidden = m !== 'register'; $('#codeBox').hidden = m !== 'code';
-  $('#s3 .ttl').textContent = t(m === 'register' ? 'registerTitle' : 'createPin');
-  $('#btnSave').textContent = t(m === 'register' ? 'registerBtn' : 'savePin');
+  $('#s3ttl').textContent = t(m === 'register' ? 'registerTitle' : 'createPin');
+  $('#btnSave').textContent = t(m === 'register' ? 'registerBtn' : 'savePinIn');
   if (m === 'register') { const i = ident(); $('#regNote').textContent = t('registerNew', { store: `${i.p_store} ${checked.store_name || ''}`.trim(), post: i.p_post }); $('#regName').value = ''; }
   if (m === 'code') $('#setupCode').value = '';
   show('s3');
-  setTimeout(() => (m === 'register' ? $('#regName') : m === 'code' ? $('#setupCode') : $('#mathA')).focus(), 50);
+  setTimeout(() => (m === 'register' ? $('#regName') : m === 'code' ? $('#setupCode') : $('#pinNew input')).focus(), 60);
 }
-function layoutSlots() {
-  $$('[data-layout-slot]').forEach((el) => { el.innerHTML = ''; if (role !== 'store') el.appendChild(Layout.toggle()); });
+function remember() {
+  if ($('#rem').checked) store.set(REM_KEY, { role, id: $('#emp').value.trim(), post: $('#post').value, store: $('#storeCode').value.trim().toUpperCase(), dept: $('#dept').value });
+  else store.del(REM_KEY);
 }
-async function doCheck() {
-  const i = ident();
-  if (role === 'hodept' ? !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(i.p_emp) : !/^\d{5,}$/.test(i.p_emp)) return err('err1', role === 'hodept' ? t('mailHint') : t('empHint'));
-  if (role === 'store' && !/^[A-Z]{2}\d{2}$/.test(i.p_store)) return err('err1', t('storeHint'));
-  if (role === 'hodept' && !i.p_dept) return err('err1', t('selectDept'));
-  $('#btnNext').disabled = true;
-  const r = await rpc('auth_check', i);
-  $('#btnNext').disabled = false;
-  if (r && r.error === 'POST_TAKEN') return err('err1', t('postTaken', { post: r.post, store: r.store, name: r.by_name, emp: r.by_emp }));
-  if (r && r.error === 'EMP_ELSEWHERE') return err('err1', t('empElsewhere', { where: r.where }));
-  if (!r || !r.ok) return err('err1', role === 'hodept' && r && r.error === 'NOT_FOUND' ? t('notFoundHo') : errText(r && r.error));
-  checked = r; err('err1');
-  layoutSlots();
-  if (r.register) { $('#whoSub3').textContent = `Emp ${i.p_emp}`; return createScreen('register'); }
-  $('#who').textContent = r.name; $('#whoSub').textContent = subLine(); $('#whoSub3').textContent = subLine();
-  if (r.locked_sec > 0) return lockedScreen(r.locked_sec);
-  if (!r.pin_set) return createScreen(r.need_code ? 'code' : 'pin');
-  pinBoxes($('#pinLogin')); err('err2'); show('s2'); setTimeout(() => $('#pinLogin input').focus(), 50);
+function forgot() {
+  const where = $('#s2').hidden ? 'err1' : 'err2';
+  err(where, t('forgotPin'), 'i');
 }
 
-async function doLogin() {
-  const pin = pinVal($('#pinLogin'));
-  if (!/^\d{4}$/.test(pin)) return err('err2', t('enterPin'));
-  const id = ident(); let perm = { pos: null };
+/* ---------- step 1 → auth_check ---------- */
+async function doCheck() {
+  if (busy) return;
+  const i = ident();
+  const okId = role === 'store' ? /^\d{5,}$/.test(i.p_emp) : mailOnly(role) ? MAIL_RE.test(i.p_emp) : (/^\d{5,}$/.test(i.p_emp) || MAIL_RE.test(i.p_emp));
+  if (!okId) return err('err1', role === 'store' ? `${t('lblEmp')}: ${t('empHint')}` : mailOnly(role) ? t('mailHint') : t('bothHint'));
+  if (role === 'store' && !/^[A-Z]{2}\d{2}$/.test(i.p_store)) return err('err1', t('storeHint'));
+  if (role === 'hodept' && !i.p_dept) return err('err1', t('selectDept'));
+  const cap = $('#capIn').value.trim().toUpperCase();
+  if (cap.length < 5) { $('#capIn').focus(); return err('err1', t('capEmpty')); }
+  if (cap !== capCode) { capNew(); $('#capIn').focus(); return err('err1', t('capWrong')); }
+  remember();
+  busy = true; $('#btnNext').disabled = true; err('err1');
+  const r = await rpc('auth_check', i);
+  busy = false; $('#btnNext').disabled = false;
+  if (r && r.error === 'POST_TAKEN') { capNew(); return err('err1', t('postTaken', { post: r.post, store: r.store, name: r.by_name, emp: r.by_emp })); }
+  if (r && r.error === 'EMP_ELSEWHERE') { capNew(); return err('err1', t('empElsewhere', { where: r.where })); }
+  if (!r || !r.ok) {
+    capNew();
+    const e = r && r.error;
+    return err('err1', e === 'NOT_FOUND' ? (role === 'hodept' ? t('notFoundHo') : role === 'rlpo' ? t('notFoundRlpo') : role === 'store' ? errText(e) : t('notFoundUser')) : errText(e));
+  }
+  checked = r;
+  if (r.register) { $('#whoSub3').textContent = subLine(); return createScreen('register'); }
+  $('#who').textContent = r.name || ''; $('#whoSub').textContent = subLine(); $('#whoSub3').textContent = `${r.name || ''} · ${subLine()}`;
+  if (r.locked_sec > 0) return lockedScreen(r.locked_sec);
+  if (!r.pin_set) return createScreen(r.need_code ? 'code' : 'pin');
+  openPin(wantFirst ? t('pinAlreadySet') : null);
+}
+
+/* ---------- consent + location (store logins need GPS + camera; others tick the policy once) ---------- */
+async function perms() {
+  const id = ident();
   if (role === 'store') {
     const ctx = await rpc('punch_context', { p_store: id.p_store });
-    perm = (await permissionsReady('user', true)) || (await consentGate({ kind: 'user', store: id.p_store, emp: id.p_emp, testMode: ctx && ctx.test_mode, needCamera: true }));
-  } else if (!hasConsent('user')) {
-    await consentGate({ kind: 'user', emp: id.p_emp, requirePerms: false, needCamera: false });
+    return (await permissionsReady('user', true)) || (await consentGate({ kind: 'user', store: id.p_store, emp: id.p_emp, testMode: ctx && ctx.test_mode, needCamera: true }));
   }
-  $('#btnLogin').disabled = true;
+  if (!hasConsent('user')) await consentGate({ kind: 'user', emp: id.p_emp, requirePerms: false, needCamera: false });
+  return { pos: null };
+}
+
+/* ---------- step 2 → auth_login ---------- */
+async function doLogin(pinIn) {
+  if (busy) return;
+  const pin = pinIn || pinVal($('#pinLogin'));
+  if (!/^\d{4}$/.test(pin)) { pinBad($('#pinLogin')); return err('err2', t('enterPin')); }
+  lastPin = pin; busy = true;
+  const btn = $('#btnLogin'); btn.disabled = true; btn.textContent = t('signingIn'); err('err2');
+  const id = ident();
+  let perm = { pos: null };
+  try { perm = (await perms()) || { pos: null }; } catch (e) { perm = { pos: null }; }
   const r = await rpc('auth_login', { ...id, p_pin: pin, p_device: deviceId(), p_lat: perm.pos ? perm.pos.lat : null, p_lng: perm.pos ? perm.pos.lng : null });
-  $('#btnLogin').disabled = false;
-  if (r && r.ok) { Session.set(r); location.href = homeFor(r.role); return; }
+  busy = false; btn.disabled = false; btn.textContent = t('signIn');
+  if (r && r.ok) {
+    Session.set(r); remember();
+    btn.disabled = true; btn.textContent = t('signingIn');
+    $('#lg').classList.add('out');
+    setTimeout(() => { location.href = homeFor(r.role); }, 340);
+    return;
+  }
   const e = r && r.error;
-  if (e === 'WRONG_PIN') { pinBoxes($('#pinLogin')); return err('err2', t('wrongPin', { n: r.tries_left })); }
+  if (e === 'WRONG_PIN') { pinBad($('#pinLogin')); return err('err2', t('wrongPin', { n: r.tries_left })); }
   if (e === 'LOCKED') return lockedScreen(r.locked_sec);
   if (e === 'OUT_OF_RANGE') return err('err2', t('outsideLogin', { d: r.dist_m, r: r.radius_m }));
   if (e === 'NO_GPS') return err('err2', t('noGps') + ' ' + t('permHow'));
   if (e === 'PIN_NOT_SET') return createScreen(role === 'store' ? 'pin' : 'code');
   if (e === 'STORE_BUSY') {
-    $('#busyStore').textContent = ident().p_store;
+    $('#busyStore').textContent = id.p_store;
     $('#busyWho').textContent = t('openOnPhone', { name: r.by_name, emp: r.by_emp, since: r.since });
     $('#busyHow').textContent = t('askLogout', { at: r.unlock_at });
     return show('s5');
@@ -229,59 +410,100 @@ async function doLogin() {
   err('err2', errText(e));
 }
 
+/* ---------- create PIN / register / setup code ---------- */
 async function doSave() {
-  if (Number($('#mathA').value) !== mathAns) { newMath(); return err('err3', t('wrongAnswer')); }
+  if (busy) return;
   const p1 = pinVal($('#pinNew')), p2 = pinVal($('#pinNew2'));
-  if (!/^\d{4}$/.test(p1)) return err('err3', t('newPin'));
-  if (p1 !== p2) { pinBoxes($('#pinNew2')); return err('err3', t('pinMismatch')); }
-  const id = ident(); let perm = { pos: null };
-  if (mode === 'register' && !/^[A-Za-z][A-Za-z .]{2,59}$/.test($('#regName').value.trim())) return err('err3', t('badNameReg'));
-  if (mode === 'code' && !/^\d{6}$/.test($('#setupCode').value.trim())) return err('err3', t('badCode'));
-  if (role === 'store') {
-    const ctx = await rpc('punch_context', { p_store: id.p_store });
-    perm = (await permissionsReady('user', true)) || (await consentGate({ kind: 'user', store: id.p_store, emp: id.p_emp, testMode: ctx && ctx.test_mode, needCamera: true }));
-  }
+  if (mode === 'register' && !/^[A-Za-z][A-Za-z .]{2,59}$/.test($('#regName').value.trim())) { $('#regName').focus(); return err('err3', t('badNameReg')); }
+  if (mode === 'code' && !/^\d{6}$/.test($('#setupCode').value.trim())) { $('#setupCode').focus(); return err('err3', t('badCode')); }
+  if (!/^\d{4}$/.test(p1)) { pinBad($('#pinNew')); return err('err3', t('newPin')); }
+  if (p1 !== p2) { pinBad($('#pinNew2')); return err('err3', t('pinMismatch')); }
+  const id = ident();
+  busy = true; $('#btnSave').disabled = true; err('err3');
+  let perm = { pos: null };
+  try { if (role === 'store') perm = (await perms()) || { pos: null }; } catch (e) { perm = { pos: null }; }
   const geo = { p_lat: perm.pos ? perm.pos.lat : null, p_lng: perm.pos ? perm.pos.lng : null };
-  $('#btnSave').disabled = true;
   const r = mode === 'register'
     ? await rpc('auth_register', { p_emp: id.p_emp, p_post: id.p_post, p_store: id.p_store, p_name: $('#regName').value.trim(), p_pin: p1, ...geo })
     : await rpc('auth_set_pin', { ...id, p_pin: p1, ...geo, p_code: mode === 'code' ? $('#setupCode').value.trim() : null });
-  $('#btnSave').disabled = false;
+  busy = false; $('#btnSave').disabled = false;
   if (r && r.error === 'OUT_OF_RANGE') return err('err3', t('outsideLogin', { d: r.dist_m, r: r.radius_m }));
   if (r && r.error === 'LOCKED') return lockedScreen(r.locked_sec);
   if (r && r.error === 'BAD_NAME') return err('err3', t('badNameReg'));
-  if (!r || !r.ok) { if (r && r.error === 'WEAK_PIN') { pinBoxes($('#pinNew')); pinBoxes($('#pinNew2')); } return err('err3', errText(r && r.error)); }
+  if (!r || !r.ok) {
+    if (r && r.error === 'WEAK_PIN') { pinBad($('#pinNew')); pinClear($('#pinNew2'), false); }
+    return err('err3', errText(r && r.error));
+  }
   toast(t('pinSaved'));
-  if (mode === 'register') { checked.name = $('#regName').value.trim(); $('#who').textContent = checked.name; }
-  checked.pin_set = true; pinBoxes($('#pinLogin')); err('err2'); show('s2');
+  if (mode === 'register') { checked.name = $('#regName').value.trim(); $('#who').textContent = checked.name; $('#whoSub').textContent = subLine(); }
+  checked.pin_set = true;
+  openPin();
   $$('#pinLogin input').forEach((inp, k) => { inp.value = p1[k]; });
-  doLogin();
+  doLogin(p1);
 }
 
-(async function init() {
-  $('#langSlot').appendChild(langToggle());
+/* ---------- init ---------- */
+(function init() {
+  $('#langSlot').replaceWith(langToggle(() => { setRole(role, true); paintHero(); paintStats(); if (!$('#s3').hidden) $('#s3ttl').textContent = t(mode === 'register' ? 'registerTitle' : 'createPin'); }));
   $('#credit').innerHTML = credit();
+  $('#post').innerHTML = POSTS.map((p) => `<option>${esc(p)}</option>`).join('');
+  $('#stIc').innerHTML = ICN.store;
   applyI18n();
-  const q = new URLSearchParams(location.search);
-  if (q.get('r') === 'expired') toast(t('sessionExpired'));
-  const s = Session.get();
-  const last = store.get('vmm3p_last_login');
-  if (last) { setRole(last.role || 'store'); $('#emp').value = last.emp || ''; if (last.post) $('#post').value = last.post; $('#storeCode').value = last.store || ''; }
-  const fillDepts = (opts) => { if (!opts || !opts.departments) return; $('#dept').innerHTML = $('#dept').options[0] ? $('#dept').options[0].outerHTML : ''; opts.departments.forEach((d) => $('#dept').insertAdjacentHTML('beforeend', `<option value="${d.id}">${esc(d.name)}</option>`)); if (last && last.dept) $('#dept').value = last.dept; };
-  let cached = null; try { cached = JSON.parse(localStorage.getItem('vmm3p_opts') || 'null'); } catch (e) {}
-  fillDepts(cached);
-  // network calls run in the background: the form is usable straight away
-  rpc('login_options').then((opts) => { if (opts && opts.departments) { fillDepts(opts); try { localStorage.setItem('vmm3p_opts', JSON.stringify(opts)); } catch (e) {} } });
-  if (s && s.token) rpc('auth_me', { p_token: s.token }).then((me) => { if (me && me.ok) location.href = homeFor(me.role); else Session.clear(); });
+  paintHero(); startSlides(); capNew();
 
-  $('#roles').addEventListener('click', (e) => { const b = e.target.closest('.role'); if (b) setRole(b.dataset.role); });
-  $('#card').addEventListener('submit', (e) => { e.preventDefault(); store.set('vmm3p_last_login', { role, emp: $('#emp').value, post: $('#post').value, store: $('#storeCode').value, dept: $('#dept').value }); doCheck(); });
-  $('#btnLogin').addEventListener('click', doLogin);
-  $('#pinLogin').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+  const q = new URLSearchParams(location.search);
+  const why = q.get('r');
+  if (why) {
+    $('#reason').hidden = false;
+    $('#reason').className = 'lmsg ' + (why === 'idle' ? 'w' : 'i');
+    $('#reason').textContent = why === 'idle' ? t('rIdle') : why === 'expired' ? t('rExpired') : t('rOut');
+    history.replaceState(null, '', location.pathname);
+  }
+
+  // remembered role + id (Remember me), else the old v4 "last login" memory
+  const rem = store.get(REM_KEY) || null;
+  const last = rem ? null : store.get('vmm3p_last_login');
+  $('#rem').checked = !!rem;
+  const pre = rem || (last ? { role: last.role, id: last.emp, post: last.post, store: last.store, dept: last.dept } : null);
+  if (pre) {
+    if (pre.post) $('#post').value = pre.post;
+    if (pre.store) $('#storeCode').value = pre.store;
+    setRole(pre.role || 'store', true); $('#emp').value = pre.id || '';
+  } else setRole('store', true);
+
+  // departments + hero stats (cached first, then live) — the form is usable straight away
+  const fill = (opts) => {
+    if (!opts) return;
+    if (opts.departments) {
+      const cur = $('#dept').value || (pre && pre.dept) || '';
+      $('#dept').innerHTML = `<option value="">${esc(t('selectDept'))}</option>` + opts.departments.map((d) => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
+      if (cur) $('#dept').value = cur;
+    }
+    if (opts.stats) { stats = opts.stats; paintStats(); }
+  };
+  paintStats();
+  try { fill(JSON.parse(localStorage.getItem('vmm3p_opts') || 'null')); } catch (e) {}
+  rpc('login_options').then((opts) => { if (opts && (opts.departments || opts.stats)) { fill(opts); try { localStorage.setItem('vmm3p_opts', JSON.stringify(opts)); } catch (e) {} } });
+
+  const s = Session.get();
+  if (s && s.token) rpc('auth_me', { p_token: s.token }).then((me) => { if (me && me.ok) location.replace(homeFor(me.role)); else Session.clear(); });
+
+  $('#roles').addEventListener('click', (e) => { const b = e.target.closest('[data-lr]'); if (b) { setRole(b.dataset.lr); $('#emp').focus(); } });
+  $('#dots').addEventListener('click', (e) => { const b = e.target.closest('[data-hs]'); if (b) { goSlide(Number(b.dataset.hs)); startSlides(); } });
+  $('#capNew').addEventListener('click', () => { capNew(); $('#capIn').focus(); });
+  $('#capIn').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+  $('#storeCode').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase(); });
+  $('#emp').addEventListener('input', (e) => { if (role === 'store') e.target.value = e.target.value.replace(/\D/g, ''); });
+  $('#rem').addEventListener('change', () => { if (!$('#rem').checked) store.del(REM_KEY); });
+  $('#card').addEventListener('submit', (e) => { e.preventDefault(); wantFirst = false; doCheck(); });
+  $('#lnkFirst').addEventListener('click', (e) => { e.preventDefault(); wantFirst = true; doCheck(); });
+  $$('[data-forgot]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); forgot(); }));
+  $('#btnLogin').addEventListener('click', () => doLogin());
   $('#btnSave').addEventListener('click', doSave);
-  $('#btnRetry').addEventListener('click', doLogin);
-  $$('[data-back]').forEach((b) => b.addEventListener('click', () => { clearInterval(timer); show('s1'); }));
-  $('#storeCode').addEventListener('input', (e) => e.target.value = e.target.value.toUpperCase());
+  $('#setupCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#pinNew input').focus(); } });
+  $('#regName').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#pinNew input').focus(); } });
+  $('#btnRetry').addEventListener('click', () => doLogin(lastPin));
+  $$('[data-back]').forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); clearInterval(timer); capNew(); err('err1'); show('s1'); }));
 })();
 </script>
 </body>

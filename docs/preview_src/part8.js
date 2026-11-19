@@ -1,0 +1,50 @@
+/* ======================= v5: login animation = Store Live DB (same slides, bars grow, line draws, card fades out) · Store login = phone app ======================= */
+let SL=[['Dept-wise presence','Present vs required, by department','dept'],['Through the day','Present % at each check-point','line'],['Stores vs requirement','Short, on plan or above plan','bm']];
+function slideSvg(k){
+  if(k==='dept'){const r=[['Housekeeping',92,'#4CEB8B'],['Security',88,'#FFD27A'],['Travel',79,'#FFD27A'],['CDIT',84,'#FFD27A'],['Overall',87,'#FFD27A'],['Nobody (HK/SG)',4,'#FFB3A7']];
+    return `<svg viewBox="0 0 300 170">${r.map((x,i)=>{const w=i===5?x[1]*12:x[1]*2;return `<text x="0" y="${22+i*27}">${x[0]}</text><rect x="92" y="${10+i*27}" width="200" height="16" rx="8" fill="rgba(255,255,255,.18)"/><rect class="gb" style="animation-delay:${i*.1}s;transform-origin:left;animation-name:growx" x="92" y="${10+i*27}" width="${w}" height="16" rx="8" fill="${x[2]}"/><text x="${88+w}" y="${22+i*27}" text-anchor="end" style="fill:#0F172A;font-weight:700">${x[1]}${i===5?'':''}</text>`}).join('')}</svg>`}
+  if(k==='line'){const X=[14,80,146,212,288],Y=[132,94,60,46,40],Y2=[138,100,66,50,44];return `<svg viewBox="0 0 300 170"><path class="gl" d="M${X.map((x,i)=>x+' '+Y[i]).join(' L')}" fill="none" stroke="#FDBA74" stroke-width="3" stroke-linecap="round"/><path class="gl" d="M${X.map((x,i)=>x+' '+Y2[i]).join(' L')}" fill="none" stroke="#9ec5ff" stroke-width="2" stroke-dasharray="5 4"/>${['8 AM','10 AM','12 PM','2 PM','6 PM'].map((t,i)=>`<circle cx="${X[i]}" cy="${Y[i]}" r="4" fill="#fff"/><text x="${X[i]}" y="162" text-anchor="middle">${t}</text>`).join('')}<text x="296" y="14" text-anchor="end" style="font-size:10px">— today  - - yesterday</text></svg>`}
+  return `<svg viewBox="0 0 300 170">${[['Short',214,'#FF8A80'],['On plan',598,'#9ec5ff'],['Above plan',40,'#7CC4FF']].map((r,i)=>`<text x="0" y="${34+i*44}">${r[0]}</text><rect class="gb" style="animation-delay:${i*.15}s;transform-origin:left;animation-name:growx" x="78" y="${20+i*44}" width="${r[1]/598*180}" height="22" rx="4" fill="${r[2]}"/><text x="${84+r[1]/598*180}" y="${36+i*44}" style="font-weight:700">${r[1]}</text>`).join('')}</svg>`}
+function pLogin(){const L=S.login;if(!L.cap)capNew();if(L.slide==null)L.slide=0;const r=L.role,mailOnly=r==='hodept'||r==='rlpo';
+  const hero=`<div class="hero"><span class="llogo">VMM</span><div class="eyb">Vishal Mega Mart · Central Operations</div><h2>Right people in every store. <em>See where they aren't.</em></h2>
+   <p class="ld">Housekeeping, Security, Travel and CDIT promoters in one place. Required vs present tracked live, store by store, shift by shift.</p>
+   <div class="bnr"><span class="lv"><i></i>LIVE</span>${SL.map((s,i)=>`<div class="slide ${i===L.slide?'on':''}"><div class="st"><b>${s[0]}</b><h3>${s[1]}</h3><span>Sample data shown.</span></div>${slideSvg(s[2])}</div>`).join('')}
+   <div class="dots">${SL.map((_,i)=>`<button data-hs="${i}" class="${i===L.slide?'on':''}" aria-label="Slide ${i+1}"></button>`).join('')}</div></div>
+   <div class="lstats"><div><b>852</b><span>stores</span></div><div><b>4</b><span>departments</span></div><div><b>5,000+</b><span>staff a day</span></div><div><b>14:08</b><span>latest sync</span></div></div></div>`;
+  let card;
+  if(L.step===2)card=`<div class="ey">Step 2 of 2</div><h1>Welcome, ${r==='store'?'Rahul Jain':r==='rlpo'?'Sanjay Rathore':r==='hodept'?'Shashi Ramgadiya':'Ajay Kumar'}</h1><div class="sb">${esc(L.id)}</div><div class="lsec" style="margin:2px 0 10px"><i></i>Details verified</div>
+    <label class="lb" style="text-align:center">Enter your 4-digit PIN</label>${pinHtml('lp')}<div id="lgErr" class="lmsg" hidden></div><button class="lbtn" data-x="lgin" data-pinsubmit="1">Sign in</button>
+    <div class="lrow"><a href="#" data-x="lgback">‹ Change details</a><a href="#" data-x="forgot">Forgot PIN?</a></div>`;
+  else if(L.step===3)card=`<div class="ey">First time · set your PIN</div><h1>Create your PIN</h1><div class="sb">${esc(L.id||'')}</div>${r==='store'?'':`<label class="lb">Setup code from your invite mail</label><input type="text" id="lgCode" inputmode="numeric" maxlength="6" placeholder="6-digit code" style="text-align:center;letter-spacing:6px;font-weight:800">`}
+    <label class="lb">New PIN</label>${pinHtml('n1')}<label class="lb">Confirm PIN</label>${pinHtml('n2')}<div id="lgErr" class="lmsg" hidden></div><button class="lbtn" data-x="lgset" data-pinsubmit="1">Save PIN &amp; sign in</button><div class="lrow"><a href="#" data-x="lgback">‹ Back</a><span></span></div>`;
+  else card=`<div class="lc-logo"><span class="llogo" style="box-shadow:none;border:1px solid #E2E6EC">VMM</span></div><div class="ey">Store · AM · ZFM · HO · RLPO</div><h1>3rd Party Attendance</h1><div class="sb">Sign in with your ${r==='store'?'Emp Code and store':mailOnly?'official mail ID':'Emp Code or official mail ID'}</div>
+    <div class="rc">${LR2.map(([k,l])=>`<button data-lr="${k}" class="${r===k?'on':''}">${l}</button>`).join('')}</div>
+    ${r==='store'?`<label class="lb">Emp Code</label><div class="lin">${ICN.user}<input type="text" id="lgId" inputmode="numeric" placeholder="5+ digits" value="${esc(L.saved&&L.saved.role==='store'?L.saved.id:'')}"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label class="lb">Post</label><select id="lgPost" class="lsel"><option>SM</option><option>ASM</option><option>DM Apps</option><option>DM FMCG</option><option>DM GM</option></select></div><div><label class="lb">Store Code</label><div class="lin">${ICN.store}<input type="text" id="lgStore" maxlength="4" placeholder="HY10" style="text-transform:uppercase"></div></div></div>`
+     :`<label class="lb">${mailOnly?'Mail ID':'Emp Code or Mail ID'}</label><div class="lin">${mailOnly?ICN.mail:ICN.user}<input type="text" id="lgId" inputmode="${mailOnly?'email':'text'}" placeholder="${mailOnly?'name@vishalretail.co.in':'51234 or name@vishalretail.co.in'}" value="${esc(L.saved&&L.saved.role===r?L.saved.id:'')}"></div>${r==='hodept'?`<label class="lb">Department</label><select id="lgDept" class="lsel">${S.depts.filter(d=>d.act).map(d=>`<option>${d.n}</option>`).join('')}</select>`:''}`}
+    <label class="lb">Type the characters you see</label><div class="capr"><span class="cap">${capSvg(L.cap)}</span><button type="button" data-x="capnew" aria-label="New characters">↻</button><input type="text" id="lgCap" maxlength="5" placeholder="CODE" autocomplete="off"></div>
+    <div class="lrow"><label><input type="checkbox" id="lgRem" ${L.saved?'checked':''}> Remember me</label><a href="#" data-x="forgot">Forgot PIN?</a></div>
+    <div id="lgErr" class="lmsg" hidden></div><button class="lbtn" data-x="lgnext">Next →</button><div class="lfirst">First time here? <a href="#" data-x="first">Set your PIN</a></div>`;
+  return `<div class="login2${L.out?' out':''}"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span><div class="lshell">${hero}<div class="lcard">${card}<div class="lsplit">Designed and developed by <b>Shubhendu</b><div class="lsec"><i></i>Secure sign-in · PIN stored encrypted</div></div></div></div></div>`}
+// slides rotate exactly like Store Live: every 4.5 s, bars grow again, line draws again
+setInterval(()=>{if(S.role!=='login')return;const sl=document.querySelectorAll('.login2 .slide');if(!sl.length)return;S.login.slide=(S.login.slide+1)%SL.length;sl.forEach((e,i)=>e.classList.toggle('on',i===S.login.slide));document.querySelectorAll('.login2 .dots button').forEach((e,i)=>e.classList.toggle('on',i===S.login.slide))},4500);
+
+/* ---------- Store login = phone app (also on desktop): top header + bottom tabs ---------- */
+const MNAV=[['td','Today','td'],['pn','Punch','pn'],['hks','HK split','mp'],['rq','Requests','rq'],['stm','Statement','stm'],['qr','QR','qr']];
+const _shell=shell;
+shell=function(){if(S.role!=='store'||S.loggedOut)return _shell();
+  const dark=document.documentElement.dataset.theme==='dark';
+  $('#root').innerHTML=`${strip()}<div class="mapp"><header class="mhd noprint"><div><b>HY10 · Indore</b><small>SM Rahul Jain · ${TITLES[S.page]}</small></div><button data-x="mmenu" aria-label="Menu">☰</button></header>
+   ${S.mmenu?`<div class="mmenu noprint"><select data-f="theme">${PALS.map(p=>`<option value="${p[0]}" ${(document.documentElement.dataset.pal||'p3')===p[0]?'selected':''}>🎨 ${p[1]}</option>`).join('')}</select><button class="btn ghost sm" data-x="dark">${dark?'☀ Light':'☾ Dark'}</button><button class="btn ghost sm" data-x="pinc">Change PIN</button><button class="btn ghost sm" data-x="out">Logout</button></div>`:''}
+   <div class="bar noprint" id="bar" style="display:none"></div><div class="wrap mob" id="pg"></div>
+   <nav class="mtab noprint">${MNAV.map(([k,l,ic])=>`<button data-go="${k}" class="${S.page===k?'on':''}"><svg viewBox="0 0 24 24">${IC[ic]}</svg><span>${l}</span>${k==='hks'&&!STORES[0].split?'<i class="mdot"></i>':''}</button>`).join('')}</nav></div>`;page(true)};
+document.addEventListener('click',e=>{const t=e.target.closest('[data-x="mmenu"]');if(t){S.mmenu=!S.mmenu;shell()}},true);
+
+/* store "Today" on phone: date + shift on the page itself */
+const _pTd=pTd;pTd=function(){return `<div class="mrow"><input class="f" type="date" data-f="d" value="${DATES[S.d]}" min="${DATES[0]}" max="${DATES[TODAY]}"><span class="lvz" style="margin:0"><span class="dot ${S.d===TODAY?'':'off'}"></span>${S.d===TODAY?'Live · '+S.lastRef:'End of day'}</span><button class="btn s sm" data-x="ref">↻</button></div>`+_pTd()};
+
+/* sign-in: card fades out like Store Live, then the app opens */
+document.addEventListener('click',e=>{const t=e.target.closest('[data-x="lgin"]');if(!t)return;const p=pinVal('lp');if(p.length<4)return;e.stopImmediatePropagation();t.disabled=true;t.textContent='Signing in…';
+  setTimeout(()=>{const l=document.querySelector('.login2');if(l)l.classList.add('out');setTimeout(()=>{const r=S.login.role;S.role={hodept:'ho'}[r]||r;S.page=S.role==='store'?'td':'ld';S.login.step=1;capNew();idleReset();shell();toast('Signed in')},320)},500)},true);
+
+
