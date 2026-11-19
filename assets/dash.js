@@ -347,7 +347,7 @@
       (r.slots || []).filter((x) => catOk(x.c)).forEach((x) => groups.set(gk(x.c, x.brand), { c: x.c, brand: x.brand || '', vendor: x.vendor || '', req: x.req, p: x.p, co: x.co, ppl: [] }));
       (r.present || []).filter((a) => catOk(a.c)).forEach((a) => { const k = gk(a.c, a.brand); if (!groups.has(k)) groups.set(k, { c: a.c, brand: a.brand || '', vendor: a.vendor || '', req: 0, p: 0, ppl: [] }); groups.get(k).ppl.push(a); });
       const stm = (a) => `<a class="lk" href="statement.html?s=${encodeURIComponent(code)}&a=${encodeURIComponent(a.id)}&from=${monthStart(date)}&to=${date}">Statement</a>`;
-      const photo = (a) => (a.photo === 'done' ? `📷 ${a.live === 'fail' ? '<span class="tg red">Live ✕</span>' : a.live === 'pass' ? '<span class="tg ok">Live ✓</span>' : ''} ` : a.photo === 'pending' ? '<span class="tg red">Selfie due</span> ' : '');
+      const photo = (a) => (a.photo === 'done' ? `<button class="btn ghost sm" style="padding:2px 6px" title="View selfie" data-selfie="${esc(a.id)}|${esc(date)}">📷</button> ${a.live === 'fail' ? '<span class="tg red">Live ✕</span>' : a.live === 'pass' ? '<span class="tg ok">Live ✓</span>' : ''} ` : a.photo === 'pending' ? '<span class="tg red">Selfie due</span> ' : '');
       const body = [...groups.values()].map((g) => {
         const sec = g.c === 'SEC', n = Math.max(g.ppl.length, 1);
         const pr = sec ? g.p : Math.max(g.p, 0);

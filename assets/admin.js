@@ -1055,6 +1055,9 @@
         <div class="card"><h2>Store can ask AM to change</h2><div class="tgl"><div><b>Request types</b><span>Every request needs a reason; AM approves. Security mis-punch / edit always go to the RLPO.</span></div></div>
           <div class="ckl" style="padding:6px 0">${ck('compoff', 'Comp-off')}${ck('staff', 'Staff details (name / vendor / brand)')}${ck('missed_out', 'Missed OUT time', true)}${ck('missed_in', 'Missed IN', true)}</div><div class="sub">Missed IN / OUT: switch on later when decided.</div></div>
         <div class="card"><h2>Test data</h2><div class="tgl"><div><b>Delete all TEST stores, users and punches</b><span data-r="td">Checking…</span></div><button type="button" class="btn r sm" data-a="tddel" hidden>Delete all test data</button></div></div>
+        <div class="card"><h2>Consents</h2><div class="sub" data-r="cs">Checking…</div>
+          <div class="tgl"><div><b>Delete TEST consents</b><span>Only consents from test stores / test users. Phones are not asked again.</span></div><button type="button" class="btn s sm" data-a="cdel" data-scope="test">Delete test</button></div>
+          <div class="tgl"><div><b>Delete ALL consents + ask everyone again</b><span>Clears the whole consent log and every phone (yours too) sees the consent screen on next open. Use before go-live or after a policy change.</span></div><button type="button" class="btn r sm" data-a="cdel" data-scope="all">Delete all</button></div></div>
       </div>
       <div class="card"><h2>Photo storage</h2><div class="toolrow" style="margin-top:6px"><span data-r="ps">Checking…</span><b data-r="psp"></b></div><div class="meter2"><i data-r="psb" style="width:0"></i></div>
         <div class="acts" style="margin-top:10px"><input class="f" type="date" data-r="pf"> to <input class="f" type="date" data-r="pt"><button type="button" class="btn s sm" data-a="pzip">⬇ Photos ZIP</button><button type="button" class="btn r sm" data-a="pdel">Downloaded, remove from portal</button></div>
@@ -1065,6 +1068,8 @@
     async function tdCount() { const r = await rpc('admin_test_data', { p_token: me.token, p_action: 'count' });
       R('td').textContent = r && r.ok ? (r.stores || r.users ? `${r.stores} test stores, ${r.users} test users, ${nf(r.punches)} test punches. Delete them before go-live.` : 'No test data.') : eText(r && r.error);
       root.querySelector('[data-a="tddel"]').hidden = !(r && r.ok && (r.stores || r.users)); }
+    async function csCount() { const r = await rpc('admin_consent_reset', { p_token: me.token, p_scope: 'count' });
+      R('cs').textContent = r && r.ok ? `${nf(r.all)} consents saved · ${nf(r.test)} from test stores/users · round ${r.epoch}` : eText(r && r.error); }
     async function usage() {
       const u = await photoFn({ action: 'usage', session: me.token });
       if (!u || !u.ok) { R('ps').textContent = 'Could not read storage (' + ((u && u.error) || 'error') + ')'; return; }
@@ -1090,6 +1095,10 @@
       if (a === 'tddel') { if (b.dataset.confirm !== '1') { b.dataset.confirm = '1'; b.textContent = 'Tap again: delete ALL test data'; return; }
         b.disabled = true; const r = await rpc('admin_test_data', { p_token: me.token, p_action: 'delete' }); b.disabled = false; b.dataset.confirm = ''; b.textContent = 'Delete all test data';
         toast(r && r.ok ? `${r.stores} test stores deleted` : eText(r && r.error)); Object.keys(cache).forEach((k) => drop(k)); tdCount(); }
+      if (a === 'cdel') { const sc = b.dataset.scope, lbl = sc === 'all' ? 'Delete all' : 'Delete test';
+        if (b.dataset.confirm !== '1') { b.dataset.confirm = '1'; b.textContent = sc === 'all' ? 'Tap again: delete ALL' : 'Tap again to delete'; return; }
+        b.disabled = true; const r = await rpc('admin_consent_reset', { p_token: me.token, p_scope: sc }); b.disabled = false; b.dataset.confirm = ''; b.textContent = lbl;
+        toast(r && r.ok ? `${nf(r.deleted)} consents deleted${sc === 'all' ? ' · everyone will be asked again' : ''}` : eText(r && r.error), 4000); csCount(); }
       if (a === 'pzip') {
         R('pm').textContent = 'Preparing list…';
         const l = await photoFn({ action: 'list', session: me.token, from: R('pf').value, to: R('pt').value });
@@ -1107,7 +1116,7 @@
         b.disabled = false; b.dataset.confirm = ''; b.textContent = 'Downloaded, remove from portal';
         R('pm').textContent = r && r.ok ? `${r.deleted} photos removed.` : 'Error: ' + ((r && r.error) || ''); usage(); }
     });
-    tdCount(); usage();
+    tdCount(); csCount(); usage();
   }
 
   /* ================= ACCESS & CONSENT LOG (search + date) ================= */

@@ -49,3 +49,19 @@ table.edt select.ci{min-width:104px;max-width:150px}
   .toolrow h1.pt{font-size:18px}
   .lgflt input.f[type=search],.toolrow input.f[type=search]{width:100%!important}
 }
+/* v5.1: Store Master shrinks to fit the screen (no sideways scroll on desktop) */
+.kpis.one{grid-template-columns:repeat(6,minmax(0,1fr));overflow:visible}
+.kpis.one .kpi{min-width:0;padding:8px 10px}.kpis.one .kpi .l{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.kpis.one .kpi .go{font-size:10.5px}
+@media(min-width:761px){
+  table.edt{table-layout:fixed;width:100%;min-width:0;font-size:12px}
+  table.edt th,table.edt td{padding:4px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  table.edt th:nth-child(1){width:6%}table.edt th:nth-child(2){width:13%}table.edt th:nth-child(3),table.edt th:nth-child(4),table.edt th:nth-child(5){width:11%}
+  table.edt th:nth-child(6){width:15%}table.edt th:nth-child(7){width:6%}table.edt th:nth-child(8){width:7%}table.edt th:nth-child(9){width:10%}table.edt th:nth-child(10){width:5%}table.edt th:nth-child(11){width:5%}
+  table.edt .ci,table.edt input.ci.nm,table.edt input.ci.ml,table.edt select.ci{min-width:0;max-width:100%;width:100%;font-size:12px;padding:3px 4px;height:28px}
+  table.edt input.ci.nu{width:44px}
+  table.edt td small{display:block;font-size:10.5px;overflow:hidden;text-overflow:ellipsis}
+  table.edt .sw button{padding:2px 6px;font-size:11px}
+  table.edt .btn.sm{padding:3px 6px;font-size:11px}
+  .tw:has(table.edt){overflow-x:visible}
+}
+@media(max-width:760px){.kpis.one{grid-template-columns:repeat(3,minmax(0,1fr))}}

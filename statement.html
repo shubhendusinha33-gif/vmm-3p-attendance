@@ -5,7 +5,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://phyllziizajuphenpwxz.supabase.co; media-src 'self' blob:; connect-src 'self' https://phyllziizajuphenpwxz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Monthly Statement · 3rd Party Attendance</title>
+<title>Attendance Statement · 3rd Party Attendance</title>
 <link rel="preconnect" href="https://phyllziizajuphenpwxz.supabase.co" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="icon" href="assets/logo.png">
@@ -90,11 +90,12 @@ function controls(isStore) {
       ${isStore ? '' : `<label>Store<input class="f" id="store" maxlength="4" style="text-transform:uppercase" placeholder="AA01" autocomplete="off"></label>`}
       <label>${esc(t('dept'))}<select id="dept"><option value="">${esc(t('allDepts'))}</option></select></label>
       <label>${esc(t('associate'))}<select id="assoc"><option value="">${esc(t('selAssoc'))}</option></select></label>
-      <label>${esc(t('month'))}<input class="f" type="month" id="month"></label></div>
+      <label>From<input class="f" type="date" id="dFrom"></label><label>To<input class="f" type="date" id="dTo"></label></div>
+    <div class="acts" style="margin-top:0"><button class="btn ghost sm" data-rng="tm">This month</button><button class="btn ghost sm" data-rng="lm">Last month</button><button class="btn ghost sm" data-rng="30">Last 30 days</button><span style="color:var(--mut);font-size:12px;align-self:center">Any range up to 62 days (match your payroll cycle)</span></div>
     <div class="acts"><button class="btn sm" id="btnShow">${esc(t('show'))}</button><button class="btn s sm" id="btnPrint">${esc(t('print'))}</button><button class="btn s sm" id="btnXls">${esc(t('excel'))}</button></div>
     <div id="err" class="note r" hidden style="margin-top:8px"></div></div>
   <section class="sheet" id="sheet" hidden>
-    <div class="shd">Monthly Attendance Statement</div>
+    <div class="shd">Attendance Statement</div>
     <div class="meta" id="meta"></div>
     <div class="grid" id="grid"></div>
     <div class="sum" id="sum"></div>
@@ -126,11 +127,10 @@ async function loadAssoc() {
 async function show(touched) {
   err();
   const id = Number($('#assoc').value); if (!id) return err(t('selAssoc') + '.');
-  const mv = $('#month').value || todayIST().slice(0, 7);
-  const [y, m] = mv.split('-').map(Number);
-  const useQ = q.get('from') && !touched;
-  const from = useQ ? q.get('from') : ymd(new Date(y, m - 1, 1));
-  const to = useQ && q.get('to') ? q.get('to') : ymd(new Date(y, m, 0));
+  const from = $('#dFrom').value, to = $('#dTo').value;
+  if (!from || !to) return err('Select From and To dates.');
+  if (to < from) return err('To date must be on or after From date.');
+  if ((parseYmd(to) - parseYmd(from)) / 864e5 > 61) return err('Range can be at most 62 days.');
   $('#btnShow').disabled = true;
   const r = await rpc('statement', { p_token: me.token, p_associate: id, p_from: from, p_to: to });
   $('#btnShow').disabled = false;
@@ -171,7 +171,7 @@ function render() {
   const set = r.store.sg_set || 8;
   $('#leg').textContent = `P = Present · A = Absent${sec ? ` · H = Half day (Security ${set}-hr set)` : ''} · Comp-Off = approved comp-off. No punch timings are shown on this statement.`;
   $('#sheet').hidden = false;
-  document.title = `Statement ${a.code} ${r.from.slice(0, 7)} · 3rd Party Attendance`;
+  document.title = `Statement ${a.code} ${r.from} to ${r.to} · 3rd Party Attendance`;
   data.summary = { W, ...n };
 }
 
@@ -200,8 +200,16 @@ function xls() {
   }
   wrap.innerHTML = controls(isStore);
   Idle.start({ minutes: me.idle_min || 60 });
-  const m0 = q.get('from') ? q.get('from').slice(0, 7) : todayIST().slice(0, 7);
-  $('#month').value = m0; $('#month').max = todayIST().slice(0, 7);
+  const td = todayIST();
+  $('#dFrom').value = q.get('from') || monthStart(td); $('#dTo').value = q.get('to') || td;
+  $('#dFrom').max = td; $('#dTo').max = td;
+  $$('[data-rng]').forEach((b) => b.addEventListener('click', () => {
+    const k = b.dataset.rng, n = istNow();
+    if (k === 'tm') { $('#dFrom').value = monthStart(td); $('#dTo').value = td; }
+    else if (k === 'lm') { $('#dFrom').value = ymd(new Date(n.getFullYear(), n.getMonth() - 1, 1)); $('#dTo').value = ymd(new Date(n.getFullYear(), n.getMonth(), 0)); }
+    else { $('#dFrom').value = ymd(new Date(n.getFullYear(), n.getMonth(), n.getDate() - 29)); $('#dTo').value = td; }
+    if ($('#assoc').value) show(true);
+  }));
   if (!isStore && q.get('s')) $('#store').value = q.get('s').toUpperCase();
   if (isStore || q.get('s')) await loadAssoc();
   if (q.get('a')) {
@@ -211,7 +219,7 @@ function xls() {
   if (!isStore) { $('#store').addEventListener('change', loadAssoc); $('#store').addEventListener('input', (e) => { if (e.target.value.length === 4) loadAssoc(); }); }
   $('#dept').addEventListener('change', paintAssoc);
   $('#assoc').addEventListener('change', () => { if ($('#assoc').value) show(true); });
-  $('#month').addEventListener('change', () => { if ($('#assoc').value) show(true); });
+  ['#dFrom', '#dTo'].forEach((x) => $(x).addEventListener('change', () => { if ($('#assoc').value) show(true); }));
   $('#btnShow').addEventListener('click', () => show(true));
   $('#btnPrint').addEventListener('click', () => { if (!data) return err(t('selAssoc') + '.'); window.print(); });
   $('#btnXls').addEventListener('click', xls);

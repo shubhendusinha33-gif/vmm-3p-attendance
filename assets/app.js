@@ -49,6 +49,7 @@ async function rpc(fn, args = {}) {
   const data = await res.json().catch(() => null);
   if (!res.ok) return { ok: false, error: (data && (data.message || data.error)) || `HTTP_${res.status}` };
   if (data && data.ok === false && data.error === 'SESSION_EXPIRED') { Session.clear(); goLogin('expired'); }
+  if (data && typeof data === 'object' && data.consent_epoch != null) store.set('vmm3p_cepoch', Number(data.consent_epoch) || 1);
   return data;
 }
 async function photoFn(body) {
@@ -104,6 +105,7 @@ async function requireSession(roles) {
   if (roles && !roles.includes(me.role)) { location.href = homeFor(me.role); return null; }
   Session.set({ ...s, ...me, token: s.token });
   if (me.view_by) viewBanner(me);
+  window.__noIdle = !!me.no_idle && !me.view_by;
   return { ...me, token: s.token };
 }
 function viewBanner(me) {
@@ -415,7 +417,9 @@ async function askPermissions(needCamera = true) {
   const [pos, cam] = await Promise.all([getPosition(), needCamera ? camPermission() : Promise.resolve(true)]);
   return { pos, cam };
 }
-function consentKey(kind) { return `vmm3p_consent_${kind}_${CONFIG.policy}`; }
+// consent_epoch comes from the server (login_options / punch_context / auth_me). Admin → Settings → "Delete all consents"
+// bumps it, so every phone is asked again (old keys simply stop matching).
+function consentKey(kind) { const e = store.get('vmm3p_cepoch', 1); return `vmm3p_consent_${kind}_${CONFIG.policy}` + (e > 1 ? `_e${e}` : ''); }
 function hasConsent(kind) { return !!store.get(consentKey(kind)); }
 
 /* Full-screen gate: policy summary + tick box + permission check.
@@ -748,7 +752,7 @@ const Idle = {
   start(o = {}) {
     this.stop();
     const m = Number(o.minutes);
-    if (!m || m <= 0) return false;
+    if (window.__noIdle || !m || m <= 0) return false;   // no_idle users (users.no_idle) never auto-logout
     this._opts = o; this._limit = m * 60000;
     this._warn = Math.max(1000, Math.min((o.warn == null ? 60 : o.warn) * 1000, this._limit - 3000));
     this._last = Date.now();
@@ -899,3 +903,21 @@ function mobileShell(root, o = {}) {
   if (o.title) api.setTitle(o.title);
   return api;
 }
+
+/* ---------- v5.1: selfie viewer (📷 buttons anywhere: <button data-selfie="associateId|YYYY-MM-DD">) ---------- */
+async function viewSelfie(assoc, date) {
+  const m = modal(`<h3>Selfie · ${esc(fmtDate(date))}</h3><div class="sv" style="min-height:120px;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:center;color:var(--mut)">Loading…</div><div class="acts" style="margin-top:12px;text-align:right"><button class="btn s sm" data-close>Close</button></div>`);
+  const box = m && m.querySelector('.sv');
+  const r = await photoFn({ action: 'view', session: Session.token(), associate: Number(assoc), date });
+  if (!box) return;
+  if (!r || !r.ok) { box.textContent = r && r.error === 'FORBIDDEN' ? 'Not allowed for this store.' : 'Could not load the photo. ' + esc((r && r.error) || ''); return; }
+  const h = m.querySelector('h3'); if (h) h.textContent = `${r.name || ''} ${r.code ? '· ' + r.code : ''} · ${fmtDate(date)}`;
+  const ph = (r.photos || []).filter((p) => p.url);
+  box.innerHTML = ph.length ? ph.map((p) => `<figure style="margin:0;text-align:center"><a href="${esc(p.url)}" target="_blank" rel="noopener"><img src="${esc(p.url)}" alt="Selfie ${esc(p.kind)} ${esc(p.t)}" style="width:180px;height:240px;object-fit:cover;border-radius:10px;border:1px solid var(--line)"></a>
+    <figcaption style="font-size:12px;margin-top:4px"><b>${esc(p.kind)}</b> ${esc(p.t)} ${p.live === 'pass' ? '<span class="tg ok">Live ✓</span>' : p.live === 'fail' || p.live === 'noface' ? '<span class="tg red">No face</span>' : ''}</figcaption></figure>`).join('')
+    : 'No photo saved for this day (it may have been deleted after the retention period).';
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-selfie]'); if (!b) return;
+  e.preventDefault(); const [a, d] = String(b.dataset.selfie).split('|'); if (a && d) viewSelfie(a, d);
+});

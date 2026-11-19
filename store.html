@@ -117,7 +117,7 @@ function paintDay() {
         <div class="dlist">${sec
           ? ppl.map((g) => `<div class="post"><b>${esc(g.name)}</b><span class="acts">${SG_TAG(g.st)}${past && g.st === 'MP' ? `<button class="btn s sm" data-a="sgreq" data-id="${g.id}">${esc(t('misPunchReq'))}</button>` : ''}</span></div>`).join('')
           : ppl.map((a) => `<div class="post"><span><b>${esc(a.name)}</b>${a.brand ? ` <small>${esc(a.brand)}</small>` : ''}<br><small>IN ${esc(a.first_in || '—')}${a.last_out ? ' · OUT ' + esc(a.last_out) : ' · ' + esc(t('stillIn'))}${a.hours ? ' · ' + a.hours + ' h' : ''}${a.via_mod ? ' · ' + esc(t('punchedByStore')) : ''}</small></span>
-              <span class="acts">${a.photo === 'done' && a.live === 'pass' ? `<span class="tg ok">${esc(t('liveOk'))}</span>` : a.photo === 'done' ? '<span class="tg ok">📷</span>' : a.photo === 'pending' ? '<span class="tg amb">📷?</span>' : ''}
+              <span class="acts">${a.photo === 'done' ? `${a.live === 'pass' ? `<span class="tg ok">${esc(t('liveOk'))}</span> ` : ''}<button class="btn ghost sm" style="padding:2px 6px" title="View selfie" data-selfie="${esc(a.id)}|${esc(date)}">📷</button>` : a.photo === 'pending' ? '<span class="tg amb">📷?</span>' : ''}
               ${editTypes.includes('staff') ? `<button class="btn s sm" data-a="staff" data-id="${a.id}" title="${esc(t('staffReq'))}" aria-label="${esc(t('staffReq'))}">✎</button>` : ''}</span></div>`).join('')}
           ${miss ? `<div class="post miss"><b>${esc(t(sec ? 'notOnDuty' : 'notPunchedN', { n: miss }))}</b>${!sec && !past ? `<button class="btn sm" data-a="go" data-to="pn">${esc(t('punchForStaffT'))}</button>` : ''}</div>` : ''}
           ${!ppl.length && !miss ? '<div class="sub">—</div>' : ''}</div></div>`;

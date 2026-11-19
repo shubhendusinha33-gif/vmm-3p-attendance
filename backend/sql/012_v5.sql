@@ -920,3 +920,12 @@ begin
   update punches set live = p_result where photo_token = p_photo_token and photo_status = 'pending';
   return json_build_object('ok', found);
 end $function$;
+
+-- =====================================================================================
+-- @@ v5_f_noidle_consent_reset_photo_view (applied live 19 Nov 2026)
+--   users.no_idle (never auto-logout; set for admin 6020922 / 99999), _sess honours it;
+--   settings.consent_epoch + admin_consent_reset(token, 'count'|'test'|'all');
+--   login_options / punch_context / auth_me wrap their *_base versions and add consent_epoch (+ no_idle on auth_me);
+--   photo_paths(token, associate, date) for the photo edge function's new 'view' action (service_role only).
+--   Full SQL: see migration v5_f_noidle_consent_reset_photo_view in Supabase.
+-- =====================================================================================
