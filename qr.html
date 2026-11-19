@@ -83,11 +83,27 @@ function posterHtml(code, name) {
 }
 function drawQr(el, code) {
   const box = el.querySelector('.qrb'); box.innerHTML = '';
-  new QRCode(box, { text: `${base}punch.html?s=${code}`, width: 512, height: 512, colorDark: '#0F172A', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+  box._qr = new QRCode(box, { text: `${base}punch.html?s=${code}`, width: 512, height: 512, colorDark: '#0F172A', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
 }
+/* Download: redraw from the QR matrix on a fresh canvas — whole-pixel modules, 4-module white quiet zone, store code below (nothing cropped). */
 function downloadPng(code) {
-  const c = $('.poster .qrb canvas'), img = $('.poster .qrb img');
-  const src = c ? c.toDataURL('image/png') : img && img.src; if (!src) return;
+  const box = $('.poster .qrb'), q = box && box._qr && box._qr._oQRCode;
+  let src;
+  if (q && q.getModuleCount) {
+    const n = q.getModuleCount(), m = 16, quiet = 4, W = (n + quiet * 2) * m, H = W + 120;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+    g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, H); g.fillStyle = '#0F172A';
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) g.fillRect((c + quiet) * m, (r + quiet) * m, m, m);
+    g.textAlign = 'center'; g.fillStyle = '#0F172A'; g.font = 'bold 44px Roboto, Arial, sans-serif';
+    const nm = (((document.querySelector('.poster .code') || {}).textContent || '').split(' · ')[1]) || '';
+    g.fillText(`Store ${code}`, W / 2, W + 30); g.font = '28px Roboto, Arial, sans-serif'; g.fillStyle = '#475569';
+    g.fillText(nm ? `${nm.trim().slice(0, 40)} · Scan to punch` : 'Scan to punch IN / OUT', W / 2, W + 78);
+    src = cv.toDataURL('image/png');
+  } else {
+    const c = $('.poster .qrb canvas'), img = $('.poster .qrb img');
+    src = c ? c.toDataURL('image/png') : img && img.src;
+  }
+  if (!src) return;
   const a = document.createElement('a'); a.download = `QR_${code}.png`; a.href = src; document.body.appendChild(a); a.click(); a.remove();
 }
 
