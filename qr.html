@@ -85,26 +85,61 @@ function drawQr(el, code) {
   const box = el.querySelector('.qrb'); box.innerHTML = '';
   box._qr = new QRCode(box, { text: `${base}punch.html?s=${code}`, width: 512, height: 512, colorDark: '#0F172A', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
 }
-/* Download: redraw from the QR matrix on a fresh canvas — whole-pixel modules, 4-module white quiet zone, store code below (nothing cropped). */
-function downloadPng(code) {
+/* Download = the same A4 poster as print (PNG, 1240×1754 px ≈ 150 dpi), drawn on a canvas: whole-pixel QR modules + quiet zone. */
+function loadImg(src) { return new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; }); }
+function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+async function posterPng(code) {
   const box = $('.poster .qrb'), q = box && box._qr && box._qr._oQRCode;
-  let src;
-  if (q && q.getModuleCount) {
-    const n = q.getModuleCount(), m = 16, quiet = 4, W = (n + quiet * 2) * m, H = W + 120;
-    const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
-    g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, H); g.fillStyle = '#0F172A';
-    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) g.fillRect((c + quiet) * m, (r + quiet) * m, m, m);
-    g.textAlign = 'center'; g.fillStyle = '#0F172A'; g.font = 'bold 44px Roboto, Arial, sans-serif';
-    const nm = (((document.querySelector('.poster .code') || {}).textContent || '').split(' · ')[1]) || '';
-    g.fillText(`Store ${code}`, W / 2, W + 30); g.font = '28px Roboto, Arial, sans-serif'; g.fillStyle = '#475569';
-    g.fillText(nm ? `${nm.trim().slice(0, 40)} · Scan to punch` : 'Scan to punch IN / OUT', W / 2, W + 78);
-    src = cv.toDataURL('image/png');
-  } else {
-    const c = $('.poster .qrb canvas'), img = $('.poster .qrb img');
-    src = c ? c.toDataURL('image/png') : img && img.src;
-  }
+  if (!q || !q.getModuleCount) return null;
+  try { await document.fonts.load('800 40px Roboto'); await document.fonts.load('400 30px "Noto Sans Devanagari"'); await document.fonts.ready; } catch (e) {}
+  const W = 1240, H = 1754, mm = W / 210, PRI = '#334155', ACC = '#EA580C', INK = '#0F172A', MUT = '#5A6472';
+  const F = (w, px, dev) => `${w} ${px}px ${dev ? '"Noto Sans Devanagari", ' : ''}Roboto, Arial, sans-serif`;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+  const gr = g.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, PRI); gr.addColorStop(1, '#1E293B'); g.fillStyle = gr; g.fillRect(0, 0, W, 9 * mm);
+  g.fillStyle = ACC; g.fillRect(0, H - 5 * mm, W, 5 * mm);
+  g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  let y = 22 * mm;
+  const logo = await loadImg('assets/logo.png');
+  if (logo) { const lh = 20 * mm, lw = logo.width * lh / logo.height; g.drawImage(logo, (W - lw) / 2, y, lw, lh); y += lh; }
+  y += 9 * mm; g.fillStyle = MUT; g.font = F(700, 26); if ('letterSpacing' in g) g.letterSpacing = '5px'; g.fillText('3RD PARTY ATTENDANCE', W / 2, y); if ('letterSpacing' in g) g.letterSpacing = '0px';
+  y += 22 * mm; g.font = F(800, 94); const t1 = 'Scan to Punch ', t2 = 'IN / OUT', w1 = g.measureText(t1).width, w2 = g.measureText(t2).width;
+  g.textAlign = 'left'; g.fillStyle = INK; g.fillText(t1, (W - w1 - w2) / 2, y); g.fillStyle = ACC; g.fillText(t2, (W - w1 - w2) / 2 + w1, y); g.textAlign = 'center';
+  y += 13 * mm; g.fillStyle = MUT; g.font = F(400, 52, true); g.fillText('स्कैन करें और हाज़िरी लगाएं', W / 2, y);
+  // QR in orange rounded frame
+  y += 10 * mm;
+  const n = q.getModuleCount(), qs = 80 * mm, m = Math.floor(qs / n), qw = m * n, pad = 5 * mm, bw = 3 * mm, fw = qw + 2 * pad + 2 * bw, fx = (W - fw) / 2;
+  g.fillStyle = '#FFF1E8'; rr(g, fx - 1.5 * mm, y - 1.5 * mm, fw + 3 * mm, fw + 3 * mm, 8.5 * mm); g.fill();
+  g.fillStyle = ACC; rr(g, fx, y, fw, fw, 7 * mm); g.fill();
+  g.fillStyle = '#fff'; rr(g, fx + bw, y + bw, fw - 2 * bw, fw - 2 * bw, 4.5 * mm); g.fill();
+  const qx = Math.round(fx + bw + pad), qy = Math.round(y + bw + pad); g.fillStyle = INK;
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) g.fillRect(qx + c * m, qy + r * m, m, m);
+  y += fw + 10 * mm;
+  // store code pill
+  const ct = ((document.querySelector('.poster .code') || {}).textContent || code).trim();
+  g.font = F(800, 64); const cw = Math.min(g.measureText(ct).width + 20 * mm, W - 30 * mm), ch = 17 * mm;
+  g.fillStyle = PRI; rr(g, (W - cw) / 2, y, cw, ch, 4 * mm); g.fill(); g.fillStyle = '#fff'; g.fillText(ct, W / 2, y + ch / 2 + 22, cw - 8 * mm);
+  y += ch + 9 * mm;
+  // 3 steps
+  const steps = [['Open phone camera', 'फ़ोन कैमरा खोलें'], ['Scan this QR', 'QR स्कैन करें'], ['Pick dept, vendor, name · selfie', 'विभाग, वेंडर, नाम · सेल्फी']];
+  const sw = 170 * mm, gap = 5 * mm, bwid = (sw - 2 * gap) / 3, bh = 36 * mm, sx = (W - sw) / 2;
+  steps.forEach(([en, hi], i) => { const x = sx + i * (bwid + gap);
+    g.strokeStyle = '#E2E6EC'; g.lineWidth = 2; rr(g, x, y, bwid, bh, 4 * mm); g.stroke();
+    g.fillStyle = ACC; g.beginPath(); g.arc(x + bwid / 2, y + 9 * mm, 4.5 * mm, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#fff'; g.font = F(700, 30); g.fillText(String(i + 1), x + bwid / 2, y + 9 * mm + 11);
+    g.fillStyle = '#1A2130'; g.font = F(400, en.length > 22 ? 25 : 29); g.fillText(en, x + bwid / 2, y + 22 * mm, bwid - 6 * mm);
+    g.font = F(400, 29, true); g.fillText(hi, x + bwid / 2, y + 30 * mm, bwid - 6 * mm); });
+  y += bh + 11 * mm;
+  g.fillStyle = '#1A2130'; g.font = F(400, 32); g.fillText('Housekeeping · Security · Travel · CDIT promoters', W / 2, y);
+  y += 10 * mm; g.fillStyle = MUT; g.font = F(400, 27, true); g.fillText('No phone? Ask SM / ASM / DM to punch for you. · फ़ोन नहीं? SM / ASM / DM से पंच करवाएं।', W / 2, y, W - 24 * mm);
+  y += 8 * mm; g.fillStyle = '#98A1AE'; g.font = F(400, 21); g.fillText(`${base}punch.html?s=${code}`, W / 2, y, W - 24 * mm);
+  return cv.toDataURL('image/png');
+}
+async function downloadPng(code) {
+  let src = await posterPng(code);
+  if (!src) { const c = $('.poster .qrb canvas'), img = $('.poster .qrb img'); src = c ? c.toDataURL('image/png') : img && img.src; }
   if (!src) return;
-  const a = document.createElement('a'); a.download = `QR_${code}.png`; a.href = src; document.body.appendChild(a); a.click(); a.remove();
+  const a = document.createElement('a'); a.download = `QR_Poster_${code}.png`; a.href = src; document.body.appendChild(a); a.click(); a.remove();
 }
 
 (async function () {
