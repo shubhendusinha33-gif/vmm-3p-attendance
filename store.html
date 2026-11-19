@@ -116,7 +116,7 @@ function paintDay() {
         ${v.brands.length ? `<div class="brs">${v.brands.map((s) => `<span class="tg ${tg(s.p, s.req)}">${esc(s.brand)} ${s.p}/${s.req}</span>`).join('')}</div>` : ''}
         <div class="dlist">${sec
           ? ppl.map((g) => `<div class="post"><b>${esc(g.name)}</b><span class="acts">${SG_TAG(g.st)}${past && g.st === 'MP' ? `<button class="btn s sm" data-a="sgreq" data-id="${g.id}">${esc(t('misPunchReq'))}</button>` : ''}</span></div>`).join('')
-          : ppl.map((a) => `<div class="post"><span><b>${esc(a.name)}</b>${a.brand ? ` <small>${esc(a.brand)}</small>` : ''}<br><small>IN ${esc(a.first_in || '—')}${a.last_out ? ' · OUT ' + esc(a.last_out) : ' · ' + esc(t('stillIn'))}${a.hours ? ' · ' + a.hours + ' h' : ''}${a.via_mod ? ' · ' + esc(t('punchedByStore')) : ''}</small></span>
+          : ppl.map((a) => `<div class="post"><span><b>${esc(a.name)}</b>${a.brand ? ` <small>${esc(a.brand)}</small>` : ''}<br><small>IN ${esc(a.first_in || '—')}${a.last_out ? ' · OUT ' + esc(a.last_out) : a.out_done ? ' · OUT ✓' : ' · ' + esc(t('stillIn'))}${a.hours ? ' · ' + a.hours + ' h' : ''}${a.via_mod ? ' · ' + esc(t('punchedByStore')) : ''}</small></span>
               <span class="acts">${a.photo === 'done' ? `${a.live === 'pass' ? `<span class="tg ok">${esc(t('liveOk'))}</span> ` : ''}<button class="btn ghost sm" style="padding:2px 6px" title="View selfie" data-selfie="${esc(a.id)}|${esc(date)}">📷</button>` : a.photo === 'pending' ? '<span class="tg amb">📷?</span>' : ''}
               ${editTypes.includes('staff') ? `<button class="btn s sm" data-a="staff" data-id="${a.id}" title="${esc(t('staffReq'))}" aria-label="${esc(t('staffReq'))}">✎</button>` : ''}</span></div>`).join('')}
           ${miss ? `<div class="post miss"><b>${esc(t(sec ? 'notOnDuty' : 'notPunchedN', { n: miss }))}</b>${!sec && !past ? `<button class="btn sm" data-a="go" data-to="pn">${esc(t('punchForStaffT'))}</button>` : ''}</div>` : ''}
@@ -149,7 +149,7 @@ async function loadMtd() {
   $('#mtdKpis').innerHTML = r.by_category.map((c) => { const p = pct(c.p, c.req); return `<div class="kpi"><span class="l">${esc(cn(c.c))}</span><span class="v">${c.p}/${c.req}</span><span class="d" style="color:${pctColor(p)};font-weight:700">${p}%</span></div>`; }).join('') || '<div class="empty">—</div>';
   $('#mtdList').innerHTML = r.associates.map((a) => { const days = a.present + a.absent, p = pct(a.present, days);
     return `<div class="li click" data-a="stm" data-id="${a.id}"><div class="m">${esc(a.name)} · ${esc(cn(a.c))}${a.brand ? ' ' + esc(a.brand) : ''}
-      <span>P ${a.present} · A ${a.absent} · CO ${a.compoff}${a.c !== 'SEC' ? ' · ' + a.hours + ' h' : ''}</span></div><span class="tag ${pctTag(p)}">${p}% ›</span></div>`; }).join('') || '<div class="empty">—</div>';
+      <span>P ${a.present} · A ${a.absent} · CO ${a.compoff}${a.c !== 'SEC' && a.hours != null ? ' · ' + a.hours + ' h' : ''}</span></div><span class="tag ${pctTag(p)}">${p}% ›</span></div>`; }).join('') || '<div class="empty">—</div>';
 }
 
 /* ---------------- Punch for staff ---------------- */
@@ -177,7 +177,7 @@ async function loadModToday() {
   if (!$('#pnMod')) return;
   if (!r || !r.ok) { $('#pnMod').innerHTML = `<div class="note r">${esc(err(r && r.error))}</div>`; return; }
   const L = r.present.filter((a) => a.via_mod);
-  $('#pnMod').innerHTML = L.map((a) => `<div class="post"><span><b>${esc(a.name)}</b> <small>· ${esc(cn(a.c))}</small>${a.c !== 'SEC' ? `<br><small>IN ${esc(a.first_in || '—')}${a.last_out ? ' · OUT ' + esc(a.last_out) : ''}</small>` : ''}</span>${a.c === 'SEC' ? SG_TAG(a.st) : `<span class="tg info">${esc(t('modMode'))}</span>`}</div>`).join('') || `<div class="sub">${esc(t('noneYet'))}</div>`;
+  $('#pnMod').innerHTML = L.map((a) => `<div class="post"><span><b>${esc(a.name)}</b> <small>· ${esc(cn(a.c))}</small>${a.c !== 'SEC' ? `<br><small>IN ${esc(a.first_in || '—')}${a.last_out ? ' · OUT ' + esc(a.last_out) : a.out_done ? ' · OUT ✓' : ''}</small>` : ''}</span>${a.c === 'SEC' ? SG_TAG(a.st) : `<span class="tg info">${esc(t('modMode'))}</span>`}</div>`).join('') || `<div class="sub">${esc(t('noneYet'))}</div>`;
 }
 
 /* ---------------- HK split ---------------- */
@@ -361,7 +361,7 @@ function wire() {
     else if (a === 'go') go(b.dataset.to);
     else if (a === 'mtd') { tdView = 'mtd'; renderMtd(); }
     else if (a === 'mtdback') { tdView = 'day'; renderToday(); }
-    else if (a === 'mtdxls') { if (!mtd) return; downloadXlsx(mtd.associates.map((x) => ({ Store: me.store_code, Code: x.code, Name: x.name, Dept: cn(x.c), Brand: x.brand || '', Vendor: x.vendor || '', Present: x.present, Absent: x.absent, 'Comp-off': x.compoff, Hours: x.c === 'SEC' ? '' : x.hours })), `${me.store_code}_${mtd.from}_${mtd.to}.xlsx`, 'Month'); }
+    else if (a === 'mtdxls') { if (!mtd) return; downloadXlsx(mtd.associates.map((x) => ({ Store: me.store_code, Code: x.code, Name: x.name, Dept: cn(x.c), Brand: x.brand || '', Vendor: x.vendor || '', Present: x.present, Absent: x.absent, 'Comp-off': x.compoff, Hours: x.c === 'SEC' || x.hours == null ? '' : x.hours })), `${me.store_code}_${mtd.from}_${mtd.to}.xlsx`, 'Month'); }
     else if (a === 'stm') location.href = `statement.html?a=${b.dataset.id}&from=${mtd.from}&to=${mtd.to}`;
     else if (a === 'staff' || a === 'compoff') { const x = find(b.dataset.id); if (x) quickRequest(a, x); }
     else if (a === 'sgreq') { const x = find(b.dataset.id); if (x) quickRequest('sg_mispunch', x); }
