@@ -41,7 +41,7 @@ svg.ch rect.br{transform-box:fill-box;transform-origin:bottom;animation:grow .45
 .grp{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;opacity:.6;padding:12px 10px 4px}
 .nav:not(nav){display:flex;gap:9px;align-items:center;padding:8px 10px;border-radius:8px;font-size:13px;color:#fff;background:none;border:0;text-align:left;opacity:.88;width:100%}
 .nav svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;flex:none}
-.nav:not(nav):hover{background:rgba(255,255,255,.1)}.nav.on{background:var(--acc);font-weight:700;opacity:1}
+.nav:not(nav):hover{background:rgba(255,255,255,.1)}.nav.on,.nav.on:hover{background:var(--acc);font-weight:700;opacity:1}
 .nav .bd{margin-left:auto;background:#fff;color:var(--acc);border-radius:999px;font-size:10.5px;font-weight:800;padding:0 7px}
 .who{margin-top:auto;font-size:12px;padding:10px;border-top:1px solid rgba(255,255,255,.18)}.who b{display:block}.who span{opacity:.75}
 .who button,.who select{margin-top:8px;background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:8px;padding:5px 10px;font-size:12px}

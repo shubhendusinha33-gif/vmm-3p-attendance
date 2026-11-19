@@ -909,3 +909,14 @@ begin
     execute format('grant execute on function public.%s to anon', f);
   end loop;
 end $$;
+
+-- =====================================================================================
+-- @@ v5_e_punch_live_noface  (applied live; note: cr_decide 5-arg was applied as an overload, the old 4-arg one is kept for v4)
+-- =====================================================================================
+create or replace function public.punch_live(p_photo_token uuid, p_result text)
+returns json language plpgsql security definer set search_path to 'public' as $function$
+begin
+  if p_result not in ('pass','fail','skip','noface') then return json_build_object('ok', false, 'error', 'BAD_RESULT'); end if;
+  update punches set live = p_result where photo_token = p_photo_token and photo_status = 'pending';
+  return json_build_object('ok', found);
+end $function$;

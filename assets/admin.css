@@ -1,0 +1,51 @@
+/* Admin console (admin.html) — page-only styles on top of app.css. CSS vars only (works in every theme + dark). */
+.pgroot{display:flex;flex-direction:column;gap:12px;min-width:0}
+.pgroot>div:empty{display:none}
+.acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.acts label.btn{cursor:pointer}
+/* Store Master: 6 KPI filter cards always in ONE line */
+.kpis.one{grid-template-columns:repeat(6,minmax(118px,1fr));overflow-x:auto;padding-bottom:2px}
+.kpis.one .kpi .v{font-size:20px}
+/* pager */
+.pager{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:12.5px;color:var(--mut)}
+.pager .pgb{display:inline-flex;gap:4px;align-items:center}
+.pager button{border:1px solid var(--line);background:var(--card);border-radius:7px;min-width:30px;height:28px;font-size:13px;color:var(--pri)}
+.pager button:disabled{opacity:.4;cursor:default}
+.pager b{color:var(--ink);padding:0 6px}
+.pager select{padding:4px 6px;font-size:12px}
+/* inline edit widths */
+table.edt .ci{width:100%}
+table.edt input.ci.nm{min-width:120px}table.edt input.ci.ml{min-width:170px}table.edt input.ci.nu{width:54px;text-align:right}
+table.edt select.ci{min-width:104px;max-width:150px}
+.hkc{display:inline-flex;gap:6px;align-items:center}
+.edt td.code{font-weight:700}
+.sticky-save .sub{margin:0}
+.res2 .errs{flex-basis:100%;font-size:12px;color:var(--red)}
+/* import check */
+.impc{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.impc .sp{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+/* forms in modals */
+.md .frm{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+.md .frm label.wide{grid-column:1/-1}
+.md .frm input[disabled],.md .frm select[disabled]{background:var(--track);color:var(--mut)}
+/* mail center */
+.mcols{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:12px;align-items:start}
+.mailv .mb table{min-width:0}
+.mailv .mb td,.mailv .mb th{white-space:normal;text-align:left}
+.rlist label.off span{opacity:.55;text-decoration:line-through}
+.rlist label span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.rlist{max-height:520px}
+/* settings */
+.tgl input.f{width:96px;text-align:right}.tgl input[type=time].f{width:auto}
+.tgl .ck{display:flex;gap:6px;align-items:center;font-size:13px}
+.meter2{height:8px;background:var(--track);border-radius:4px;overflow:hidden;margin-top:6px}.meter2 i{display:block;height:100%;border-radius:4px}
+/* logs */
+.kpis.k5x{grid-template-columns:repeat(5,minmax(0,1fr))}.kpis.k3x{grid-template-columns:repeat(3,minmax(0,1fr))}
+.lgflt{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+@media(max-width:1180px){.mcols{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:760px){
+  .kpis.k5x,.kpis.k3x{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .acts .btn{padding:7px 10px}
+  .toolrow h1.pt{font-size:18px}
+  .lgflt input.f[type=search],.toolrow input.f[type=search]{width:100%!important}
+}

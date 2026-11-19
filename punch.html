@@ -6,346 +6,512 @@
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Punch · 3rd Party Attendance</title>
-<meta name="theme-color" content="#1565C0">
+<meta name="theme-color" content="#1E293B">
 <link rel="preconnect" href="https://phyllziizajuphenpwxz.supabase.co" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="icon" href="assets/logo.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&family=Noto+Sans+Devanagari:wght@400;700&display=swap" media="print" onload="this.media=\'all\'">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&family=Noto+Sans+Devanagari:wght@400;700&display=swap" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="assets/app.css">
+<style>
+  body{margin:0;background:var(--bg)}
+  @media(min-width:461px){body{background:var(--side)}.phone{box-shadow:0 0 0 1px var(--line),0 20px 60px rgba(0,0,0,.25)}}
+  .phone{max-width:460px}
+  .phd{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:12px 14px}
+  .phd .t{flex:1;min-width:0}.phd .t b,.phd .t small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .phd .x{background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:8px;height:34px;padding:0 12px;font-size:13px;font-weight:700;cursor:pointer}
+  .phd .lang{border-color:rgba(255,255,255,.5)}.phd .lang button{color:#fff}.phd .lang button.on{background:#fff;color:var(--side)}
+  .pbody{padding:14px 14px 24px;gap:14px;flex:1}
+  .pbody section{display:flex;flex-direction:column;gap:14px}.pbody section[hidden]{display:none}
+  .stp{font-size:13px;font-weight:700;color:var(--ink);display:flex;gap:8px;align-items:center}
+  .stp i{font-style:normal;width:22px;height:22px;border-radius:50%;background:var(--pri);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;flex:none}
+  .stp.done i{background:var(--ok)}
+  .stp small{font-weight:400;color:var(--mut)}
+  .pills .pill{padding:9px 16px;font-size:14px}
+  .vlist{display:flex;flex-direction:column;gap:8px}
+  .vlist .post{background:var(--card);text-align:left;cursor:pointer;font:inherit;color:var(--ink);width:100%;padding:12px 14px}
+  .vlist .post.on{background:var(--acc-l);border-color:var(--acc)}
+  .vlist .post small{color:var(--mut)}
+  .pname{width:100%;font-size:17px;padding:12px;border:1.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+  .pname:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-l)}
+  .bigs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .bigbtn{cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;font-family:var(--font)}
+  .bigbtn small{font-size:12px;font-weight:500;opacity:.9}
+  .bigbtn.in{background:var(--ok)}.bigbtn.out{background:var(--red)}
+  .bigbtn:disabled{background:var(--track);color:var(--mut);cursor:not-allowed}
+  .bigbtn.busy{opacity:.7;cursor:wait}
+  .pcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;gap:12px;align-items:center}
+  .pcard .av{width:52px;height:52px;border-radius:50%;background:var(--pri-l);color:var(--pri-d);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;flex:none}
+  .pcard .m{flex:1;min-width:0}.pcard h2{font-size:18px;margin:0;color:var(--ink);text-transform:none;letter-spacing:0}
+  .pcard .sub{font-size:13px}
+  .rost{max-height:260px;overflow:auto}
+  .done{text-align:center;padding-top:30px;align-items:center}
+  .done .ck{width:88px;height:88px;border-radius:50%;background:var(--ok-l);color:var(--ok);font-size:46px;font-weight:800;display:flex;align-items:center;justify-content:center;animation:popin .45s cubic-bezier(.3,1.6,.5,1) both}
+  .done h1{font-size:22px;color:var(--pri-d);margin:0}
+  .done .note{text-align:left;width:100%}
+  .gps{display:flex;gap:8px;align-items:center}
+  /* instant camera (like DDR) */
+  .cam{gap:16px;padding:16px}
+  .cam .vf{width:min(300px,82vw);height:min(390px,62vh)}
+  .cam .oval{width:62%;height:64%}
+  .cam .oval.seen{border-color:#FFD27A}
+  .cam .vf img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .cam .ct{font-weight:700;font-size:16px;text-align:center;min-height:22px}
+  .cam .cs{font-size:13px;opacity:.8;text-align:center;margin-top:-10px}
+  .cam .shutter{border-color:var(--acc)}
+  .cam .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .cam .note{max-width:320px}
+  .cam .btn{padding:10px 16px;font-size:14px}
+  .cam .hold{position:absolute;left:19%;right:19%;bottom:8%;height:5px;border-radius:3px;background:rgba(255,255,255,.25);overflow:hidden}
+  .cam .hold i{display:block;height:100%;width:0;background:#52C878;transition:width .1s linear}
+</style>
 </head>
 <body>
-<header class="hdr">
-  <div class="t"><b id="hTitle">Punch</b><small id="hSub"></small></div>
-  <span id="langSlot"></span>
-  <button class="x" id="btnBack" hidden>✕</button>
-</header>
+<div class="phone">
+  <header class="phd">
+    <div class="t"><b id="hTitle">Punch</b><small id="hSub">3rd Party Attendance</small></div>
+    <span id="langSlot"></span>
+    <button class="x" id="btnBack" hidden>✕</button>
+  </header>
+  <main class="pbody">
+    <div id="loading" class="spin"></div>
+    <div id="fatal" class="note r" hidden></div>
 
-<main class="wrap">
-  <div id="loading" class="spin"></div>
+    <!-- remembered phone: person card -->
+    <section id="me" hidden>
+      <div class="pcard"><div class="av" id="meAv"></div><div class="m"><h2 id="meName"></h2><div class="sub" id="meSub"></div></div><span class="tg ok" data-t="saved"></span></div>
+      <div class="note gps" id="gpsNote2"></div>
+      <div id="meErr" class="note r" hidden></div>
+      <div class="bigs"><button class="bigbtn in" data-k="IN"><span data-t="punchIn"></span><small id="meInSub"></small></button><button class="bigbtn out" data-k="OUT"><span data-t="punchOut"></span><small id="meOutSub"></small></button></div>
+      <div class="note" data-t="camAuto"></div>
+      <button class="btn ghost sm" id="btnChange" style="align-self:center" data-t="notYouVendor"></button>
+    </section>
 
-  <!-- form -->
-  <section id="form" hidden style="display:flex;flex-direction:column;gap:12px">
-    <div id="storeNote" class="note k"></div>
-    <div id="gpsNote" class="note i" data-t="getLocation"></div>
-    <div id="modNote" class="note w" hidden></div>
+    <!-- first time on this phone (or store login punching for staff) -->
+    <section id="form" hidden>
+      <div id="modNote" class="note w" hidden></div>
+      <div class="note gps" id="gpsNote"></div>
 
-    <div id="quick" hidden></div>
-    <div><div class="lbl" data-t="department"></div><div class="pills" id="cats"></div></div>
-    <div id="brandWrap" hidden><div class="lbl" data-t="brand"></div><div class="pills" id="brands"></div></div>
+      <div><div class="stp" id="st1"><i>1</i><span data-t="department"></span></div><div class="pills" id="cats" style="margin-top:8px"></div></div>
 
-    <div id="rosterWrap" hidden>
-      <div class="lbl" id="rosterLbl" data-t="selectAssociate"></div>
-      <div class="list" id="roster"></div>
-    </div>
+      <div id="vWrap" hidden>
+        <div class="stp" id="st2"><i>2</i><span data-t="yourVendor"></span> <small id="vFor"></small></div>
+        <div class="vlist" id="vendors" style="margin-top:8px"></div>
+        <div id="brandWrap" hidden style="margin-top:8px"><div class="sub" style="font-weight:700" data-t="brand"></div><div class="pills" id="brands" style="margin-top:6px"></div></div>
+      </div>
 
-    <div class="field" id="vendorWrap"><label class="lbl" for="vendor" data-t="vendor"></label>
-      <select class="in" id="vendor"></select>
-      <input class="in" id="vendorOther" style="margin-top:6px" hidden maxlength="60">
-    </div>
-    <div class="field" id="nameWrap"><label class="lbl" for="name" data-t="yourName"></label>
-      <input class="in" id="name" maxlength="40" autocomplete="name" data-tp="nameHint"></div>
-    <div id="lookupNote" class="note i" hidden></div>
-    <label id="modConsentWrap" hidden style="display:flex;gap:10px;align-items:flex-start;font-size:14px;font-weight:700;background:#fff;border-radius:10px;padding:10px 12px;cursor:pointer">
-      <input type="checkbox" id="modConsent" style="width:22px;height:22px;flex-shrink:0"><span data-t="modConsent"></span></label>
-    <div id="err" class="note r" hidden></div>
-    <button class="btn" id="btnPunch" data-t="punchIn"></button>
-    <div class="note i" id="noPhone" data-t="noPhone"></div>
-  </section>
+      <div id="rosterWrap" hidden>
+        <div class="stp"><i>·</i><span data-t="selectAssociate"></span></div>
+        <div class="list rost" id="roster" style="margin-top:8px"></div>
+      </div>
 
-  <!-- photo -->
-  <section id="photo" hidden style="display:flex;flex-direction:column;gap:12px;align-items:stretch">
-    <h2 class="ttl" data-t="photoToday"></h2>
-    <p class="sub" id="photoWho" style="margin:0"></p>
-    <div class="camwrap"><video id="camVideo" autoplay playsinline muted></video><img id="photoPrev" alt="" hidden><div class="ring" id="photoRing"></div>
-      <div class="livebar" id="liveBar" hidden></div><div class="livesub" id="liveSub" hidden></div></div>
-    <div class="liveprog" id="liveProg" hidden><i></i><i></i><i></i></div>
-    <p class="sub" style="margin:0" id="photoHint" data-t="photoHint"></p>
-    <div id="liveFailBox" class="note r" hidden></div>
-    <button class="shutter" id="btnShutter" aria-label="Capture"></button>
-    <div class="row" id="reviewBtns" hidden><button class="btn o grow" id="btnRetake" data-t="retake"></button><button class="btn grow" id="btnUse" data-t="usePhoto"></button></div>
-    <div id="camFallback" hidden style="display:flex;flex-direction:column;gap:8px">
-      <div class="note w" data-t="noCamera"></div>
-      <label class="btn" for="cam" style="text-align:center">📷 <span data-t="takePhoto"></span></label>
-      <input id="cam" type="file" accept="image/*" capture="user" hidden></div>
-    <div id="photoErr" class="note r" hidden></div>
-  </section>
+      <div id="nWrap" hidden>
+        <div class="stp" id="st3"><i>3</i><span id="nameLbl" data-t="fullNameP"></span></div>
+        <input class="pname" id="name" maxlength="40" autocomplete="name" style="margin-top:8px">
+        <div id="lookupNote" class="sub" hidden style="margin-top:6px"></div>
+      </div>
 
-  <!-- done -->
-  <section id="done" hidden style="display:flex;flex-direction:column;gap:12px">
-    <div class="check">✓</div>
-    <h2 class="ttl" id="doneTitle"></h2>
-    <p class="sub" id="doneSub" style="margin:0"></p>
-    <div class="list" id="doneList"></div>
-    <button class="btn" id="btnAgain" data-t="nextPunch"></button>
-  </section>
+      <label id="modConsentWrap" hidden style="display:flex;gap:10px;align-items:flex-start;font-size:14px;font-weight:700;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer">
+        <input type="checkbox" id="modConsent" style="width:22px;height:22px;flex-shrink:0"><span data-t="modConsent"></span></label>
+      <div id="err" class="note r" hidden></div>
+      <div class="bigs" id="punchBtns" hidden><button class="bigbtn in" data-k="IN"><span data-t="punchIn"></span></button><button class="bigbtn out" data-k="OUT"><span data-t="punchOut"></span></button></div>
+      <div class="note" id="rememberNote" data-t="rememberNote"></div>
+      <div class="note i" id="noPhone" data-t="noPhone"></div>
+    </section>
 
+    <!-- done -->
+    <section id="done" class="done" hidden>
+      <div class="ck">✓</div>
+      <h1 id="doneTitle"></h1>
+      <div class="sub" id="doneSub" style="font-size:14px"></div>
+      <div class="note k" id="doneNote"></div>
+      <button class="btn s" id="btnAgain" style="min-width:160px;padding:10px 18px" data-t="doneBtn"></button>
+    </section>
+  </main>
   <p class="foot" id="credit"></p>
-</main>
+</div>
 
 <script src="assets/app.js"></script>
 <script>
+Object.assign(I18N.en, {
+  saved: 'Saved', camAuto: 'Camera opens and takes the selfie by itself as soon as your face is inside the oval. No blink or head-turn needed.',
+  notYouVendor: 'Not you, or vendor changed?', yourVendor: 'Your vendor', listedFor: '(listed for {s} · {c})', fullNameP: 'Your full name',
+  noVendor: 'No vendor is set up for this department at this store. Ask the store manager.', pickVendor: 'Pick your vendor first.',
+  rememberNote: 'After the first punch this phone remembers you, so next time it opens straight on Punch IN / OUT.',
+  firstSub: 'First time on this phone · 3 quick steps', meSubT: 'This phone is registered to you', doneBtn: 'Done',
+  punchSaved: 'Punch {k} saved', camFind: 'Looking for your face…', camHold: 'Face found ✓ hold still', camOne: 'Only one face in the oval, please',
+  camCloser: 'Come a little closer', camCenter: 'Bring your face inside the oval', camSlow: 'Tap the button to take the selfie', camStart: 'Opening camera…',
+  camUp: 'Saving selfie…', camRetry: 'Try again', camRetake: 'Retake', camNoCam: 'Camera could not open. Use the phone camera instead.', camAppBtn: 'Open phone camera',
+  liveOk: 'Live face ✓', liveNo: 'No face seen', selfieKB: 'selfie {n} KB', insideM: 'inside store ({d} m)', noSelfie: 'No selfie needed this time',
+  nextIs: 'Next: {k}', lastWas: 'Last: {k} {t}', youAreIn: 'You are punched IN. Tap Punch OUT when you leave.',
+  outNotNow: 'Not punched IN yet today: tap Punch IN.',
+});
+Object.assign(I18N.hi, {
+  saved: 'सेव है', camAuto: 'कैमरा खुलेगा और जैसे ही चेहरा अंडाकार में आएगा, सेल्फी अपने-आप ले लेगा। आंख झपकाने या सिर घुमाने की ज़रूरत नहीं।',
+  notYouVendor: 'आप नहीं हैं, या वेंडर बदल गया?', yourVendor: 'आपका वेंडर', listedFor: '({s} · {c} के लिए)', fullNameP: 'आपका पूरा नाम',
+  noVendor: 'इस स्टोर में इस विभाग का कोई वेंडर सेट नहीं है। स्टोर मैनेजर से बात करें।', pickVendor: 'पहले अपना वेंडर चुनें।',
+  rememberNote: 'पहले पंच के बाद यह फ़ोन आपको याद रखेगा, अगली बार सीधे पंच IN / OUT खुलेगा।',
+  firstSub: 'इस फ़ोन पर पहली बार · 3 आसान स्टेप', meSubT: 'यह फ़ोन आपके नाम पर है', doneBtn: 'ठीक है',
+  punchSaved: 'पंच {k} सेव हुआ', camFind: 'आपका चेहरा ढूंढ रहे हैं…', camHold: 'चेहरा मिला ✓ स्थिर रहें', camOne: 'अंडाकार में सिर्फ एक चेहरा रखें',
+  camCloser: 'थोड़ा पास आएं', camCenter: 'चेहरा अंडाकार के अंदर लाएं', camSlow: 'सेल्फी के लिए बटन दबाएं', camStart: 'कैमरा खुल रहा है…',
+  camUp: 'सेल्फी सेव हो रही है…', camRetry: 'फिर कोशिश करें', camRetake: 'दोबारा लें', camNoCam: 'कैमरा नहीं खुला। फ़ोन का कैमरा इस्तेमाल करें।', camAppBtn: 'फ़ोन कैमरा खोलें',
+  liveOk: 'लाइव चेहरा ✓', liveNo: 'चेहरा नहीं दिखा', selfieKB: 'सेल्फी {n} KB', insideM: 'स्टोर के अंदर ({d} मी)', noSelfie: 'इस बार सेल्फी की ज़रूरत नहीं',
+  nextIs: 'अगला: {k}', lastWas: 'पिछला: {k} {t}', youAreIn: 'आप पंच IN हैं। जाते समय पंच OUT दबाएं।',
+  outNotNow: 'आज अभी पंच IN नहीं हुआ: पंच IN दबाएं।',
+});
+
 const q = new URLSearchParams(location.search);
-let posAt = 0, ctx = null, modToken = null, pos = null, cat = null, brand = '', lastLookup = null, punchRes = null, lookTimer = null, stopCam = null, shot = null;
+let ctx = null, modToken = null, me = null, pos = null, posAt = 0;
+let cat = null, vendor = '', brand = '', lastLookup = null, lookTimer = null, punchRes = null, punchBusy = false, mem = null, memNext = 'IN';
 
-function show(id) { ['loading','form','photo','done'].forEach((s) => $('#' + s).hidden = s !== id); }
+function show(id) { ['loading', 'me', 'form', 'done'].forEach((s) => { $('#' + s).hidden = s !== id; }); window.scrollTo(0, 0); }
 function err(msg, el = '#err') { $(el).hidden = !msg; $(el).textContent = msg || ''; }
+function fatal(msg) { $('#loading').hidden = true; $('#fatal').hidden = false; $('#fatal').textContent = msg; }
+const catById = (id) => (ctx.categories || []).find((c) => c.id === id);
 
+/* ---------- location ---------- */
+function gpsPaint() {
+  const els = [$('#gpsNote'), $('#gpsNote2')];
+  let cls = 'note i gps', html = '📍 ' + esc(t('getLocation'));
+  if (ctx.test_mode) { cls = 'note w gps'; html = esc(t('testMode')); }
+  else if (pos) { cls = 'note k gps'; html = '📍 ' + esc(t('locFound', { a: Math.round(pos.acc || 0) })); }
+  else if (posAt) { cls = 'note r gps'; html = `${esc(t('noGps'))} <button class="link" data-gps>↻</button>`; }
+  els.forEach((e) => { e.className = cls; e.innerHTML = html; });
+}
 async function locate() {
-  $('#gpsNote').className = 'note i'; $('#gpsNote').textContent = t('getLocation');
-  pos = await getPosition(); posAt = Date.now();
-  if (ctx.test_mode) { $('#gpsNote').className = 'note w'; $('#gpsNote').textContent = t('testMode'); return; }
-  if (!pos) { $('#gpsNote').className = 'note r'; $('#gpsNote').innerHTML = esc(t('noGps')) + ' <button class="link" id="gpsRetry">↻</button>'; $('#gpsRetry').onclick = locate; return; }
-  $('#gpsNote').className = 'note k';
-  $('#gpsNote').textContent = '📍 ' + t('locFound', { a: Math.round(pos.acc || 0) });
+  posAt = 0; pos = null; gpsPaint();
+  pos = await getPosition(); posAt = Date.now(); gpsPaint();
 }
 
-function paintCats() {
-  $('#cats').innerHTML = ctx.categories.map((c) => `<button type="button" class="pill${cat && cat.id === c.id ? ' on' : ''}" data-c="${c.id}">${esc(catName(c))}</button>`).join('');
-}
-function paintBrands() {
-  const b = cat ? cat.brands : [];
-  $('#brandWrap').hidden = !b.length;
-  $('#brands').innerHTML = b.map((x) => `<button type="button" class="pill${brand === x ? ' on' : ''}" data-b="${esc(x)}">${esc(x)}</button>`).join('');
-}
-function paintVendors() {
-  const v = cat ? cat.vendors : [];
-  $('#vendor').innerHTML = `<option value="">${esc(t('selectVendor'))}</option>` + v.map((x) => `<option>${esc(x)}</option>`).join('') + `<option value="__other">${esc(t('otherVendor'))}</option>`;
-  if (v.length === 1) $('#vendor').value = v[0];
-  $('#vendorOther').hidden = true;
-}
-async function paintRoster() {
-  if (!modToken || !cat) { $('#rosterWrap').hidden = true; return; }   // only a store login (SM / ASM / DM) may see the people list
-  $('#rosterWrap').hidden = false; $('#roster').innerHTML = '<div class="spin"></div>';
-  const r = await rpc('store_roster', { p_token: modToken, p_cat: cat.id });
-  const rows = (r && r.rows) || [];
-  $('#roster').innerHTML = rows.map((a) => { const k = a.last_kind, tm = a.last_time; return `<div class="li click" data-n="${esc(a.name)}" data-b="${esc(a.brand)}" data-v="${esc(a.vendor || '')}" data-k="${k || ''}">
-      <div class="m">${esc(a.name)}<span>${esc(a.code)}${a.brand ? ' · ' + esc(a.brand) : ''} · ${k ? k + ' ' + (tm || '') : '—'}</span></div>
-      <span class="tag ${k === 'IN' ? 'w' : 'ok'}">${k === 'IN' ? 'OUT' : 'IN'}</span></div>`; }).join('')
-    + `<div class="li click" data-new="1"><div class="m">${esc(t('newName'))}</div><span class="tag ok">+</span></div>`;
-}
-
-/* same phone remembers who punched here: one tap for the next punch */
+/* ---------- same phone remembers who punched here ---------- */
 const memKey = () => 'vmm3p_me_' + ctx.store.code;
 const memGet = () => { try { return JSON.parse(localStorage.getItem(memKey()) || 'null'); } catch (e) { return null; } };
 const memSet = (o) => { try { if (o) localStorage.setItem(memKey(), JSON.stringify(o)); else localStorage.removeItem(memKey()); } catch (e) {} };
-function fillFrom(o) {
-  cat = ctx.categories.find((c) => c.id === o.cat) || cat; brand = o.brand || ''; paintCats(); paintBrands(); paintVendors();
-  if (o.vendor) { if (![...$('#vendor').options].some((x) => x.value === o.vendor)) $('#vendor').insertAdjacentHTML('afterbegin', `<option>${esc(o.vendor)}</option>`); $('#vendor').value = o.vendor; }
-  $('#name').value = o.name;
+
+async function openMe() {
+  mem = memGet();
+  if (!mem || !catById(mem.cat)) { memSet(null); return false; }
+  const r = await rpc('punch_lookup', { p_store: ctx.store.code, p_cat: mem.cat, p_brand: mem.brand || '', p_name: mem.name, p_device: deviceId(), p_mod_token: null });
+  if (!r || !r.ok || !r.exists) { if (r && r.ok) memSet(null); return false; }
+  const c = catById(mem.cat);
+  memNext = r.next === 'OUT' ? 'OUT' : 'IN';
+  $('#meAv').textContent = (mem.name.trim()[0] || '?').toUpperCase();
+  $('#meName').textContent = mem.name;
+  $('#meSub').textContent = [catName(c), mem.vendor, mem.brand, r.code || mem.code].filter(Boolean).join(' · ');
+  $('#hSub').textContent = t('meSubT');
+  paintBig($('#me'), memNext);
+  $('#meInSub').textContent = memNext === 'IN' ? t('nextIs', { k: 'IN' }) : '';
+  $('#meOutSub').textContent = memNext === 'OUT' ? t('nextIs', { k: 'OUT' }) : '';
+  err('', '#meErr'); show('me');
+  return true;
 }
-async function paintQuick() {
-  const m = modToken ? null : memGet(); $('#quick').hidden = true; if (!m || !ctx.categories.some((c) => c.id === m.cat)) return;
-  const r = await rpc('punch_lookup', { p_store: ctx.store.code, p_cat: m.cat, p_brand: m.brand || '', p_name: m.name, p_device: deviceId() });
-  if (!r || !r.ok || !r.exists) { memSet(null); return; }
-  const c = ctx.categories.find((x) => x.id === m.cat);
-  $('#quick').hidden = false;
-  $('#quick').innerHTML = `<div class="list"><div class="li"><div class="m">${esc(m.name)}<span>${esc(catName(c))}${m.brand ? ' · ' + esc(m.brand) : ''} · ${esc(r.code)}</span></div>
-    <button type="button" class="btn sm${r.next === 'OUT' ? ' blue' : ''}" id="quickGo">${esc(t(r.next === 'OUT' ? 'punchOut' : 'punchIn'))}</button></div></div>
-    <button type="button" class="link" id="quickNo" style="margin-top:4px">${esc(t('notYou'))}</button>`;
-  $('#quickGo').onclick = () => { fillFrom(m); doPunch(); };
-  $('#quickNo').onclick = () => { memSet(null); $('#quick').hidden = true; };
+function paintBig(root, next) {
+  $$('.bigbtn', root).forEach((b) => { b.disabled = b.dataset.k !== next; b.classList.remove('busy'); });
 }
 
+/* ---------- first-time form: dept → vendor → name ---------- */
+function vendorsFor(c) {
+  if (!c) return [];
+  if (Array.isArray(ctx.vendors)) return ctx.vendors.filter((v) => v.cat === c.id).map((v) => ({ vendor: v.vendor, brand: v.brand || '' }));
+  return (c.vendors || []).map((v) => ({ vendor: v, brand: '' }));   // older backend: vendor names only
+}
+function paintCats() {
+  $('#cats').innerHTML = (ctx.categories || []).map((c) => `<button type="button" class="pill${cat && cat.id === c.id ? ' on' : ''}" data-c="${esc(c.id)}">${esc(catName(c))}</button>`).join('');
+  $('#st1').classList.toggle('done', !!cat);
+}
+function paintVendors() {
+  $('#vWrap').hidden = !cat;
+  if (!cat) return;
+  $('#vFor').textContent = t('listedFor', { s: ctx.store.code, c: catName(cat) });
+  const V = vendorsFor(cat);
+  $('#vendors').innerHTML = V.length
+    ? V.map((x) => { const on = vendor === x.vendor && (brand || '') === (x.brand || ''); return `<button type="button" class="post${on ? ' on' : ''}" data-v="${esc(x.vendor)}" data-b="${esc(x.brand)}"><span><b>${esc(x.vendor)}</b>${x.brand ? `<br><small>${esc(t('brand'))} ${esc(x.brand)}</small>` : ''}</span>${on ? `<span class="tg acc">✓</span>` : ''}</button>`; }).join('')
+    : `<div class="note w">${esc(t('noVendor'))}</div>`;
+  const needBrand = vendor && (cat.brands || []).length && !brand;
+  $('#brandWrap').hidden = !(vendor && (cat.brands || []).length && (needBrand || !V.some((x) => x.vendor === vendor && x.brand)));
+  $('#brands').innerHTML = (cat.brands || []).map((b) => `<button type="button" class="pill${brand === b ? ' on' : ''}" data-br="${esc(b)}">${esc(b)}</button>`).join('');
+  $('#st2').classList.toggle('done', !!vendor);
+  const ready = !!vendor && (!(cat.brands || []).length || !!brand);
+  $('#nWrap').hidden = !ready; $('#punchBtns').hidden = !ready;
+  if (ready) paintFormBtns();
+}
+async function paintRoster() {
+  if (!modToken || !cat) { $('#rosterWrap').hidden = true; return; }   // only a store login may see the people list
+  $('#rosterWrap').hidden = false; $('#roster').innerHTML = '<div class="spin"></div>';
+  const r = await rpc('store_roster', { p_token: modToken, p_cat: cat.id });
+  const rows = (r && r.rows) || [];
+  $('#roster').innerHTML = rows.map((a) => { const k = a.last_kind; return `<div class="li click" data-n="${esc(a.name)}" data-b="${esc(a.brand || '')}" data-v="${esc(a.vendor || '')}" data-k="${k || ''}">
+      <div class="m">${esc(a.name)}<span>${esc(a.code)}${a.brand ? ' · ' + esc(a.brand) : ''}${a.vendor ? ' · ' + esc(a.vendor) : ''} · ${k ? k + ' ' + esc(a.last_time || '') : '—'}</span></div>
+      <span class="tag ${k === 'IN' ? 'w' : 'ok'}">${k === 'IN' ? 'OUT' : 'IN'}</span></div>`; }).join('')
+    + `<div class="li click" data-new="1"><div class="m">${esc(t('newName'))}</div><span class="tag ok">+</span></div>`;
+}
+function paintFormBtns() {
+  const next = lastLookup ? (lastLookup.next === 'OUT' ? 'OUT' : 'IN') : 'IN';
+  paintBig($('#punchBtns'), next);
+  $('#st3').classList.toggle('done', $('#name').value.trim().length >= 3);
+}
 async function lookup() {
   const name = $('#name').value.trim();
-  if (!cat || name.length < 2 || (cat.brands.length && !brand)) { $('#lookupNote').hidden = true; lastLookup = null; setBtn('IN'); return; }
+  if (!cat || name.length < 2 || ((cat.brands || []).length && !brand)) { $('#lookupNote').hidden = true; lastLookup = null; paintFormBtns(); return; }
   const r = await rpc('punch_lookup', { p_store: ctx.store.code, p_cat: cat.id, p_brand: brand, p_name: name, p_device: deviceId(), p_mod_token: modToken });
-  if (!r || !r.ok) return;
+  if (!r || !r.ok || $('#name').value.trim() !== name) return;
   lastLookup = r; $('#lookupNote').hidden = false;
   $('#lookupNote').textContent = r.exists ? t('alreadyReg', { code: r.code }) : t('newReg');
-  setBtn(r.next);
+  paintFormBtns();
 }
-function setBtn(kind) { $('#btnPunch').textContent = kind === 'OUT' ? t('punchOut') : t('punchIn'); $('#btnPunch').classList.toggle('blue', kind === 'OUT'); }
 
-async function doPunch() {
-  err();
-  if (!cat) return err(t('chooseCat'));
-  if (cat.brands.length && !brand) return err(t('brandRequired'));
-  const name = $('#name').value.trim();
-  if (!/^[\p{L} .]{2,40}$/u.test(name)) return err(t('badName'));
-  if (modToken && !$('#modConsent').checked) return err(t('consentRequired'));
-  if (!ctx.test_mode) { if (!pos || Date.now() - posAt > 300000) await locate(); if (!pos) return err(t('noGps')); }
-  let vendor = $('#vendor').value; if (vendor === '__other') vendor = $('#vendorOther').value.trim();
-  $('#btnPunch').disabled = true;
-  const r = await rpc('punch_submit', { p_store: ctx.store.code, p_cat: cat.id, p_brand: brand, p_vendor: vendor || null, p_name: name,
+/* ---------- punch ---------- */
+async function doPunch(fromMe) {
+  if (punchBusy) return;
+  const errEl = fromMe ? '#meErr' : '#err';
+  err('', errEl);
+  let c = cat, v = vendor, b = brand, name;
+  if (fromMe) { c = catById(mem.cat); v = mem.vendor || ''; b = mem.brand || ''; name = mem.name; }
+  else {
+    name = $('#name').value.trim();
+    if (!c) return err(t('chooseCat'), errEl);
+    if (!v) return err(t('pickVendor'), errEl);
+    if ((c.brands || []).length && !b) return err(t('brandRequired'), errEl);
+    if (!/^[\p{L} .]{2,40}$/u.test(name) || name.replace(/[ .]/g, '').length < 2) { $('#name').focus(); return err(t('badName'), errEl); }
+    if (modToken && !$('#modConsent').checked) return err(t('consentRequired'), errEl);
+  }
+  const root = fromMe ? $('#me') : $('#punchBtns');
+  punchBusy = true; $$('.bigbtn', root).forEach((x) => x.classList.add('busy'));
+  if (!ctx.test_mode && (!pos || Date.now() - posAt > 300000)) await locate();
+  if (!ctx.test_mode && !pos) { punchBusy = false; $$('.bigbtn', root).forEach((x) => x.classList.remove('busy')); return err(t('noGps') + ' ' + t('permHow'), errEl); }
+  const r = await rpc('punch_submit', { p_store: ctx.store.code, p_cat: c.id, p_brand: b, p_vendor: v || null, p_name: name,
     p_lat: pos ? pos.lat : null, p_lng: pos ? pos.lng : null, p_device: deviceId(), p_mod_token: modToken,
     p_consent: true, p_policy: CONFIG.policy });
-  $('#btnPunch').disabled = false;
+  punchBusy = false; $$('.bigbtn', root).forEach((x) => x.classList.remove('busy'));
   if (!r || !r.ok) {
-    if (r && r.error === 'OUT_OF_RANGE') return err(t('outside', { d: r.dist_m, r: r.radius_m }));
-    if (r && r.error === 'NO_GPS') return err(t('noGps'));
-    return err(errText(r && r.error));
+    if (r && r.error === 'OUT_OF_RANGE') return err(t('outside', { d: r.dist_m, r: r.radius_m }), errEl);
+    if (r && r.error === 'NO_GPS') return err(t('noGps'), errEl);
+    if (r && (r.error === 'OTHER_PHONE' || r.error === 'PHONE_IN_USE') && fromMe) memSet(null);
+    return err(errText(r && r.error), errEl);
   }
-  punchRes = r;
-  if (r.photo_required) { $('#photoWho').textContent = `${r.name} · ${catName(cat)} · ${ctx.store.code}`; err('', '#photoErr'); show('photo'); openCam(); return; }
+  punchRes = { ...r, cat: c, vendor: v, brand: b };
+  if (!modToken) memSet({ name: r.name, cat: c.id, brand: b, vendor: v, code: r.code });
+  if (r.photo_required) { Cam.open(); return; }
   showDone();
 }
 
-async function openCam() {
-  shot = null; $('#photoPrev').hidden = true; $('#camVideo').hidden = false; $('#photoRing').hidden = false; $('#photoRing').className = 'ring';
-  $('#btnShutter').hidden = true; $('#reviewBtns').hidden = true; $('#camFallback').hidden = true; $('#liveFailBox').hidden = true;
-  try { if (stopCam) stopCam(); stopCam = await startCamera($('#camVideo')); }
-  catch (e) { $('#camVideo').hidden = true; $('#camFallback').hidden = false; liveResult = 'skip'; return; }
-  liveResult = await runLive();
-  if (liveResult === 'pass') { setTimeout(capture, 350); return; }
-  liveUi(null);                       // skip / fail: normal shutter, result is saved with the photo
-  $('#btnShutter').hidden = false;
-}
-
-/* ---------- live face check: one random challenge (blink / left / right), on the phone, free ---------- */
-let liveResult = null;
-const LIVE_TRIES = 2;
+/* ---------- instant camera: front camera, tiny face detector, auto-snap ~0.7 s after one face is in the oval ---------- */
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function loadFaceApi() {
-  if (!loadFaceApi.p) loadFaceApi.p = new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'assets/face/face-api.js'; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); })
-    .then(() => Promise.all([faceapi.nets.tinyFaceDetector.loadFromUri('assets/face'), faceapi.nets.faceLandmark68Net.loadFromUri('assets/face')]));
+  if (!loadFaceApi.p) {
+    loadFaceApi.p = new Promise((res, rej) => {
+      if (window.faceapi) return res();
+      const sc = document.createElement('script'); sc.src = 'assets/face/face-api.js'; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc);
+    }).then(() => faceapi.nets.tinyFaceDetector.loadFromUri('assets/face'));
+    loadFaceApi.p.catch(() => { loadFaceApi.p = null; });
+  }
   return loadFaceApi.p;
 }
-function liveUi(text, step, sub, cls) {
-  $('#liveBar').hidden = !text; $('#liveBar').textContent = text || '';
-  $('#liveSub').hidden = !sub; $('#liveSub').textContent = sub || '';
-  $('#liveProg').hidden = step == null; $$('#liveProg i').forEach((i, k) => i.classList.toggle('on', step != null && k < step));
-  $('#photoHint').hidden = !!text;
-  if (cls !== undefined) $('#photoRing').className = 'ring' + (cls ? ' ' + cls : '');
-}
-const pdist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-const eyeOpen = (e) => (pdist(e[1], e[5]) + pdist(e[2], e[4])) / (2 * pdist(e[0], e[3]));
-async function runLive() {
-  if (ctx.live_check === false) return 'skip';
-  liveUi(t('liveLoading'), 0, '', '');
-  try { await Promise.race([loadFaceApi(), sleep(5000).then(() => { throw new Error('slow'); })]); } catch (e) { return 'skip'; }
-  const opt = new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.4 });
-  for (let n = 1; n <= LIVE_TRIES; n++) {
-    const ch = ['blink', 'left', 'right'][Math.floor(Math.random() * 3)];
-    const r = await liveChallenge(opt, ch);
-    if (r !== 'fail') return r;
-    if (n < LIVE_TRIES) {
-      liveUi(t('liveFail'), 1, '', 'bad');
-      $('#liveFailBox').hidden = false; $('#liveFailBox').innerHTML = `${esc(t('liveFailWhy'))}<br><button class="btn sm" id="liveAgain" style="margin-top:8px">${esc(t('liveTry', { n: LIVE_TRIES - n }))}</button>`;
-      await new Promise((res) => $('#liveAgain').addEventListener('click', res, { once: true }));
-      $('#liveFailBox').hidden = true;
+const Cam = {
+  ov: null, stop: null, run: 0, result: null, shot: null, ready: false, sawFace: false,
+  el(s) { return this.ov.querySelector(s); },
+  text(a, b) { this.el('.ct').textContent = a || ''; this.el('.cs').textContent = b || ''; },
+  close() { this.run++; if (this.stop) { this.stop(); this.stop = null; } if (this.ov) { this.ov.remove(); this.ov = null; } },
+  async open() {
+    this.close();
+    const run = ++this.run; this.shot = null; this.result = null; this.sawFace = false; this.ready = false;
+    const ov = document.createElement('div'); ov.className = 'cam'; this.ov = ov;
+    ov.innerHTML = `<div class="ct"></div><div class="cs"></div>
+      <div class="vf"><video autoplay playsinline muted></video><img alt="" hidden><div class="oval"></div><div class="ln" hidden></div><div class="hold"><i></i></div></div>
+      <div class="spinr"></div>
+      <button class="shutter" type="button" aria-label="${esc(t('shutter'))}" hidden></button>
+      <div class="note r" data-c="err" hidden></div>
+      <div class="row" data-c="fail" hidden><button type="button" class="btn" data-c="retry">${esc(t('camRetry'))}</button><button type="button" class="btn s" data-c="retake">${esc(t('camRetake'))}</button></div>
+      <div class="row" data-c="file" hidden><div class="note w">${esc(t('camNoCam'))}</div><label class="btn" style="cursor:pointer">📷 ${esc(t('camAppBtn'))}<input type="file" accept="image/*" capture="user" hidden></label></div>`;
+    document.body.appendChild(ov);
+    this.text(t('camStart'), `${punchRes.name} · ${punchRes.kind} ${punchRes.time}`);
+    this.el('.shutter').addEventListener('click', () => this.capture(this.sawFace ? 'pass' : (this.ready ? 'noface' : 'skip')));
+    this.el('[data-c="retry"]').addEventListener('click', () => this.upload());
+    this.el('[data-c="retake"]').addEventListener('click', () => this.open());
+    this.el('input[type=file]').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (f) this.fromFile(f); e.target.value = ''; });
+    const v = this.el('video');
+    try { this.stop = await startCamera(v); }
+    catch (e) { if (run !== this.run) return; this.el('.spinr').hidden = true; this.el('video').hidden = true; this.el('.oval').hidden = true; this.el('.hold').hidden = true; this.el('[data-c="file"]').hidden = false; this.text(t('photoToday'), ''); return; }
+    if (run !== this.run) return;
+    this.el('.ln').hidden = false;
+    if (ctx.live_check === false) { this.manual(); return; }   // live check off in Settings: plain shutter
+    this.text(t('camFind'), '');
+    const slow = setTimeout(() => { if (run === this.run && !this.shot) this.manual(); }, 3000);   // models slow: show the shutter, keep looking
+    try { await loadFaceApi(); } catch (e) { clearTimeout(slow); if (run === this.run) this.manual(); return; }
+    if (run !== this.run) return;
+    this.ready = true;
+    this.loop(run);
+  },
+  manual() {
+    if (!this.ov) return;
+    this.el('.spinr').hidden = true; this.el('.shutter').hidden = false;
+    if (!this.ready) this.text(t('camSlow'), '');
+  },
+  async loop(run) {
+    const v = this.el('video'), oval = this.el('.oval'), bar = this.el('.hold i');
+    const opt = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.45 });
+    const vf = this.el('.vf');
+    let since = 0;
+    while (run === this.run && !this.shot) {
+      if (!v.videoWidth) { await sleep(120); continue; }
+      let dets = [];
+      try { dets = await faceapi.detectAllFaces(v, opt); } catch (e) { this.manual(); return; }
+      if (run !== this.run || this.shot) return;
+      // visible part of the frame (object-fit: cover), then face centre inside the oval?
+      const W = v.videoWidth, H = v.videoHeight, bw = vf.clientWidth || 300, bh = vf.clientHeight || 390;
+      const sc = Math.max(bw / W, bh / H), visW = bw / sc, visH = bh / sc, x0 = (W - visW) / 2, y0 = (H - visH) / 2;
+      let state = 'none';
+      if (dets.length > 1) state = 'many';
+      else if (dets.length === 1) {
+        const b = dets[0].box, nx = (b.x + b.width / 2 - x0) / visW, ny = (b.y + b.height / 2 - y0) / visH, nw = b.width / visW;
+        const inside = ((nx - 0.5) / 0.31) ** 2 + ((ny - 0.5) / 0.32) ** 2 <= 1;
+        state = !inside ? 'out' : nw < 0.22 ? 'far' : 'ok';
+      }
+      if (state === 'ok') {
+        this.sawFace = true;
+        if (!since) since = Date.now();
+        const p = Math.min(1, (Date.now() - since) / 700);
+        oval.className = 'oval ok'; bar.style.width = (p * 100) + '%';
+        this.text(t('camHold'), '');
+        if (p >= 1) { this.capture('pass'); return; }
+      } else {
+        since = 0; bar.style.width = '0';
+        oval.className = 'oval' + (state === 'none' ? '' : ' seen');
+        this.text(state === 'many' ? t('camOne') : state === 'far' ? t('camCloser') : state === 'out' ? t('camCenter') : t('camFind'), '');
+      }
+      await sleep(state === 'ok' ? 30 : 80);
     }
-  }
-  $('#liveFailBox').hidden = false; $('#liveFailBox').textContent = `${t('liveFail')}. ${t('liveSaved')}`;
-  return 'fail';
-}
-async function liveChallenge(opt, ch) {
-  const v = $('#camVideo'), t0 = Date.now(); let stage = 0, still = 0, eyes = [], yaw0 = 0, blinks = 0, closed = false, base = 0;
-  liveUi(t('liveLook'), 1, '', '');
-  while (Date.now() - t0 < 10000) {
-    if (!v.videoWidth) { await sleep(150); continue; }
-    let d; try { d = await faceapi.detectSingleFace(v, opt).withFaceLandmarks(); } catch (e) { return 'skip'; }
-    if (!d) { still = 0; liveUi($('#liveBar').textContent, stage ? 2 : 1, t('liveNoFace')); await sleep(40); continue; }
-    const lm = d.landmarks, le = lm.getLeftEye(), re = lm.getRightEye(), nose = lm.getNose()[3];
-    const open = (eyeOpen(le) + eyeOpen(re)) / 2, iod = pdist(le[0], re[3]), yaw = (nose.x - (le[0].x + re[3].x) / 2) / iod;
-    if (stage === 0) {
-      eyes.push(open); yaw0 += yaw; still++; liveUi(t('liveLook'), 1, t('liveFound'));
-      if (still >= 4) { stage = 1; yaw0 /= still; base = eyes.sort((a, b) => a - b)[Math.floor(eyes.length / 2)];
-        liveUi(t(ch === 'blink' ? 'liveBlink' : ch === 'left' ? 'liveLeft' : 'liveRight'), 2, ch === 'blink' ? t('liveSeen', { n: 0, m: 1 }) : '', 'ask'); }
-    } else if (ch === 'blink') {
-      if (!closed && open < base * 0.82) closed = true;
-      else if (closed && open > base * 0.9) { closed = false; blinks++; liveUi($('#liveBar').textContent, 2, t('liveSeen', { n: blinks, m: 1 })); }
-      if (blinks >= 1) break;
-    } else {
-      const dy = yaw - yaw0;            // camera frames are not mirrored: turning to your LEFT moves the nose to the right of the frame
-      if (Math.abs(dy) > 0.13) break;   // any clear head turn counts: no left/right polarity to get wrong
+  },
+  async capture(result) {
+    if (this.shot || !this.ov) return;
+    const v = this.el('video'); if (!v.videoWidth) return;
+    this.result = result;
+    this.el('.shutter').disabled = true;
+    const s = await compressDrawable(v, v.videoWidth, v.videoHeight, 8, 240, 320, true);
+    if (!this.ov) return;
+    this.shot = s;
+    if (this.stop) { this.stop(); this.stop = null; }
+    const img = this.el('.vf img'); img.src = s.b64; img.hidden = false; v.hidden = true;
+    this.el('.ln').hidden = true; this.el('.hold').hidden = true; this.el('.shutter').hidden = true;
+    this.upload();
+  },
+  async fromFile(file) {
+    try {
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
+      this.shot = await compressDrawable(img, img.width, img.height, 8);
+      this.result = 'skip';
+      const el = this.el('.vf img'); el.src = this.shot.b64; el.hidden = false;
+      this.el('[data-c="file"]').hidden = true;
+      this.upload();
+    } catch (e) { this.el('[data-c="err"]').hidden = false; this.el('[data-c="err"]').textContent = t('photoFailed'); }
+  },
+  async upload() {
+    if (!this.shot || !this.ov) return;
+    this.el('[data-c="fail"]').hidden = true; this.el('[data-c="err"]').hidden = true;
+    this.el('.spinr').hidden = false; this.text(t('camUp'), '');
+    const res = this.result || 'skip';
+    let lr = await rpc('punch_live', { p_photo_token: punchRes.photo_token, p_result: res });
+    if (lr && lr.ok === false && lr.error === 'BAD_RESULT' && res === 'noface') await rpc('punch_live', { p_photo_token: punchRes.photo_token, p_result: 'fail' });   // backend without 'noface'
+    const r = await photoFn({ action: 'upload', token: punchRes.photo_token, b64: this.shot.b64 });
+    if (!this.ov) return;
+    this.el('.spinr').hidden = true;
+    if (!r || !r.ok) {
+      this.text(t('photoFailed'), '');
+      this.el('[data-c="err"]').hidden = false; this.el('[data-c="err"]').textContent = t('photoFailed') + (r && r.error ? ` (${r.error})` : '');
+      this.el('[data-c="fail"]').hidden = false; return;
     }
-    await sleep(0);
-  }
-  if (Date.now() - t0 >= 10000) return 'fail';
-  liveUi(t('livePass'), 3, '', 'good');
-  return 'pass';
-}
-async function capture() {
-  const v = $('#camVideo'); if (!v.videoWidth) return;
-  $('#btnShutter').disabled = true;
-  shot = await compressDrawable(v, v.videoWidth, v.videoHeight, 8, 240, 320, true);
-  $('#btnShutter').disabled = false;
-  if (stopCam) { stopCam(); stopCam = null; }
-  $('#photoPrev').src = shot.b64; $('#photoPrev').hidden = false; $('#camVideo').hidden = true; $('#photoRing').hidden = true; liveUi(liveResult === 'pass' ? t('livePass') : null, liveResult === 'pass' ? 3 : null, '');
-  $('#btnShutter').hidden = true; $('#reviewBtns').hidden = false;
-}
-async function sendPhoto() {
-  if (!shot) return;
-  err('', '#photoErr'); $('#btnUse').disabled = true;
-  await rpc('punch_live', { p_photo_token: punchRes.photo_token, p_result: liveResult || 'skip' });
-  const r = await photoFn({ action: 'upload', token: punchRes.photo_token, b64: shot.b64 });
-  $('#btnUse').disabled = false;
-  if (!r || !r.ok) return err(t('photoFailed') + (r && r.error ? ` (${r.error})` : ''), '#photoErr');
-  punchRes.photoKB = (shot.bytes / 1024).toFixed(1);
-  showDone();
-}
-async function onPhotoFile(file) {
-  try {
-    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
-    shot = await compressDrawable(img, img.width, img.height, 8);
-    $('#photoPrev').src = shot.b64; $('#photoPrev').hidden = false; $('#photoRing').hidden = true;
-    sendPhoto();
-  } catch (e) { err(t('photoFailed'), '#photoErr'); }
-}
+    punchRes.photoKB = (this.shot.bytes / 1024).toFixed(1); punchRes.live = res;
+    this.close(); showDone();
+  },
+};
 
 function showDone() {
-  if (stopCam) { stopCam(); stopCam = null; }
   const r = punchRes;
-  if (!modToken) memSet({ name: r.name, cat: cat.id, brand, vendor: $('#vendor').value === '__other' ? $('#vendorOther').value.trim() : $('#vendor').value, code: r.code });
-  $('#doneTitle').textContent = `${r.name} · ${r.kind} ${r.time}`;
-  $('#doneSub').textContent = `${r.shift === 'M' ? t('morning') : t('evening')} · ${catName(cat)}${brand ? ' · ' + brand : ''} · ${r.code}`;
-  const rows = [];
-  if (r.photoKB) rows.push(`<div class="li"><div class="m">${esc(t('photoSaved'))}<span>${r.photoKB} KB${liveResult === 'pass' ? ' · ' + esc(t('livePass')) : liveResult === 'fail' ? ' · ' + esc(t('liveFail')) : ''}</span></div><span class="tag ${liveResult === 'fail' ? 'r' : 'ok'}">${liveResult === 'fail' ? '!' : '✓'}</span></div>`);
-  rows.push(`<div class="li"><div class="m">📍<span>${r.dist_m != null ? r.dist_m + ' m' : (ctx.test_mode ? t('testMode') : '—')}</span></div><span class="tag ok">✓</span></div>`);
-  if (modToken) rows.push(`<div class="li"><div class="m">${esc(t('modMode'))}<span>${esc((Session.get() || {}).name || '')}</span></div><span class="tag w">${esc(t('modMode'))}</span></div>`);
-  $('#doneList').innerHTML = rows.join('');
+  $('#doneTitle').textContent = t('punchSaved', { k: r.kind });
+  $('#doneSub').textContent = [r.name, catName(r.cat), r.vendor, r.brand, r.time, r.shift === 'M' ? t('morning') : t('evening')].filter(Boolean).join(' · ');
+  const bits = [];
+  if (r.photoKB) bits.push(`📷 ${r.live === 'pass' ? t('liveOk') + ' · ' : r.live === 'noface' ? t('liveNo') + ' · ' : ''}${t('selfieKB', { n: r.photoKB })}`);
+  bits.push(r.dist_m != null ? '📍 ' + t('insideM', { d: r.dist_m }) : (ctx.test_mode ? t('testMode') : '📍 —'));
+  if (modToken) bits.push(`${t('modMode')}: ${(me && me.name) || ''}`);
+  $('#doneNote').textContent = bits.join(' · ');
+  $('#doneNote').className = 'note ' + (r.live === 'noface' ? 'w' : 'k');
   show('done');
 }
-
+async function afterDone() {
+  if (modToken) { resetForm(true); return; }
+  show('loading');
+  if (!(await openMe())) { resetForm(false); }
+}
 function resetForm(keepCat) {
-  $('#name').value = ''; $('#modConsent').checked = false; lastLookup = null; $('#lookupNote').hidden = true; err(); setBtn('IN');
-  if (!keepCat) { cat = null; brand = ''; paintCats(); paintBrands(); paintVendors(); }
-  if (modToken) paintRoster(); else paintQuick();
+  $('#name').value = ''; $('#modConsent').checked = false; lastLookup = null; $('#lookupNote').hidden = true; err();
+  if (!keepCat) { cat = null; vendor = ''; brand = ''; }
+  paintCats(); paintVendors(); paintRoster();
+  $('#hSub').textContent = modToken ? ctx.store.name : t('firstSub');
   show('form');
 }
 
+/* ---------- init ---------- */
 (async function init() {
-  $('#langSlot').appendChild(langToggle(() => { if (ctx) { paintCats(); paintVendors(); setBtn(lastLookup ? lastLookup.next : 'IN'); } }));
+  $('#langSlot').appendChild(langToggle(() => {
+    if (!ctx) return;
+    paintCats(); paintVendors(); gpsPaint();
+    if (!$('#me').hidden && mem) { $('#meSub').textContent = [catName(catById(mem.cat)), mem.vendor, mem.brand, mem.code].filter(Boolean).join(' · '); $('#hSub').textContent = t('meSubT'); }
+    else if (!$('#form').hidden) $('#hSub').textContent = modToken ? ctx.store.name : t('firstSub');
+  }));
   $('#credit').innerHTML = credit(); applyI18n();
   let code = (q.get('s') || '').toUpperCase();
   if (q.get('mod') === '1') {
-    const me = await requireSession(['store']); if (!me) return;
+    me = await requireSession(['store']); if (!me) return;
     modToken = me.token; code = me.store_code;
-    $('#btnBack').hidden = false; $('#btnBack').onclick = () => location.href = 'store.html';
+    Idle.start({ minutes: me.idle_min || 60 });
+    $('#btnBack').hidden = false; $('#btnBack').onclick = () => { location.href = 'store.html#pn'; };
     $('#modNote').hidden = false; $('#modNote').textContent = `${t('modMode')}: ${me.name} (Emp ${me.emp})`;
-    $('#noPhone').hidden = true; $('#nameWrap').querySelector('label').textContent = t('associate'); $('#modConsentWrap').hidden = false;
+    $('#noPhone').hidden = true; $('#rememberNote').hidden = true; $('#nameLbl').textContent = t('associate'); $('#modConsentWrap').hidden = false;
   }
-  if (!/^[A-Z]{2}\d{2}$/.test(code)) { $('#loading').hidden = true; document.querySelector('main').insertAdjacentHTML('afterbegin', `<div class="note r">${esc(t('storeHint'))}</div>`); return; }
+  if (!/^[A-Z]{2}\d{2}$/.test(code)) return fatal(t('storeHint'));
   ctx = await rpc('punch_context', { p_store: code });
-  if (!ctx || !ctx.ok) { $('#loading').hidden = true; document.querySelector('main').insertAdjacentHTML('afterbegin', `<div class="note r">${esc(errText(ctx && ctx.error))}</div>`); return; }
-  $('#hTitle').textContent = `${t('punchTitle')} · ${ctx.store.code}`; $('#hSub').textContent = ctx.store.name;
+  if (!ctx || !ctx.ok) return fatal(errText(ctx && ctx.error));
+  $('#hTitle').textContent = `${ctx.store.code} · ${ctx.store.name}`;
+  $('#hSub').textContent = modToken ? t('punchTitle') : t('firstSub');
+  document.title = `${t('punchTitle')} ${ctx.store.code} · 3rd Party Attendance`;
   if (!modToken) {
     const ready = await permissionsReady('associate', true);
-    if (!ready) { $('#loading').hidden = true; await consentGate({ kind: 'associate', store: ctx.store.code, testMode: ctx.test_mode, needCamera: true }); }
+    if (!ready) { $('#loading').hidden = true; const g = await consentGate({ kind: 'associate', store: ctx.store.code, testMode: ctx.test_mode, needCamera: true }); if (g && g.pos) { pos = g.pos; posAt = Date.now(); } }
+    else if (ready.pos) { pos = ready.pos; posAt = Date.now(); }
   }
-  $('#storeNote').textContent = `${ctx.store.code} · ${ctx.store.name} ✓ ${modToken ? '' : t('fromQr')}`;
-  paintCats(); paintBrands(); paintVendors(); setBtn('IN'); show('form'); locate(); if (!modToken) paintQuick();
-  setTimeout(() => loadFaceApi().catch(() => {}), 600);   // models load while the person fills the form: no wait at the selfie step
+  gpsPaint(); if (!pos) locate();
+  setTimeout(() => loadFaceApi().catch(() => {}), 500);   // models load while the person is on the form: no wait at the selfie
+  if (modToken || !(await openMe())) resetForm(false);
 
-  $('#cats').addEventListener('click', (e) => { const b = e.target.closest('[data-c]'); if (!b) return; cat = ctx.categories.find((c) => c.id === b.dataset.c); brand = ''; paintCats(); paintBrands(); paintVendors(); paintRoster(); lookup(); });
-  $('#brands').addEventListener('click', (e) => { const b = e.target.closest('[data-b]'); if (!b) return; brand = b.dataset.b; paintBrands(); paintRoster(); lookup(); });
-  $('#vendor').addEventListener('change', () => { $('#vendorOther').hidden = $('#vendor').value !== '__other'; });
-  $('#name').addEventListener('input', () => { clearTimeout(lookTimer); lookTimer = setTimeout(lookup, 400); });
+  document.addEventListener('click', (e) => { if (e.target.closest('[data-gps]')) locate(); });
+  $('#cats').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-c]'); if (!b) return;
+    cat = catById(b.dataset.c); vendor = ''; brand = ''; lastLookup = null;
+    const V = vendorsFor(cat); if (V.length === 1) { vendor = V[0].vendor; brand = V[0].brand || ''; }
+    paintCats(); paintVendors(); paintRoster(); lookup();
+    setTimeout(() => $('#vWrap').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 30);
+  });
+  $('#vendors').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-v]'); if (!b) return;
+    vendor = b.dataset.v; brand = b.dataset.b || ''; err();
+    paintVendors(); lookup();
+    if (!$('#nWrap').hidden) setTimeout(() => { $('#nWrap').scrollIntoView({ behavior: 'smooth', block: 'center' }); if (!$('#name').value) $('#name').focus(); }, 30);
+  });
+  $('#brands').addEventListener('click', (e) => { const b = e.target.closest('[data-br]'); if (!b) return; brand = b.dataset.br; paintVendors(); lookup(); });
+  $('#name').addEventListener('input', () => { $('#st3').classList.toggle('done', $('#name').value.trim().length >= 3); clearTimeout(lookTimer); lookTimer = setTimeout(lookup, 400); });
+  $('#name').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doPunch(false); } });
   $('#roster').addEventListener('click', (e) => {
     const li = e.target.closest('.li'); if (!li) return;
     if (li.dataset.new) { $('#name').value = ''; $('#name').focus(); lookup(); return; }
-    $('#name').value = li.dataset.n; if (li.dataset.b) { brand = li.dataset.b; paintBrands(); }
-    if (li.dataset.v) { if (![...$('#vendor').options].some((o) => o.value === li.dataset.v)) $('#vendor').insertAdjacentHTML('afterbegin', `<option>${esc(li.dataset.v)}</option>`); $('#vendor').value = li.dataset.v; }
-    if (li.dataset.k === 'IN') { doPunch(); return; }
-    lookup(); $('#btnPunch').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (li.dataset.v) vendor = li.dataset.v;
+    if (li.dataset.b) brand = li.dataset.b;
+    paintVendors();
+    $('#name').value = li.dataset.n; lookup();
+    $('#punchBtns').scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
-  $('#btnPunch').addEventListener('click', doPunch);
-  $('#cam').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (f) onPhotoFile(f); e.target.value = ''; });
-  $('#btnShutter').addEventListener('click', capture);
-  $('#btnRetake').addEventListener('click', openCam);
-  $('#btnUse').addEventListener('click', sendPhoto);
-  $('#btnAgain').addEventListener('click', () => resetForm(!!modToken));
+  $('#punchBtns').addEventListener('click', (e) => { const b = e.target.closest('.bigbtn'); if (b && !b.disabled) doPunch(false); });
+  $('#me').addEventListener('click', (e) => { const b = e.target.closest('.bigbtn'); if (b && !b.disabled) doPunch(true); });
+  $('#btnChange').addEventListener('click', () => { memSet(null); mem = null; resetForm(false); });
+  $('#btnAgain').addEventListener('click', afterDone);
 })();
 </script>
 </body>

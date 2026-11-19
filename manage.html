@@ -5,46 +5,72 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://phyllziizajuphenpwxz.supabase.co; media-src 'self' blob:; connect-src 'self' https://phyllziizajuphenpwxz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Dashboard · 3rd Party Attendance</title>
-<meta name="theme-color" content="#1565C0">
+<title>Live Dashboard · 3rd Party Attendance</title>
+<meta name="theme-color" content="#1E293B">
 <link rel="preconnect" href="https://phyllziizajuphenpwxz.supabase.co" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="icon" href="assets/logo.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&display=swap" media="print" onload="this.media=\'all\'">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&display=swap" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
-<div class="shell">
-  <nav class="nav" id="nav"></nav>
-  <main class="main" id="view"><div class="spin"></div></main>
-</div>
-<script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<div id="root"><div class="spin"></div></div>
 <script src="assets/app.js"></script>
 <script src="assets/dash.js"></script>
 <script>
+/* manage.html — AM, ZFM, HO Dept, RLPO (v5). Views come from assets/dash.js; shell from appShell (app.js). */
 (async function () {
-  Layout.apply();
-  const me = await requireSession(['am', 'zfm', 'hodept']); if (!me) return;
-  const items = [{ grp: 'OPERATE' }, { id: 'live', label: 'Live Dashboard' }];
-  if (me.role === 'am') items.push({ id: 'approvals', label: 'Approvals' }, { id: 'team', label: 'Store team' });
-  if (me.role === 'zfm') items.push({ id: 'team', label: 'Store team' });
-  items.push({ id: 'churn', label: 'Staff Churn' }, { id: 'reports', label: 'Attendance Reports' });
-  if (me.role === 'zfm') items.push({ grp: 'MANAGE' }, { id: 'pins', label: 'Users & PIN' });
-  const view = $('#view');
-  Shell(me, items, (id) => {
-    view.innerHTML = '';
-    if (id === 'live') LiveDash(view, me);
-    if (id === 'churn') ChurnView(view, me);
-    if (id === 'approvals') ApprovalsView(view, me);
-    if (id === 'team') StoreTeamView(view, me);
-    if (id === 'pins') PinReset(view, me, async () => { const r = await rpc('zone_users', { p_token: me.token }); return (r && r.rows) || []; });
-    if (id === 'reports') {
-      view.innerHTML = `<div class="top"><h1>Attendance Reports</h1></div>
-        <div class="panel"><h3>Monthly statement (A4)</h3><p class="crumb">Pick store, associate and month. Print, save as PDF or download Excel.</p>
-        <div><a class="btn sm" href="statement.html" style="display:inline-block;text-decoration:none">Open statement</a></div></div>
-        <div class="panel"><h3>Store-wise attendance (Excel)</h3><p class="crumb">On Live Dashboard, pick date, shift and checkpoint, then tap ⬇ Excel.</p></div>`;
+  const me = await requireSession(['am', 'zfm', 'hodept', 'rlpo']); if (!me) return;
+  Idle.start({ minutes: me.idle_min || 60 });
+  const r = me.role, n = me.stores_n;
+  const decider = (r === 'am' || r === 'rlpo') && !me.view_by;
+
+  // nav: [id, label, icon]
+  const nav = [['ld', 'Live Dashboard', 'ld']];
+  if (r === 'am') nav.push(['ap', 'Approvals', 'ap'], ['tm', 'My stores & team', 'tm']);
+  if (r === 'rlpo') nav.push(['ap', 'SG approvals', 'ap'], ['man', 'Manual present', 'pn'], ['tm', 'My stores', 'st']);
+  if (r === 'zfm') nav.push(['tm', 'Store team', 'tm'], ['us', 'Users & PIN', 'us']);
+  nav.push(['ch', 'Churn', 'ch'], ['stm', 'Statements', 'stm']);
+  const ids = nav.map((x) => x[0]);
+  const label = (id) => (nav.find((x) => x[0] === id) || [])[1] || '';
+
+  const nS = n != null ? `${n} store${n === 1 ? '' : 's'}` : '';
+  const scope = r === 'am' ? `AM · ${nS}` : r === 'zfm' ? `Zone · ${nS}` : r === 'rlpo' ? `Security · ${nS}` : `${me.dept || 'HO'} · All India`;
+
+  const h = (location.hash || '').slice(1);
+  const first = ids.includes(h) ? h : 'ld';
+  const S = appShell('#root', { me, nav, active: first, title: label(first), scope, onNav: go });
+
+  function go(id) {
+    if (!ids.includes(id)) id = 'ld';
+    S.setActive(id); S.setTitle(label(id));
+    if (location.hash.slice(1) !== id) history.replaceState(null, '', '#' + id);
+    window.scrollTo(0, 0);
+    const w = S.wrap;
+    if (id === 'ld') LiveDash(w, me);
+    else if (id === 'ap') ApprovalsView(w, me, { onCount: (k) => S.setBadge('ap', k) });
+    else if (id === 'man') RlpoManualView(w, me);
+    else if (id === 'tm') StoreTeamView(w, me);
+    else if (id === 'ch') ChurnView(w, me);
+    else if (id === 'us') PinReset(w, me, async () => { const x = await rpc('zone_users', { p_token: me.token }); return (x && x.rows) || []; });
+    else if (id === 'stm') {
+      w.innerHTML = `<div><h1 class="pt">Statements</h1><div class="sub">Monthly attendance statement per person (A4). Pick store, associate and month; print, save as PDF or download Excel.</div></div>
+        <div class="cols2"><div class="card"><h2>Monthly statement (A4)</h2><div class="sub" style="margin-bottom:10px">P / A per day${r === 'rlpo' ? ' (Security also H, P*)' : ''}. No punch timings are shown.</div>
+          <a class="btn" href="statement.html" style="display:inline-block;text-decoration:none">Open statement</a></div>
+        <div class="card"><h2>Store-wise attendance (Excel)</h2><div class="sub">On Live Dashboard pick the date, shift and time, then click ⬇ Excel in the top bar.</div>
+          <div style="margin-top:10px"><button type="button" class="btn s" data-go="ld">Go to Live Dashboard</button></div></div></div>`;
+      w.querySelector('[data-go]').addEventListener('click', () => go('ld'));
     }
-  });
+  }
+  window.addEventListener('hashchange', () => { const id = location.hash.slice(1); if (ids.includes(id)) go(id); });
+
+  // pending badge (AM: store requests, RLPO: SG requests)
+  if (decider) {
+    document.addEventListener('dash:pending', (e) => S.setBadge('ap', e.detail.n));
+    const badge = () => dashPendingCount(me).then((k) => S.setBadge('ap', k));
+    badge(); setInterval(() => { if (document.visibilityState === 'visible') badge(); }, 5 * 60000);
+  }
+  go(first);
 })();
 </script>
 </body>
