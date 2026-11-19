@@ -285,6 +285,15 @@ async function doPunch(fromMe) {
   if (!r || !r.ok) {
     if (r && r.error === 'OUT_OF_RANGE') return err(t('outside', { d: r.dist_m, r: r.radius_m }), errEl);
     if (r && r.error === 'NO_GPS') return err(t('noGps'), errEl);
+    if (r && r.error === 'OTHER_STORE') {
+      const hi = lang() === 'hi', home = `${r.home_store}${r.home_store_name ? ' · ' + r.home_store_name : ''}`;
+      const msg = r.sent_to_sm
+        ? (r.status === 'rejected'
+          ? (hi ? `यह फ़ोन स्टोर ${home} में रजिस्टर है। इस स्टोर के SM ने आज के लिए मना कर दिया है।` : `This phone is registered at store ${home}. The SM of this store has refused it for today.`)
+          : (hi ? `यह फ़ोन स्टोर ${home} में रजिस्टर है। आज यहाँ पंच करने की रिक्वेस्ट इस स्टोर के SM को भेज दी गई है। SM के अप्रूव करने के बाद फिर से पंच करें।` : `This phone is registered at store ${home}. A request to punch here today has been sent to the SM of this store. Punch again after the SM approves.`))
+        : (hi ? `यह फ़ोन स्टोर ${home} में रजिस्टर है, यहाँ पंच नहीं हो सकता (कोशिश ${r.tries} / 3)। हर कोशिश रिकॉर्ड होती है।` : `This phone is registered at store ${home}. It cannot punch at this store (try ${r.tries} of 3). Every try is recorded.`);
+      return err(msg, errEl);
+    }
     if (r && (r.error === 'OTHER_PHONE' || r.error === 'PHONE_IN_USE') && fromMe) memSet(null);
     return err(errText(r && r.error), errEl);
   }
