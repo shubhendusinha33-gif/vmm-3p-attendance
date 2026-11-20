@@ -442,7 +442,7 @@
         <div class="bc" style="margin-top:6px"><button type="button" data-mx="-1">${me.role === 'admin' || me.role === 'hodept' ? 'National' : 'All my stores'}</button>${path.map((p, i) => ` › <button type="button" data-mx="${i}">${esc(p.name)}</button>`).join('')}</div>
         <div class="tw"><table class="mxt"><thead><tr><th class="l" rowspan="2">${head}</th>${cols.map((c) => `<th colspan="3" class="bl" style="text-align:center">${esc(c[1])}</th>`).join('')}<th colspan="3" class="bl" style="text-align:center">${esc(totName)}</th></tr>
         <tr>${[...cols, 0].map(() => '<th class="bl">Req</th><th>Avl</th><th>%</th>').join('')}</tr></thead><tbody>
-        ${shown.map((x) => `<tr class="${lv === 'store' ? '' : 'click'}" data-mxk="${esc(x.k)}" data-mxn="${esc(x.n)}"><td class="l"><span class="lk">${esc(x.n)}</span>${lv === 'store' ? '' : ' ›'}</td>${cols.map((c) => cell(x.c[c[0]])).join('')}${cell(x.t)}</tr>`).join('') || '<tr><td class="l" colspan="40" style="color:var(--mut)">No stores</td></tr>'}
+        ${shown.map((x) => `<tr class="click" data-mxk="${esc(x.k)}" data-mxn="${esc(x.n)}"${lv === 'store' ? ' data-mxstore="1"' : ''}><td class="l"><span class="lk">${esc(x.n)}</span>${lv === 'store' ? '' : ' ›'}</td>${cols.map((c) => cell(x.c[c[0]])).join('')}${cell(x.t)}</tr>`).join('') || '<tr><td class="l" colspan="40" style="color:var(--mut)">No stores</td></tr>'}
         ${capRow(lines.length, cols.length * 3 + 4)}
         ${lines.length > 1 ? `<tr class="tot"><td class="l"><b>Total</b></td>${cols.map((c) => cell(all.c[c[0]])).join('')}${cell(all.t)}</tr>` : ''}</tbody></table></div>`;
     }
@@ -553,6 +553,7 @@
         if (m.dataset.sub != null) { S.sub = m.dataset.sub; S.alert = ''; repaint(); return; }
         if (m.dataset.all) { S.all = true; paint(); return; }
         if (m.dataset.mx != null) { S.mx = (S.mx || []).slice(0, Number(m.dataset.mx) + 1); repaint(); return; }
+        if (m.dataset.mxstore) { storeDetail(m.dataset.mxk); return; }   // store row → employee-wise IN / OUT / hours
         if (m.dataset.mxk != null && m.classList.contains('click')) { const start = me.role === 'zfm' ? 'am' : 'zfm', lv = (S.mx || []).length ? S.mx[S.mx.length - 1].next : start;
           (S.mx = S.mx || []).push({ key: lv, val: m.dataset.mxk, name: m.dataset.mxn, next: lv === 'zfm' ? 'am' : 'store' }); repaint(); }
         return;
