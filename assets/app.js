@@ -27,6 +27,7 @@
 const CONFIG = {
   url: 'https://phyllziizajuphenpwxz.supabase.co',
   key: 'sb_publishable_KRASYzbWRPYoKzJItq-Gqw_zLwUvnX-',
+  vapid: 'BAsbkygj12e9BqLRrc_h-9xIjkGgFgwX3vItu4s5c4lyPLVYISZYpoClWcmXZe2nKLtZC5SR_vsKw0TGK3ANUIg',   // web push public key
   version: 'v5',
   policy: '2026-11-v2',   // bump when the privacy text changes: everyone is asked again
 };
@@ -115,6 +116,7 @@ function viewBanner(me) {
 }
 async function logout() {
   const t = Session.token(), view = Session.isView();
+  if (t && !view) { try { await Promise.race([Push.disable(t), new Promise((r) => setTimeout(r, 2500))]); } catch (e) {} }   // manual logout stops phone alerts
   if (t) await rpc('auth_logout', { p_token: t });
   Session.clear();
   if (view) { window.close(); location.href = 'admin.html'; return; }
@@ -921,3 +923,113 @@ document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-selfie]'); if (!b) return;
   e.preventDefault(); const [a, d] = String(b.dataset.selfie).split('|'); if (a && d) viewSelfie(a, d);
 });
+
+
+/* ---------- v5.4: where a punch came from (shared by dashboard, pop-ups, store app) ---------- */
+function punchSrc(o, short) {
+  if (!o || !o.src) return '';
+  if (o.src === 'store') return `<span class="tg acc" title="Punched from the store login">🏪 ${short ? 'Store' : 'Store phone'}${o.by ? ' · ' + esc(o.by) + (o.post ? ' (' + esc(o.post) + ')' : '') : ''}</span>`;
+  if (o.src === 'cross') return `<span class="tg amb" title="Phone registered at another store, SM approved for the day">🔁 ${short ? 'Other store' : 'Other-store phone'}${o.home ? ' (' + esc(o.home) + ')' : ''}${o.appr ? ' · approved by ' + esc(o.appr) : ''}</span>`;
+  const far = o.dist != null && o.dist > 500;
+  return `<span class="tg ${far ? 'red' : 'info'}" title="Staff member's own phone · distance from the store">📱 ${short ? 'Own' : 'Own phone'}${o.dist != null ? ' · ' + esc(o.dist) + ' m' : ''}${far ? ' ⚠' : ''}</span>`;
+}
+
+/* ---------- v5.4: live punch alerts while the portal is open (pop-up + sound + tab count) ---------- */
+const Live = {
+  last: null, unseen: 0, base: '', opts: null, box: null, timer: null,
+  sound() { try { return localStorage.getItem('3pa_sound') !== '0'; } catch (e) { return true; } },
+  paused() { try { return localStorage.getItem('3pa_alerts') === '0'; } catch (e) { return false; } },
+  set(k, v) { try { localStorage.setItem(k, v ? '1' : '0'); } catch (e) {} },
+  start(me, opts = {}) {
+    if (!me || !me.token || Session.isView() || this.timer) return;
+    this.me = me; this.opts = opts; this.base = document.title.replace(/^\(\d+\)\s*/, '');
+    this.box = document.createElement('div'); this.box.className = 'lvbox'; document.body.appendChild(this.box);
+    if (opts.controls) this._controls();
+    const clear = () => { if (this.unseen) { this.unseen = 0; this._title(); } };
+    window.addEventListener('focus', clear); document.addEventListener('click', clear, true);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(clear, 1500); });
+    // a click anywhere unlocks audio on browsers that block sound before the first tap
+    document.addEventListener('click', () => { try { this._ctx = this._ctx || new (window.AudioContext || window.webkitAudioContext)(); this._ctx.resume(); } catch (e) {} }, { once: true, capture: true });
+    this._poll(); this.timer = setInterval(() => this._poll(), opts.every || 15000);
+  },
+  async _poll() {
+    const r = await rpc('punch_feed', { p_token: this.me.token, p_since: this.last, p_limit: 20 });
+    if (!r || !r.ok) return;
+    const first = this.last == null; this.last = r.last;
+    if (first || !r.rows || !r.rows.length) return;
+    if (this.opts.skip && this.opts.skip()) return;
+    this.unseen += r.rows.length; this._title();
+    if (this.paused()) return;
+    r.rows.slice(-3).forEach((x) => this._toast(x));
+    if (this.sound()) this.ding();
+  },
+  _title() { document.title = (this.unseen ? `(${this.unseen > 99 ? '99+' : this.unseen}) ` : '') + this.base; },
+  ding() {
+    try {
+      const c = this._ctx || (this._ctx = new (window.AudioContext || window.webkitAudioContext)());
+      [[880, 0], [1320, 0.13]].forEach(([f, t]) => { const o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, c.currentTime + t); g.gain.exponentialRampToValueAtTime(0.25, c.currentTime + t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + t + 0.35);
+        o.connect(g); g.connect(c.destination); o.start(c.currentTime + t); o.stop(c.currentTime + t + 0.4); });
+    } catch (e) {}
+  },
+  _toast(x) {
+    const el = document.createElement('div'); el.className = 'lvt ' + (x.k === 'IN' ? 'in' : 'out');
+    const showStore = this.opts.showStore !== false;
+    el.innerHTML = `<span class="ic">🔔</span><div class="tx"><b>Punch ${esc(x.k)} · ${esc(x.name)}</b>
+      <div class="s">${esc(x.cat || '')}${x.vendor ? ' · ' + esc(x.vendor) : ''}${showStore ? ` · <b>${esc(x.store)}${x.store_name ? ' ' + esc(x.store_name) : ''}</b>` : ''}</div>
+      <div class="s">${x.t ? esc(x.t) : x.k === 'OUT' ? 'OUT ✓' : ''} ${punchSrc({ src: x.src, by: x.by_name, post: x.by_post, dist: x.dist, home: x.home })}</div></div><button type="button" class="x" aria-label="Close">✕</button>`;
+    el.querySelector('.x').addEventListener('click', () => el.remove());
+    this.box.prepend(el);
+    while (this.box.children.length > 3) this.box.lastChild.remove();
+    setTimeout(() => { el.classList.add('bye'); setTimeout(() => el.remove(), 400); }, 8000);
+  },
+  _controls() {
+    const c = document.createElement('div'); c.className = 'lvctl';
+    const paint = () => { c.innerHTML = `<button type="button" data-lv="a" title="Pop-ups for every punch">${this.paused() ? '🔕 Pop-ups OFF' : '🔔 Pop-ups ON'}</button><button type="button" data-lv="s" title="Sound">${this.sound() ? '🔊' : '🔇'}</button>`; };
+    paint(); document.body.appendChild(c);
+    c.addEventListener('click', (e) => { const b = e.target.closest('[data-lv]'); if (!b) return;
+      if (b.dataset.lv === 'a') this.set('3pa_alerts', this.paused()); else this.set('3pa_sound', !this.sound());
+      paint(); if (b.dataset.lv === 's' && this.sound()) this.ding(); });
+  },
+};
+(function lvCss() {
+  const st = document.createElement('style');
+  st.textContent = `.lvbox{position:fixed;top:12px;right:12px;z-index:9000;display:flex;flex-direction:column;gap:8px;width:min(360px,calc(100vw - 24px));pointer-events:none}
+  .lvt{pointer-events:auto;background:var(--card,#fff);color:var(--ink,#1A2130);border:1px solid var(--line,#E2E6EC);border-radius:12px;box-shadow:0 12px 30px rgba(15,23,42,.28);padding:10px 12px;display:flex;gap:10px;align-items:flex-start;animation:lvin .25s ease-out}
+  .lvt .ic{width:34px;height:34px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--ok-l,#E9F5EC)}.lvt.out .ic{background:var(--red-l,#FDEDEC)}
+  .lvt .tx{flex:1;min-width:0;font-size:13px}.lvt .s{font-size:12px;color:var(--mut,#5A6472);margin-top:2px}.lvt .x{border:0;background:none;color:var(--mut);font-size:15px;padding:0 2px}
+  .lvt.bye{opacity:0;transform:translateX(30px);transition:.35s}
+  .lvctl{position:fixed;right:12px;bottom:12px;z-index:8999;display:flex;gap:6px}.lvctl button{border:1px solid var(--line,#E2E6EC);background:var(--card,#fff);color:var(--ink);border-radius:999px;padding:6px 12px;font-size:12px;box-shadow:0 4px 12px rgba(15,23,42,.12)}
+  @keyframes lvin{from{opacity:0;transform:translateY(-8px)}}
+  @media(max-width:760px){.lvbox{top:62px;right:8px;left:8px;width:auto}.lvctl{bottom:70px}}`;
+  document.head.appendChild(st);
+})();
+
+/* ---------- v5.4: phone push alerts for store management (consent + login once; stops on manual logout) ---------- */
+const Push = {
+  supported() { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; },
+  iosNeedsInstall() { return /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window.navigator.standalone || matchMedia('(display-mode: standalone)').matches); },
+  async _reg() { return navigator.serviceWorker.register('sw.js'); },
+  async state() {
+    if (!this.supported()) return this.iosNeedsInstall() ? 'ios' : 'unsupported';
+    if (Notification.permission === 'denied') return 'denied';
+    try { const reg = await navigator.serviceWorker.getRegistration(); const sub = reg && await reg.pushManager.getSubscription(); return sub && Notification.permission === 'granted' ? 'on' : 'off'; } catch (e) { return 'off'; }
+  },
+  _key(b64) { const p = '='.repeat((4 - (b64.length % 4)) % 4), raw = atob((b64 + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from([...raw].map((c) => c.charCodeAt(0))); },
+  async enable(me) {
+    if (!this.supported()) return { ok: false, error: this.iosNeedsInstall() ? 'IOS_INSTALL' : 'UNSUPPORTED' };
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return { ok: false, error: 'DENIED' };
+    const reg = await this._reg(); await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: this._key(CONFIG.vapid) });
+    return rpc('push_subscribe', { p_token: me.token, p_sub: sub.toJSON(), p_ua: navigator.userAgent.slice(0, 200) });
+  },
+  async disable(token) {
+    if (!this.supported()) return;
+    const reg = await navigator.serviceWorker.getRegistration(); const sub = reg && await reg.pushManager.getSubscription();
+    if (!sub) return;
+    const ep = sub.endpoint; try { await sub.unsubscribe(); } catch (e) {}
+    await rpc('push_unsubscribe', { p_token: token, p_endpoint: ep });
+  },
+};

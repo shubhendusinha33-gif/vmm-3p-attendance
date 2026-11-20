@@ -136,3 +136,5 @@ begin
         group by a.id) x));
 exception when others then return json_build_object('ok', false, 'error', SQLERRM);
 end $function$;
+
+notify pgrst, 'reload schema';

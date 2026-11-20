@@ -310,6 +310,8 @@ async function doPunch(fromMe) {
     return err(errText(r && r.error), errEl);
   }
   punchRes = { ...r, cat: c, vendor: v, brand: b };
+  // phone alert to the store's SM / ASM / DM (web push) — fire and forget
+  try { fetch(`${CONFIG.url}/functions/v1/push`, { method: 'POST', keepalive: true, headers: { apikey: CONFIG.key, Authorization: `Bearer ${CONFIG.key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'notify', store: ctx.store.code }) }).catch(() => {}); } catch (e) {}
   if (!modToken) memSet({ name: r.name, cat: c.id, brand: b, vendor: v, code: r.code });
   if (r.photo_required) { Cam.open(); return; }
   showDone();
