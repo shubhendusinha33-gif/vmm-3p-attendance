@@ -34,6 +34,15 @@
   .sheet .sum b { display: block; font-size: 15pt; margin-top: 1mm; }
   .sheet .sum .p { background: #E9F5EC; color: #1E8E3E; } .sheet .sum .a { background: #FDEDEC; color: #C0392B; } .sheet .sum .h { background: #FFF4E0; color: #B26A00; } .sheet .sum .c { background: #EEF2F6; color: #334155; }
   .sheet .leg { font-size: 8.5pt; color: #5A6472; }
+  .sheet .rs { display: block; margin-top: 1mm; color: #F59E0B; font-size: 8.5pt; letter-spacing: .3px; white-space: nowrap; }
+  .sheet .rs i { color: #D5DAE1; font-style: normal; }
+  .sheet .rs.m { color: #8A94A3; font-size: 7.5pt; letter-spacing: 0; }
+  .sheet .rtab { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+  .sheet .rtab th { background: #EEF2F6; color: #334155; text-align: left; padding: 1mm 2mm; font-size: 8pt; }
+  .sheet .rtab td, .sheet .rtab th { text-align: left; }
+  .sheet .rtab td { border-top: .5px solid #E2E6EC; padding: 1mm 2mm; vertical-align: top; }
+  .sheet .rtab .bad { color: #C0392B; }
+  .sheet .rh { font-weight: 800; font-size: 10pt; }
   .sheet .sign { display: flex; gap: 12mm; margin-top: auto; }
   .sheet .sign div { flex: 1; text-align: center; font-size: 9pt; color: #5A6472; }
   .sheet .sign .box { height: 22mm; border: 1px dashed #C9D0DA; border-radius: 2mm; }
@@ -100,6 +109,7 @@ function controls(isStore) {
     <div class="grid" id="grid"></div>
     <div class="sum" id="sum"></div>
     <div class="leg" id="leg"></div>
+    <div id="rate"></div>
     <div class="sign"><div><div class="box"></div>Store Stamp</div><div><div class="ln"></div>Store Manager Signature</div></div>
   </section>`;
 }
@@ -159,7 +169,7 @@ function render() {
     let st = statusOf(d);
     if (st === 'H' && !sec) st = 'P';
     if (n[st] !== undefined) n[st]++;
-    cells += `<div><div class="n">${parseYmd(d.d).getDate()}</div>${st ? `<span class="st ${st}">${STL[st]}</span>` : ''}</div>`;
+    cells += `<div><div class="n">${parseYmd(d.d).getDate()}</div>${st ? `<span class="st ${st}">${STL[st]}</span>` : ''}${starsOf(d)}</div>`;
   });
   let total = first.getDay() + r.days.length;
   while (total % 7) { cells += '<div class="blank"></div>'; total++; }
@@ -173,13 +183,32 @@ function render() {
   $('#sheet').hidden = false;
   document.title = `Statement ${a.code} ${r.from} to ${r.to} · 3rd Party Attendance`;
   data.summary = { W, ...n };
+  paintRate();
+}
+/* v5.5: SM/ASM daily rating (1–5 ★) under each day + list with reasons */
+const STARS = (k) => '★'.repeat(k) + `<i>${'★'.repeat(5 - k)}</i>`;
+function starsOf(d) {
+  if (d.rs) return `<span class="rs" title="Rating ${d.rs}/5${d.rtag ? ' · ' + esc(d.rtag) : ''}">${STARS(d.rs)}</span>`;
+  if (d.rmiss) return '<span class="rs m">Not rated</span>';
+  return '';
+}
+function paintRate() {
+  const el = $('#rate'); if (!el) return;
+  const rated = data.days.filter((d) => d.rs), miss = data.days.filter((d) => d.rmiss).length;
+  if (!rated.length && !miss) { el.innerHTML = ''; return; }
+  const avg = rated.length ? (rated.reduce((a, d) => a + d.rs, 0) / rated.length).toFixed(1) : '—';
+  el.innerHTML = `<div class="rh">Daily rating by SM / ASM · average <span style="color:#F59E0B">★ ${avg}</span> <span style="font-weight:400;color:#5A6472;font-size:8.5pt">(${rated.length} day${rated.length === 1 ? '' : 's'} rated${miss ? ` · ${miss} not rated` : ''})</span></div>
+    ${rated.length ? `<table class="rtab" style="margin-top:2mm"><thead><tr><th>Date</th><th>Rating</th><th>Reason (1–2 ★)</th><th>Rated by</th></tr></thead><tbody>
+    ${rated.map((d) => `<tr><td>${esc(fmtDay(d.d))}</td><td><span class="rs" style="display:inline">${STARS(d.rs)}</span> ${d.rs}/5</td><td class="${d.rs <= 2 ? 'bad' : ''}">${d.rtag ? esc(d.rtag) + (d.rnote ? ' · ' + esc(d.rnote) : '') : ''}</td><td>${esc(d.rby || '')}</td></tr>`).join('')}</tbody></table>` : ''}`;
+  data.summary.avg = avg;
 }
 
 function xls() {
   if (!data) return err(t('show') + ' ›');
   const a = data.associate, sec = a.c === 'SEC';
   const rows = data.days.map((d) => { let st = statusOf(d); if (st === 'H' && !sec) st = 'P';
-    return { Date: d.d, Store: data.store.code, Name: a.name, Dept: (a.cat_name || a.c) + (a.brand ? ' – ' + a.brand : ''), Vendor: a.vendor || '', Status: STL[st] || '' }; });
+    return { Date: d.d, Store: data.store.code, Name: a.name, Dept: (a.cat_name || a.c) + (a.brand ? ' – ' + a.brand : ''), Vendor: a.vendor || '', Status: STL[st] || '',
+      'Rating (★)': d.rs || (d.rmiss ? 'Not rated' : ''), 'Reason': d.rtag ? d.rtag + (d.rnote ? ' · ' + d.rnote : '') : '', 'Rated by': d.rby || '' }; });
   downloadXlsx(rows, `Statement_${a.code}_${data.from}_${data.to}.xlsx`, 'Statement');
 }
 

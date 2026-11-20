@@ -30,7 +30,7 @@
   if (r === 'am') nav.push(['ap', 'Approvals', 'ap'], ['tm', 'My stores & team', 'tm']);
   if (r === 'rlpo') nav.push(['ap', 'SG approvals', 'ap'], ['man', 'Manual present', 'pn'], ['tm', 'My stores', 'st']);
   if (r === 'zfm') nav.push(['tm', 'Store team', 'tm'], ['us', 'Users & PIN', 'us']);
-  nav.push(['ch', 'Churn', 'ch'], ['stm', 'Statements', 'stm']);
+  nav.push(['rt', 'Staff rating ★', 'tm'], ['ch', 'Churn', 'ch'], ['stm', 'Statements', 'stm']);
   const ids = nav.map((x) => x[0]);
   const label = (id) => (nav.find((x) => x[0] === id) || [])[1] || '';
 
@@ -51,6 +51,7 @@
     else if (id === 'ap') ApprovalsView(w, me, { onCount: (k) => S.setBadge('ap', k) });
     else if (id === 'man') RlpoManualView(w, me);
     else if (id === 'tm') StoreTeamView(w, me);
+    else if (id === 'rt') RatingView(w, me, { onCount: (k) => S.setBadge('rt', k) });
     else if (id === 'ch') ChurnView(w, me);
     else if (id === 'us') PinReset(w, me, async () => { const x = await rpc('zone_users', { p_token: me.token }); return (x && x.rows) || []; });
     else if (id === 'stm') {
@@ -70,6 +71,8 @@
     const badge = () => dashPendingCount(me).then((k) => S.setBadge('ap', k));
     badge(); setInterval(() => { if (document.visibilityState === 'visible') badge(); }, 5 * 60000);
   }
+  // v5.5: stores that have not rated yesterday's staff (AM / ZFM task)
+  if (r === 'am' || r === 'zfm') { const rb = () => ratingPendingCount(me).then((k) => S.setBadge('rt', k)); rb(); setInterval(() => { if (document.visibilityState === 'visible') rb(); }, 10 * 60000); }
   go(first);
 })();
 </script>

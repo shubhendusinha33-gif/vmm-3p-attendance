@@ -1309,12 +1309,12 @@
   /* ================= boot: shell + navigation ================= */
   const callDash = (fn, ...a) => (root) => { if (typeof window[fn] === 'function') return window[fn](root, me, ...a); root.innerHTML = `<div class="note r">${fn} is not available (assets/dash.js did not load).</div>`; };
   const PAGES = {
-    live: ['Live Dashboard', callDash('LiveDash')], apv: ['Approvals (view only)', callDash('ApprovalsView')], team: ['Store team', callDash('StoreTeamView')],
+    live: ['Live Dashboard', callDash('LiveDash')], rating: ['Staff rating', callDash('RatingView')], apv: ['Approvals (view only)', callDash('ApprovalsView')], team: ['Store team', callDash('StoreTeamView')],
     churn: ['Staff churn', callDash('ChurnView')], reports: ['Reports & export', ReportsView],
     stores: ['Store Master', StoreMaster], manpower: ['Manpower Master', ManpowerMaster], rlpo: ['RLPO Master', RlpoMaster], users: ['Users & PIN', UsersView],
     depts: ['HO Dept Master', DeptView], mail: ['Mail Center', MailView], settings: ['Settings', SettingsView], logs: ['Access & Consent log', LogsView], viewas: ['View as user', ViewAsView],
   };
-  const NAV = [['live', 'Live Dashboard', 'ld'], ['apv', 'Approvals (view)', 'ap'], ['team', 'Store team', 'tm'], ['churn', 'Staff churn', 'ch'], ['reports', 'Reports & export', 'stm']];
+  const NAV = [['live', 'Live Dashboard', 'ld'], ['rating', 'Staff rating ★', 'tm'], ['apv', 'Approvals (view)', 'ap'], ['team', 'Store team', 'tm'], ['churn', 'Staff churn', 'ch'], ['reports', 'Reports & export', 'stm']];
   const ADM = [['stores', 'Store Master', 'st'], ['manpower', 'Manpower Master', 'mp'], ['rlpo', 'RLPO Master', 'rl'], ['users', 'Users & PIN', 'us'], ['depts', 'HO Dept Master', 'ho'],
     ['mail', 'Mail Center', 'ml'], ['settings', 'Settings', 'set'], ['logs', 'Access & Consent log', 'lg'], ['viewas', 'View as user', 'user']];
 
