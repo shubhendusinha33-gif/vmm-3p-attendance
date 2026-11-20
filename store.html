@@ -32,6 +32,25 @@
   .wrap.mob .btn.big,.wrap.mob a.btn.big:visited{display:block;width:100%;padding:12px 16px;font-size:15px;border-radius:10px;text-decoration:none;color:#fff}
   .hist td{white-space:normal}
   .pills .pill{cursor:pointer}
+  /* v5.5 rating gate */
+  .rg{max-width:480px;margin:0 auto;min-height:100vh;background:var(--bg);display:flex;flex-direction:column}
+  .rg .rgh{background:var(--side,#1E293B);color:#fff;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .rg .rgh small{display:block;opacity:.75;font-size:11px}
+  .rg .rgb{padding:12px;display:flex;flex-direction:column;gap:8px;flex:1;padding-bottom:90px}
+  .rg .rgc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .rg .rgc.bad{border:2px solid var(--red)}
+  .rg .rgc.done{opacity:.6}
+  .rg .stz{display:flex;gap:4px;margin-top:4px}
+  .rg .stz button{background:none;border:0;font-size:34px;line-height:1;color:#D5DAE1;padding:0 2px;cursor:pointer}
+  .rg .stz button.on{color:#F59E0B}
+  .rg .stz button:disabled{cursor:default}
+  .rg .tagz{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .rg .tagz button{border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12.5px;background:var(--card);color:var(--ink)}
+  .rg .tagz button.on{background:var(--red);border-color:var(--red);color:#fff}
+  .rg textarea{width:100%;margin-top:6px;border:1px solid var(--red);border-radius:8px;padding:7px 9px;font:inherit;font-size:13px;background:var(--card);color:var(--ink);min-height:44px}
+  .rg .need{color:var(--red);font-weight:700;font-size:12.5px;margin-top:4px}
+  .rg .rgf{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;padding:12px;background:var(--bg);border-top:1px solid var(--line)}
+  .rg .rgf .btn{width:100%;padding:12px;font-size:15px}
 </style>
 </head>
 <body>
@@ -405,9 +424,63 @@ function wire() {
   window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (h && h !== tab) { if (h === 'stm' || h === 'qr') return; tdView = 'day'; go(h); } });
 }
 
+
+/* ---------------- v5.5: daily rating gate (SM / ASM, previous day) ---------------- */
+function ratingGate(rp) {
+  return new Promise((done) => {
+    const root = $('#root'), tags = rp.tags || ['Late', 'Not at post', 'Uniform', 'Behaviour', 'Mobile use', 'Other'];
+    const S = {}; (rp.rows || []).forEach((a) => { S[a.id] = { s: a.stars || 0, tag: a.tag || '', note: a.note || '', locked: !!a.stars }; });
+    const day = fmtDay(rp.date);
+    const valid = (x) => x.s >= 3 || (x.s >= 1 && x.tag && (x.note || '').trim().length >= 3);
+    const open = () => (rp.rows || []).filter((a) => !S[a.id].locked);
+    function paint() {
+      const L = rp.rows || [], left = open(), ok = left.filter((a) => valid(S[a.id])).length;
+      root.innerHTML = `<div class="rg"><div class="rgh"><div><b>${esc(me.store_code)} · ${esc(me.store_name || '')}</b><small>${esc(me.name || '')}${me.post ? ' (' + esc(me.post) + ')' : ''} · ${esc(fmtDay(todayIST()))}</small></div>
+        <button type="button" class="btn s sm" id="rgOut">${esc(t('logout') || 'Logout')}</button></div>
+        <div class="rgb"><div class="note w" style="font-weight:600">⏳ Rate yesterday’s staff to continue · कल के स्टाफ को रेट करें<br><span style="font-weight:400">${esc(day)} · ${L.length} staff punched · ${L.length - left.length + ok} of ${L.length} rated</span></div>
+        <div class="sub">Tap 1–5 stars. 1 or 2 stars needs a reason · 1–2 स्टार पर कारण ज़रूरी. One rating per staff per day; it cannot be changed after Submit.</div>
+        ${L.map((a) => { const x = S[a.id], bad = x.s && x.s <= 2 && !x.locked;
+          return `<div class="rgc ${bad ? 'bad' : ''} ${x.locked ? 'done' : ''}" data-a="${a.id}"><b>${esc(a.name)}</b> <span class="sub">· ${esc(cn(a.c))}${a.brand ? ' · ' + esc(a.brand) : a.vendor ? ' · ' + esc(a.vendor) : ''}</span>${x.locked ? ' <span class="tg ok">Saved</span>' : ''}
+            <div class="stz">${[1, 2, 3, 4, 5].map((k) => `<button type="button" data-st="${k}" class="${k <= x.s ? 'on' : ''}" aria-label="${k} star"${x.locked ? ' disabled' : ''}>★</button>`).join('')}</div>
+            ${bad ? `<div class="need">${x.s} ★ — reason is required · कारण ज़रूरी</div><div class="tagz">${tags.map((g) => `<button type="button" data-tg="${esc(g)}" class="${x.tag === g ? 'on' : ''}">${esc(g)}</button>`).join('')}</div>
+              <textarea data-nt maxlength="300" placeholder="Write what happened (min 3 letters)">${esc(x.note)}</textarea>` : ''}</div>`; }).join('')}
+        <div id="rgErr" class="note r" hidden></div></div>
+        <div class="rgf"><button type="button" class="btn" id="rgGo" ${ok === left.length && left.length ? '' : 'disabled'}>${ok === left.length ? `Submit ${left.length} rating${left.length === 1 ? '' : 's'} ✓` : `Submit (${ok} of ${left.length} done)`}</button></div></div>`;
+    }
+    root.addEventListener('click', onClick);
+    root.addEventListener('input', onInput);
+    function onInput(e) { const c = e.target.closest('[data-a]'); if (!c || !e.target.matches('[data-nt]')) return; S[c.dataset.a].note = e.target.value; refreshBtn(); }
+    function refreshBtn() { const left = open(), ok = left.filter((a) => valid(S[a.id])).length, b = $('#rgGo'); if (!b) return;
+      b.disabled = !(ok === left.length && left.length); b.textContent = ok === left.length ? `Submit ${left.length} rating${left.length === 1 ? '' : 's'} ✓` : `Submit (${ok} of ${left.length} done)`; }
+    async function onClick(e) {
+      if (e.target.closest('#rgOut')) { logout(); return; }
+      const c = e.target.closest('[data-a]'), x = c && S[c.dataset.a];
+      if (x && !x.locked) {
+        const st = e.target.closest('[data-st]'), tg = e.target.closest('[data-tg]');
+        if (st) { x.s = Number(st.dataset.st); if (x.s >= 3) { x.tag = ''; x.note = ''; } const y = window.scrollY; paint(); window.scrollTo(0, y); return; }
+        if (tg) { x.tag = tg.dataset.tg; c.querySelectorAll('[data-tg]').forEach((b) => b.classList.toggle('on', b === tg)); refreshBtn(); return; }
+        return;
+      }
+      const go = e.target.closest('#rgGo'); if (!go || go.disabled) return;
+      go.disabled = true; go.textContent = '…';
+      const items = open().map((a) => ({ a: a.id, s: S[a.id].s, tag: S[a.id].tag || null, note: (S[a.id].note || '').trim() || null }));
+      const r = await rpc('rating_submit', { p_token: me.token, p_items: items });
+      if (!r || !r.ok) { const el = $('#rgErr'); el.hidden = false; el.textContent = { REASON_REQUIRED: '1–2 ★ needs a reason and a short note.', ONLY_SM_ASM: 'Only SM / ASM can rate.' }[r && r.error] || errText(r && r.error); refreshBtn(); return; }
+      if (r.left > 0) { const n = await rpc('rating_pending', { p_token: me.token }); if (n && n.ok && n.need) { rp.rows = n.rows; Object.keys(S).forEach((k) => delete S[k]); n.rows.forEach((a) => { S[a.id] = { s: a.stars || 0, tag: a.tag || '', note: a.note || '', locked: !!a.stars }; }); paint(); return; } }
+      root.removeEventListener('click', onClick); root.removeEventListener('input', onInput);
+      root.innerHTML = ''; toast(`Thank you · ${items.length} rating${items.length === 1 ? '' : 's'} saved`); done();
+    }
+    paint();
+  });
+}
+
 (async function init() {
   me = await requireSession(['store']); if (!me) return;
   const h = location.hash.slice(1); tab = ['td', 'pn', 'hks', 'rq'].includes(h) ? h : 'td';
+  const bootDay = todayIST();
+  // v5.5: SM / ASM must rate yesterday's staff before the app opens (DM Apps and view-as are not blocked)
+  const rp = await rpc('rating_pending', { p_token: me.token });
+  if (rp && rp.ok && rp.need) await ratingGate(rp);
   buildShell();
   Idle.start({ minutes: me.idle_min || 60 });
   // v5.4 punch alerts: phone push (consent) + in-page pop-up/sound while the app is open (skipped when push is on, to avoid double alerts)
@@ -421,6 +494,7 @@ function wire() {
   if (tab !== 'hks') loadHk();
   // refresh Today every 2 min while someone is using the page (so the store lock can still auto-release)
   ['click', 'touchstart', 'keydown', 'scroll'].forEach((ev) => addEventListener(ev, () => { lastTouch = Date.now(); }, { passive: true }));
+  setInterval(() => { if (todayIST() !== bootDay && !document.querySelector('.ov')) { location.reload(); return; } }, 60000);   // new day → rating check again
   setInterval(() => { if (!document.hidden && Date.now() - lastTouch < 25 * 60000 && tab === 'td' && tdView === 'day' && date === todayIST() && !document.querySelector('.ov')) loadDay(); }, 120000);
 })();
 </script>
