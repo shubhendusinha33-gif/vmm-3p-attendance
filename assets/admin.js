@@ -1228,22 +1228,51 @@
 
   /* ================= VIEW AS USER (read-only) ================= */
   function ViewAsView(root) {
-    const st = { q: '', role: '', page: 1, size: defSize() }; let rows = [];
-    root.innerHTML = `<div class="toolrow"><div><h1 class="pt">View as user</h1><div class="sub">Opens the portal in a new tab exactly as this person sees it. Read-only: nothing can be punched, reset or changed. Every view is saved in the Access Log.</div></div>
-      <span class="acts"><select data-r="role" aria-label="Role"><option value="">All roles</option>${['store', 'am', 'zfm', 'hodept', 'rlpo'].map((r) => `<option value="${r}">${RN[r]}</option>`).join('')}</select><input class="f" type="search" data-r="q" placeholder="Search name / code / store" style="width:220px"></span></div>
-      <div class="card"><div class="tw" data-r="tbl">${SPIN}</div></div>`;
+    // v5.4: one search box. Store code → every login of that store (Store · Name · Post · Emp), vacant posts, its AM and ZFM.
+    const st = { q: '', page: 1, size: defSize() }; let rows = [], stores = [];
+    root.innerHTML = `<div class="toolrow"><div><h1 class="pt">View as user</h1><div class="sub">Opens the portal in a new tab exactly as this person sees it. Read-only: nothing can be punched, reset or changed. Every view is saved in the Access Log.</div></div></div>
+      <div class="card"><input class="f" type="search" data-r="q" placeholder="Store code (e.g. HH02), name, post (SM / ASM / AM…), emp code or mail" style="width:min(560px,100%);font-size:15px;padding:10px 12px" autocomplete="off">
+      <div class="sub" style="margin-top:6px">One line per login: Store · Name · Post · Emp code</div><div data-r="tbl" style="margin-top:10px">${SPIN}</div></div>`;
     const R = (k) => root.querySelector(`[data-r="${k}"]`);
-    const list = () => { const q = st.q.toLowerCase(); return rows.filter((u) => u.role !== 'admin' && u.active !== false && (!st.role || u.role === st.role) && (!q || `${u.name} ${u.emp_code} ${u.store_code || ''} ${u.dept || ''} ${u.email || ''}`.toLowerCase().includes(q))); };
-    function paint() {
-      const f = list();
-      R('tbl').innerHTML = `<table><thead><tr><th class="l">Login ID</th><th class="l">Name</th><th class="l">Role</th><th class="l">Post / Dept</th><th class="l">Store</th><th class="l">Last login</th><th class="l"></th></tr></thead><tbody>
-        ${pageSlice(f, st).map((u) => `<tr><td class="l">${esc(u.emp_code)}</td><td class="l"><b>${esc(u.name)}</b></td><td class="l"><span class="tg info">${RN[u.role] || u.role}</span></td><td class="l">${esc(u.post || u.dept || '—')}</td><td class="l">${esc(u.store_code || '—')}</td><td class="l">${esc(u.last_login || '—')}</td>
-          <td class="l"><button type="button" class="btn s sm" data-va="${esc(u.emp_code)}">👁 View as</button></td></tr>`).join('') || '<tr><td class="l" colspan="7" style="color:var(--mut)">No users</td></tr>'}</tbody></table>${pagerHtml(f.length, st)}`;
+    const mark = (txt, q) => { const t = esc(txt); if (!q) return t; const i = String(txt).toLowerCase().indexOf(q.toLowerCase()); return i < 0 ? t : esc(String(txt).slice(0, i)) + '<mark>' + esc(String(txt).slice(i, i + q.length)) + '</mark>' + esc(String(txt).slice(i + q.length)); };
+    function results() {
+      const q = st.q.trim(), ql = q.toLowerCase(), act = rows.filter((u) => u.role !== 'admin' && u.active !== false);
+      if (!q) return act.filter((u) => u.role === 'store').slice(0, 0).map((u) => ({ u }));
+      const out = [];
+      if (/^[a-z]{2}\d{0,2}$/i.test(q)) {
+        const Q = q.toUpperCase(), sts = stores.filter((x) => x.store_code.startsWith(Q)).slice(0, 25);
+        sts.forEach((x) => {
+          const us = act.filter((u) => u.role === 'store' && u.store_code === x.store_code);
+          POSTS.forEach((p) => { const u = us.find((y) => y.post === p); out.push(u ? { u, store: x } : { vacant: p, store: x }); });
+          us.filter((u) => !POSTS.includes(u.post)).forEach((u) => out.push({ u, store: x }));
+          const am = act.find((u) => u.emp_code === x.am_emp), zf = act.find((u) => u.emp_code === x.zfm_emp), rl = act.find((u) => u.emp_code === x.rlpo_emp);
+          if (sts.length <= 3) [am, zf, rl].filter(Boolean).forEach((u) => out.push({ u, has: x.store_code }));
+        });
+        return out;
+      }
+      act.filter((u) => `${u.name} ${u.emp_code} ${u.store_code || ''} ${u.post || ''} ${RN[u.role] || u.role} ${u.dept || ''} ${u.email || ''}`.toLowerCase().includes(ql))
+        .forEach((u) => out.push({ u, store: stores.find((x) => x.store_code === u.store_code) }));
+      return out;
     }
-    root.addEventListener('input', (e) => { if (e.target === R('q')) { st.q = e.target.value.trim(); st.page = 1; paint(); } });
-    root.addEventListener('change', (e) => { if (pagerEvent(e, st, list().length)) return paint(); if (e.target === R('role')) { st.role = e.target.value; st.page = 1; paint(); } });
+    function paint() {
+      const q = st.q.trim(), f = results();
+      if (!q) { R('tbl').innerHTML = `<div class="sub">Type a store code like <b>HH02</b>, or a name / post / emp code.</div>`; return; }
+      R('tbl').innerHTML = `<div class="vaList">${pageSlice(f, st).map((x) => {
+        if (x.vacant) return `<div class="vaRow"><span class="tg grey">Store</span><span class="vaT"><b>${mark(x.store.store_code, q)} · ${esc(x.vacant)}</b> · <i class="sub">vacant</i></span><span class="sub">${esc(x.store.name || '')}</span><span></span></div>`;
+        const u = x.u, isStore = u.role === 'store';
+        const line = isStore ? `<b>${mark(u.store_code || '', q)} · ${mark(u.name, q)} · ${mark(u.post || '', q)}</b> · ${mark(u.emp_code, q)}`
+          : `<b>${mark(u.name, q)} · ${esc(RN[u.role] || u.role)}${u.dept ? ' · ' + mark(u.dept, q) : ''}</b> · ${mark(u.emp_code, q)}${x.has ? ` · has <mark>${esc(x.has)}</mark>` : ''}`;
+        return `<div class="vaRow"><span class="tg ${isStore ? 'grey' : 'info'}">${esc(RN[u.role] || u.role)}</span><span class="vaT">${line}</span>
+          <span class="sub">${esc((x.store && x.store.name) || '')}${u.last_login ? ' · last login ' + esc(u.last_login) : ''}</span>
+          <button type="button" class="btn s sm" data-va="${esc(u.emp_code)}">👁 View as</button></div>`; }).join('') || '<div class="sub">Nothing found</div>'}</div>${pagerHtml(f.length, st)}`;
+    }
+    if (!document.getElementById('vaCss')) { const c = document.createElement('style'); c.id = 'vaCss';
+      c.textContent = '.vaList{border:1px solid var(--line);border-radius:10px;overflow:hidden}.vaRow{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:9px 12px;border-top:1px solid var(--line)}.vaRow:first-child{border-top:0}.vaRow:hover{background:var(--hover)}.vaRow mark{background:#FDE68A;border-radius:3px;padding:0 1px}@media(max-width:760px){.vaRow{grid-template-columns:auto 1fr}.vaRow .sub{grid-column:2}}';
+      document.head.appendChild(c); }
+    root.addEventListener('input', (e) => { if (e.target === R('q')) { st.q = e.target.value; st.page = 1; paint(); } });
+    root.addEventListener('change', (e) => { if (pagerEvent(e, st, results().length)) return paint(); });
     root.addEventListener('click', async (e) => {
-      if (pagerEvent(e, st, list().length)) return paint();
+      if (pagerEvent(e, st, results().length)) return paint();
       const b = e.target.closest('[data-va]'); if (!b) return;
       const w = window.open('about:blank', '_blank');
       b.disabled = true; const r = await rpc('admin_view_as', { p_token: me.token, p_emp: b.dataset.va }); b.disabled = false;
@@ -1252,7 +1281,8 @@
       const url = homeFor(r.role) + '?view=1';
       if (w) w.location.href = url; else location.href = url;
     });
-    aget('users', true).then((u) => { rows = u; paint(); }).catch((e) => { R('tbl').innerHTML = `<div class="note r">${esc(e.message)}</div>`; });
+    Promise.all([aget('users', true), aget('stores')]).then(([u, s2]) => { rows = u; stores = s2 || []; paint(); R('q').focus(); })
+      .catch((e) => { R('tbl').innerHTML = `<div class="note r">${esc(e.message)}</div>`; });
   }
 
   /* ================= REPORTS & PUNCH EXPORT ================= */
@@ -1306,6 +1336,7 @@
   (async function boot() {
     me = await requireSession(['admin']); if (!me) return;
     Idle.start({ minutes: me.idle_min || 60 });
+    Live.start(me, { controls: true });   // v5.4: pop-up + sound + tab count for every punch (all stores)
     let start = (location.hash || '').slice(1); if (!PAGES[start]) start = 'live';
     SH = appShell('#root', { me, nav: NAV, adminNav: ADM, active: start, title: PAGES[start][0], scope: 'All India', onNav: go });
     window.addEventListener('beforeunload', (e) => { if (dirty && dirty()) { e.preventDefault(); e.returnValue = ''; } });

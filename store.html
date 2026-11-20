@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#1E293B">
 <link rel="preconnect" href="https://phyllziizajuphenpwxz.supabase.co" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="icon" href="assets/logo.png">
+<link rel="icon" href="assets/logo.png"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#1E293B"><link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&family=Noto+Sans+Devanagari:wght@400;700&display=swap" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="assets/app.css">
 <style>
@@ -68,11 +68,29 @@ function render() {
 }
 
 /* ---------------- Today ---------------- */
-function renderToday() {
+let pushSt = '';
+function paintPush() {
+  const el = document.getElementById('pushCard'); if (!el) return;
+  const hi = lang() === 'hi';
+  if (!pushSt || pushSt === 'on' || pushSt === 'unsupported' || Session.isView()) { el.innerHTML = ''; return; }
+  if (pushSt === 'ios') { el.innerHTML = `<div class="note i" style="margin-top:8px">🔔 ${hi ? 'हर पंच का फ़ोन अलर्ट पाने के लिए: Safari में Share → “Add to Home Screen”, फिर उसी आइकन से खोलें।' : 'For a phone alert on every punch: in Safari tap Share → “Add to Home Screen”, then open the app from that icon.'}</div>`; return; }
+  if (pushSt === 'denied') { el.innerHTML = `<div class="note w" style="margin-top:8px">🔕 ${hi ? 'नोटिफ़िकेशन ब्लॉक हैं। ब्राउज़र सेटिंग में इस साइट के Notifications चालू करें।' : 'Notifications are blocked. Turn on Notifications for this site in the browser settings.'}</div>`; return; }
+  el.innerHTML = `<div class="card" style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="font-size:22px">🔔</span>
+    <div style="flex:1;min-width:180px"><b>${hi ? 'हर पंच पर फ़ोन अलर्ट (आवाज़ के साथ)' : 'Phone alert with sound for every punch'}</b><div class="sub">${hi ? 'ऐप बंद हो या फ़ोन लॉक हो तब भी। Logout करने पर बंद।' : 'Even when the app is closed or the phone is locked. Stops when you log out.'}</div></div>
+    <button class="btn sm" data-a="pushon">${hi ? 'चालू करें' : 'Allow alerts'}</button></div>`;
+}
+async function pushOn(btn) {
+  btn.disabled = true; const r = await Push.enable(me); btn.disabled = false;
+  if (r && r.ok) { pushSt = 'on'; toast(lang() === 'hi' ? 'फ़ोन अलर्ट चालू' : 'Phone alerts are on'); }
+  else { pushSt = await Push.state(); if (r && r.error) toast(r.error === 'DENIED' ? (lang() === 'hi' ? 'अनुमति नहीं मिली' : 'Permission not given') : errText(r.error)); }
+  paintPush();
+}
+function renderToday() { _renderToday(); paintPush(); }
+function _renderToday() {
   const isToday = date === todayIST();
   W().innerHTML = `<div class="mrow"><input class="f" type="date" id="tdDate" value="${date}" max="${todayIST()}" aria-label="${esc(t('date'))}">
       <span class="lvz" style="margin:0"><span class="dot ${isToday ? '' : 'off'}"></span><span id="tdLive">${isToday ? esc(t('live')) + (lastRef ? ' · ' + lastRef : '') : esc(t('endOfDay'))}</span></span>
-      <button class="btn s sm" data-a="ref" title="${esc(t('refresh'))}" aria-label="${esc(t('refresh'))}">↻</button></div>
+      <button class="btn s sm" data-a="ref" title="${esc(t('refresh'))}" aria-label="${esc(t('refresh'))}">↻</button></div><div id="pushCard"></div>
     <div class="toolrow"><h1 class="pt">${esc(me.store_code)} · ${esc(me.store_name || '')}</h1>
       <div class="seg" id="tdShift">${[['M', 'morning'], ['E', 'evening'], ['B', 'both']].map(([v, k]) => `<button data-s="${v}" class="${shift === v ? 'on' : ''}">${esc(t(k))}</button>`).join('')}</div></div>
     <div id="tdBody" style="display:flex;flex-direction:column;gap:10px"><div class="spin"></div></div>`;
@@ -116,7 +134,7 @@ function paintDay() {
         ${v.brands.length ? `<div class="brs">${v.brands.map((s) => `<span class="tg ${tg(s.p, s.req)}">${esc(s.brand)} ${s.p}/${s.req}</span>`).join('')}</div>` : ''}
         <div class="dlist">${sec
           ? ppl.map((g) => `<div class="post"><b>${esc(g.name)}</b><span class="acts">${SG_TAG(g.st)}${past && g.st === 'MP' ? `<button class="btn s sm" data-a="sgreq" data-id="${g.id}">${esc(t('misPunchReq'))}</button>` : ''}</span></div>`).join('')
-          : ppl.map((a) => `<div class="post"><span><b>${esc(a.name)}</b>${a.brand ? ` <small>${esc(a.brand)}</small>` : ''}<br><small>IN ${esc(a.first_in || '—')}${a.last_out ? ' · OUT ' + esc(a.last_out) : a.out_done ? ' · OUT ✓' : ' · ' + esc(t('stillIn'))}${a.hours ? ' · ' + a.hours + ' h' : ''}${a.via_mod ? ' · ' + esc(t('punchedByStore')) : ''}</small></span>
+          : ppl.map((a) => `<div class="post"><span><b>${esc(a.name)}</b>${a.brand ? ` <small>${esc(a.brand)}</small>` : ''}<br><small>IN ${esc(a.first_in || '—')}${a.last_out ? ' · OUT ' + esc(a.last_out) : a.out_done ? ' · OUT ✓' : ' · ' + esc(t('stillIn'))}${a.hours ? ' · ' + a.hours + ' h' : ''}</small>${(a.src || []).length ? `<br>${a.src.map((p) => `<small style="color:var(--mut)">${esc(p.k)}</small> ${punchSrc(p, true)}`).join(' ')}` : a.via_mod ? ' · ' + esc(t('punchedByStore')) : ''}</span>
               <span class="acts">${a.photo === 'done' ? `${a.live === 'pass' ? `<span class="tg ok">${esc(t('liveOk'))}</span> ` : ''}<button class="btn ghost sm" style="padding:2px 6px" title="View selfie" data-selfie="${esc(a.id)}|${esc(date)}">📷</button>` : a.photo === 'pending' ? '<span class="tg amb">📷?</span>' : ''}
               ${editTypes.includes('staff') ? `<button class="btn s sm" data-a="staff" data-id="${a.id}" title="${esc(t('staffReq'))}" aria-label="${esc(t('staffReq'))}">✎</button>` : ''}</span></div>`).join('')}
           ${miss ? `<div class="post miss"><b>${esc(t(sec ? 'notOnDuty' : 'notPunchedN', { n: miss }))}</b>${!sec && !past ? `<button class="btn sm" data-a="go" data-to="pn">${esc(t('punchForStaffT'))}</button>` : ''}</div>` : ''}
@@ -368,6 +386,7 @@ function wire() {
     else if (a === 'pncat') { pnCat = b.dataset.c; $$('#pnCats .pill').forEach((p) => p.classList.toggle('on', p === b)); $('#pnRoster').innerHTML = '<div class="spin"></div>'; loadRoster(); }
     else if (a === 'hksave') hkSave();
     else if (a === 'rqsend') rqSend();
+    else if (a === 'pushon') pushOn(b);
     else if (a === 'cxok' || a === 'cxno') cxDecide(b.dataset.id, a === 'cxok', b);
     else if (a === 'rqf') { rqFilter = b.dataset.f; paintReqList(); }
   });
@@ -391,6 +410,9 @@ function wire() {
   const h = location.hash.slice(1); tab = ['td', 'pn', 'hks', 'rq'].includes(h) ? h : 'td';
   buildShell();
   Idle.start({ minutes: me.idle_min || 60 });
+  // v5.4 punch alerts: phone push (consent) + in-page pop-up/sound while the app is open (skipped when push is on, to avoid double alerts)
+  Push.state().then((st) => { pushSt = st; paintPush(); });
+  Live.start(me, { showStore: false, skip: () => pushSt === 'on' });
   shift = istNow().getHours() < 14 ? 'M' : 'B';
   const [ctx] = await Promise.all([rpc('punch_context', { p_store: me.store_code }), loadCr()]);
   if (ctx && ctx.categories) ctx.categories.forEach((c) => { cats[c.id] = c; });

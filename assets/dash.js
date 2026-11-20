@@ -58,6 +58,11 @@
 .dv .hint{font-size:11.5px;color:var(--mut)}
 .dv svg.ch g[data-day]:hover rect{opacity:.85}
 .dv .ftl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.dv .dnz{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin-top:10px}
+.dv .dn{display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid var(--line);border-radius:10px;padding:8px 4px;background:var(--card);font:inherit;color:var(--ink)}
+.dv button.dn{cursor:pointer}.dv button.dn:hover{border-color:var(--acc)}.dv .dn.on{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-l)}.dv .dn b{font-size:13px}.dv .dn small{font-size:11.5px;color:var(--mut)}.dv .dn.tot{background:var(--acc-l);border-color:transparent}
+.dv .mxt th.bl,.dv .mxt td.bl{border-left:2px solid var(--line)}.dv .mxt tr.tot td{font-weight:700;background:var(--hover)}.dv .mxt td{white-space:nowrap}
+.dv .srcl{margin:1px 0;white-space:nowrap}.dv .srcl small{color:var(--mut);display:inline-block;min-width:58px}
 @media(max-width:760px){.dv .reqc .act input{width:100%}.dv .reqc .act{width:100%}.dv .ftl input.f,.dv .ftl select{flex:1 1 140px}}`;
     document.head.appendChild(s);
   }
@@ -103,8 +108,8 @@
   function LiveDash(root, me) {
     const V = mount(root);
     const defView = { am: 'store', rlpo: 'store', zfm: 'am' }[me.role] || 'zfm';
-    const S = { date: todayIST(), shift: istNow().getHours() < 14 ? 'M' : 'B', upto: '', zfm: '', am: '', q: '', cat: '', alert: '',
-      view: defView, path: [], d: null, week: null, y: null, store: null, seq: 0, lock: '', lines: [], lv: '' };
+    const S = { date: todayIST(), shift: 'B', upto: '', zfm: '', am: '', q: '', cat: '', alert: '', ndays: 7, weekN: null, mx: [],
+      view: 'dept', path: [], d: null, week: null, y: null, store: null, seq: 0, lock: '', lines: [], lv: '' };
 
     V.bar.innerHTML = `<input class="f" type="date" data-f="date" max="${todayIST()}" value="${S.date}" aria-label="Date">
       <select data-f="zfm" hidden aria-label="ZFM"></select><select data-f="am" hidden aria-label="AM"></select>
@@ -183,11 +188,14 @@
       if (S.d) mainEl.classList.add('busy'); else mainEl.innerHTML = spin;
       const [r, w] = await Promise.all([
         rpc('dash_overview', { p_token: me.token, p_date: S.date, p_shift: S.shift, p_upto: S.upto || null }),
-        rpc('dash_week', { p_token: me.token, p_end: S.date, p_shift: S.shift })]);
+        rpc('dash_days', { p_token: me.token, p_end: S.date, p_shift: S.shift, p_days: S.ndays }).then((x) => (x && x.ok ? x : rpc('dash_week', { p_token: me.token, p_end: S.date, p_shift: S.shift })))]);
       if (seq !== S.seq || !V.alive()) return;
       mainEl.classList.remove('busy');
       if (!r || !r.ok) { mainEl.innerHTML = errBox(r); return; }
-      S.d = r; S.week = w && w.ok ? w.rows || [] : []; S.weekEnd = w && w.ok ? w.end || S.date : S.date; S.y = null;
+      S.d = r; S.weekN = w && w.ok ? w.rows || [] : []; S.weekEnd = w && w.ok ? w.end || S.date : S.date; S.y = null;
+      S.nGot = S.weekN.length ? (S.weekN[0].r || []).length : 7;
+      // 7-day view of the same data (gap table boxes, "low N days" alert)
+      S.week = S.weekN.map((x) => ({ ...x, r: (x.r || []).slice(-7), p: (x.p || []).slice(-7) }));
       if (S.upto && r.date === r.today && S.upto > r.now) S.upto = '';
       S.lock = r.categories.length === 1 ? r.categories[0].id : '';
       if (S.lock) S.cat = S.lock; else if (S.cat && !hasCat(S.cat)) S.cat = '';
@@ -236,12 +244,14 @@
         return `<button type="button" class="ach ${c} ${S.alert === k ? 'on' : ''} ${n ? '' : 'zero'}" data-al="${k}" title="${k === 'mp' ? 'Guards with IN but no OUT on ' + esc(fmtDay(d.mispunch_date || d.date)) : ''}">${esc(names[k])} <b>${n}</b></button>`; }).join('')
         : `<span class="sub" style="margin:0">Starts at ${esc(S.shift === 'E' ? d.alert_e : d.alert_m)} for this shift (Settings)</span>`}</div>
       <div class="cols">
-        <div class="card"><h2>Last 7 days</h2><div class="sub">Present % of required, end of day. ${today ? 'Today is live. ' : ''}Lighter bars are Sat and Sun. Click a bar to open that day.</div><div data-ld="trend"></div></div>
-        <div class="card"><h2>Dept-wise · required vs present</h2><div class="sub">Dashed box = required · bar = present.${S.lock ? '' : ' Click a dept to filter.'}</div><div data-ld="lad"></div></div>
+        <div class="card"><div class="hd"><div><h2>Last ${S.ndays} days</h2><div class="sub">Present % of required, end of day. ${today ? 'Today is live. ' : ''}Lighter bars are Sat and Sun. Click a bar to open that day.</div></div>
+          <div class="seg" role="radiogroup" aria-label="Days">${[7, 10, 15].map((k) => `<button type="button" role="radio" aria-checked="${S.ndays === k}" data-nd="${k}" class="${S.ndays === k ? 'on' : ''}">${S.ndays === k ? '◉' : '○'} ${k} days</button>`).join('')}</div></div><div data-ld="trend"></div></div>
+        <div class="card"><h2>Dept-wise · required vs present</h2><div class="sub">Present % of required.${S.lock ? '' : ' Click a dept to filter.'}</div><div data-ld="lad"></div></div>
       </div>
+      <div class="card" data-ld="mx"></div>
       <div class="card" data-ld="gap"></div>`;
       const stores = scopeStores(), set = new Set(stores.map((s) => s.code)), rows = rowsOf(d, set);
-      paintKpis(); paintTrend(stores); paintLadder(rows); paintGap(stores, rows);
+      paintKpis(); paintTrend(stores); paintLadder(rows); paintMatrix(stores, rows); paintGap(stores, rows);
     }
     function paintKpis() {
       const box = V.q('[data-ld="kpis"]'); if (!box || !S.d) return;
@@ -267,18 +277,20 @@
         <button type="button" class="kpi fl r ${S.alert === 'nob' ? 'on' : ''}" data-al="nob"><span class="l">${esc(nobLabel())}</span><span class="v" style="color:var(--red)">${nob} store${pl(nob)}</span><span class="go">${S.alert === 'nob' ? 'Showing ✓ · click to clear' : 'Click to filter stores'}</span></button>`;
     }
     function paintTrend(stores) {
-      const w = weekFor(stores.map((s) => s.code), S.cat ? [S.cat] : null), ds = weekDates();
+      const n = S.nGot || 7, end = S.weekEnd || S.date, ds = Array.from({ length: n }, (_, i) => addDays(end, i - (n - 1)));
+      const set = new Set(stores.map((s) => s.code)), w = { r: Array(n).fill(0), p: Array(n).fill(0) };
+      (S.weekN || []).forEach((x) => { if (!set.has(x.s) || (S.cat && x.c !== S.cat)) return; (x.r || []).forEach((q, i) => { w.r[i] += q || 0; w.p[i] += Math.min((x.p || [])[i] || 0, q || 0); }); });
       const v = w.r.map((q, i) => (q ? pct(w.p[i], q) : null));
-      const prev = v.slice(0, 6).filter((x) => x != null), avg = prev.length ? +(prev.reduce((a, b) => a + b, 0) / prev.length).toFixed(1) : null;
-      const W = 560, H = 190, bw = 44, gap = (W - 40 - bw * 7) / 6, y = (x) => H - 28 - (Math.min(x, 100) / 100) * (H - 50);
-      V.q('[data-ld="trend"]').innerHTML = `<svg class="ch" viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;margin-top:6px" role="img" aria-label="Present % for the last 7 days">
+      const prev = v.slice(0, n - 1).filter((x) => x != null), avg = prev.length ? +(prev.reduce((a, b) => a + b, 0) / prev.length).toFixed(1) : null;
+      const W = 560, H = 190, bw = Math.min(44, ((W - 40) / n) * 0.72), gap = n > 1 ? (W - 40 - bw * n) / (n - 1) : 0, y = (x) => H - 28 - (Math.min(x, 100) / 100) * (H - 50);
+      V.q('[data-ld="trend"]').innerHTML = `<svg class="ch" viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;margin-top:6px" role="img" aria-label="Present % for the last ${n} days">
         ${[0, 25, 50, 75, 100].map((t) => `<line x1="30" x2="${W}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)"/><text x="24" y="${y(t) + 4}" text-anchor="end">${t}</text>`).join('')}
         ${avg != null ? `<line x1="30" x2="${W}" y1="${y(avg)}" y2="${y(avg)}" stroke="var(--grey)" stroke-dasharray="4 4"/><text x="${W}" y="10" text-anchor="end">- - - ${prev.length}-day avg ${avg}%</text>` : ''}
-        ${v.map((x, i) => { const X = 36 + i * (bw + gap), dd = dayLbl(ds[i]), last = i === 6, c = last ? 'var(--acc)' : isWeekend(ds[i]) ? 'var(--wk)' : 'var(--pri)';
+        ${v.map((x, i) => { const X = 36 + i * (bw + gap), dd = dayLbl(ds[i]), last = i === n - 1, c = last ? 'var(--acc)' : isWeekend(ds[i]) ? 'var(--wk)' : 'var(--pri)';
           return `<g data-day="${ds[i]}" style="cursor:pointer"><title>${esc(fmtDate(ds[i]))}${x == null ? ' · not required' : ` · ${x}% (${fmt(w.p[i])} / ${fmt(w.r[i])})`}</title>
             <rect x="${X}" y="0" width="${bw}" height="${H - 28}" fill="transparent"/>
-            ${x == null ? `<text x="${X + bw / 2}" y="${y(0) - 6}" text-anchor="middle">—</text>` : `<rect class="br" x="${X}" y="${y(x)}" width="${bw}" height="${Math.max(y(0) - y(x), 1)}" rx="4" fill="${c}"/><text class="b" x="${X + bw / 2}" y="${y(x) - 6}" text-anchor="middle">${x}</text>`}
-            <text x="${X + bw / 2}" y="${H - 14}" text-anchor="middle"${last ? ' class="b"' : ''}>${dd[0]}</text><text x="${X + bw / 2}" y="${H - 2}" text-anchor="middle">${dd[1]}</text></g>`; }).join('')}</svg>`;
+            ${x == null ? `<text x="${X + bw / 2}" y="${y(0) - 6}" text-anchor="middle">—</text>` : `<rect class="br" x="${X}" y="${y(x)}" width="${bw}" height="${Math.max(y(0) - y(x), 1)}" rx="4" fill="${c}"/><text class="b" x="${X + bw / 2}" y="${y(x) - 6}" text-anchor="middle"${n > 10 ? ' style="font-size:9px"' : ''}>${x}</text>`}
+            <text x="${X + bw / 2}" y="${H - 14}" text-anchor="middle"${last ? ' class="b"' : ''}${n > 10 ? ' style="font-size:9px"' : ''}>${n > 10 ? dd[1] : dd[0]}</text>${n > 10 ? '' : `<text x="${X + bw / 2}" y="${H - 2}" text-anchor="middle">${dd[1]}</text>`}</g>`; }).join('')}</svg>`;
     }
     function paintLadder(rows) {
       const cs = S.lock ? cats().filter((c) => c.id === S.lock) : cats();
@@ -292,10 +304,34 @@
         sg = `<div class="sub" style="margin-top:12px;font-weight:700">Security ${S.d.sg_final ? '· final (hours rule)' : '· live (punched IN)'}${filtered ? ' · all your stores' : ''}</div>
           <div class="sgrow"><span class="tg ok" title="Present">P ${fmt(g.P)}</span><span class="tg acc" title="Manual present by RLPO">P* ${fmt(g.Pstar)}</span><span class="tg amb" title="Half day">H ${fmt(g.H)}</span><span class="tg red" title="Absent">A ${fmt(g.A)}</span><span class="tg grey" title="IN without OUT: counts Absent until RLPO decides">MP ${fmt(g.MP)} (A till RLPO)</span></div>`;
       }
-      V.q('[data-ld="lad"]').innerHTML = `<div class="lad">${sums.map((s) => `<button type="button" class="rn ${S.cat === s.c.id ? 'on' : ''}" data-cat="${S.lock ? esc(s.c.id) : S.cat === s.c.id ? '' : esc(s.c.id)}">${esc(catName(s.c))}</button>
-        <div class="stack"><span class="bm" style="width:${(s.q / mx) * 100}%"></span><span class="pr" style="width:${(s.p / mx) * 100}%;background:${col(s.v)}"></span></div>
-        <div class="nums">${s.q ? `<b>${fmt(s.p)}</b> / ${fmt(s.q)} · <b style="color:${col(s.v)}">${s.v}%</b>` : 'Not required'}${s.z ? `<br><span style="color:var(--red)">${s.z} store${pl(s.z)} with 0</span>` : ''}</div>`).join('') || '<span class="sub">No departments</span>'}</div>
-        <div class="leg"><span><i style="border:1.5px dashed var(--grey);height:9px"></i>Required</span><span><i style="background:var(--ok)"></i>90%+</span><span><i style="background:var(--amb)"></i>70–90%</span><span><i style="background:var(--red)"></i>Below 70%</span></div>${sg}`;
+      const all = sums.reduce((o, x) => ({ q: o.q + x.q, p: o.p + x.p }), { q: 0, p: 0 }), av = pct(all.p, all.q);
+      const donut = (v, c, size = 84) => { const R = 30, C = 2 * Math.PI * R, L = C * Math.min(v, 100) / 100;
+        return `<svg width="${size}" height="${size}" viewBox="0 0 86 86" aria-hidden="true"><circle cx="43" cy="43" r="${R}" fill="none" stroke="var(--track)" stroke-width="11"/><circle cx="43" cy="43" r="${R}" fill="none" stroke="${c}" stroke-width="11" stroke-dasharray="${L} ${C}" transform="rotate(-90 43 43)" stroke-linecap="round"/><text x="43" y="48" text-anchor="middle" font-size="16" font-weight="800" fill="var(--ink)">${v}%</text></svg>`; };
+      V.q('[data-ld="lad"]').innerHTML = `<div class="dnz">${sums.map((x) => `<button type="button" class="dn ${S.cat === x.c.id ? 'on' : ''}" data-cat="${S.lock ? esc(x.c.id) : S.cat === x.c.id ? '' : esc(x.c.id)}" title="${esc(catName(x.c))}: ${fmt(x.p)} of ${fmt(x.q)}">
+          ${x.q ? donut(x.v, col(x.v)) : donut(0, 'var(--track)')}<b>${esc(catName(x.c))}</b><small>${x.q ? `${fmt(x.p)} / ${fmt(x.q)}` : 'Not required'}</small>${x.z ? `<small style="color:var(--red)">${x.z} store${pl(x.z)} with 0</small>` : ''}</button>`).join('')}
+        ${sums.length > 1 ? `<div class="dn tot">${donut(av, 'var(--acc)')}<b>Overall</b><small>${fmt(all.p)} / ${fmt(all.q)}</small></div>` : ''}</div>
+        <div class="leg"><span><i style="background:var(--ok)"></i>90%+</span><span><i style="background:var(--amb)"></i>70–90%</span><span><i style="background:var(--red)"></i>Below 70%</span></div>${sg}`;
+    }
+    /* dept summary: 4 depts in columns (Req / Avl / %), National by ZFM → AM → Store */
+    function paintMatrix(stores, rows) {
+      const el = V.q('[data-ld="mx"]'); if (!el) return;
+      const cs = (S.lock ? cats().filter((c) => c.id === S.lock) : cats());
+      const start = me.role === 'am' || me.role === 'rlpo' ? 'store' : me.role === 'zfm' ? 'am' : 'zfm';
+      const path = S.mx || [], lv = path.length ? path[path.length - 1].next : start;
+      let st = stores; path.forEach((p) => { st = st.filter((x) => (x[p.key] || '—') === p.val); });
+      const K = { zfm: (s) => s.zfm || '—', am: (s) => s.am || '—', store: (s) => s.code }, N = { zfm: (s) => s.zfm_name || s.zfm || '—', am: (s) => s.am_name || s.am || '—', store: (s) => `${s.code} · ${s.name || ''}` };
+      const g = new Map(); st.forEach((s) => { const k = K[lv](s); if (!g.has(k)) g.set(k, { k, n: N[lv](s), set: new Set() }); g.get(k).set.add(s.code); });
+      const sum = (set, c) => rows.filter((r) => set.has(r.s) && (!c || r.c === c)).reduce((a, r) => ({ q: a.q + r.req, p: a.p + Math.min(r.p, r.req) }), { q: 0, p: 0 });
+      const cell = (o) => { const v = pct(o.p, o.q); return `<td class="bl">${o.q ? fmt(o.q) : '—'}</td><td>${o.q || o.p ? fmt(o.p) : '—'}</td><td>${o.q ? `<span class="tg ${v >= 90 ? 'ok' : v >= 70 ? 'amb' : 'red'}">${v}%</span>` : ''}</td>`; };
+      const lines = [...g.values()].map((x) => ({ ...x, tot: sum(x.set) })).sort((a, b) => pct(a.tot.p, a.tot.q) - pct(b.tot.p, b.tot.q));
+      const allSet = new Set(st.map((s) => s.code));
+      const head = { zfm: 'ZFM', am: 'AM', store: 'Store' }[lv];
+      el.innerHTML = `<div class="hd"><div><h2>Department summary · Required / Available</h2><div class="sub">${lv === 'store' ? 'Stores' : 'Click a row to drill down'} · lowest % first</div></div></div>
+        <div class="bc" style="margin-top:6px"><button type="button" data-mx="-1">${me.role === 'admin' || me.role === 'hodept' ? 'National' : 'All my stores'}</button>${path.map((p, i) => ` › <button type="button" data-mx="${i}">${esc(p.name)}</button>`).join('')}</div>
+        <div class="tw"><table class="mxt"><thead><tr><th class="l" rowspan="2">${head}</th>${cs.map((c) => `<th colspan="3" class="bl" style="text-align:center">${esc(catName(c))}</th>`).join('')}<th colspan="3" class="bl" style="text-align:center">Total</th></tr>
+        <tr>${[...cs, 0].map(() => '<th class="bl">Req</th><th>Avl</th><th>%</th>').join('')}</tr></thead><tbody>
+        ${lines.map((x) => `<tr class="${lv === 'store' ? '' : 'click'}" data-mxk="${esc(x.k)}" data-mxn="${esc(x.n)}"><td class="l"><span class="lk">${esc(x.n)}</span>${lv === 'store' ? '' : ' ›'}</td>${cs.map((c) => cell(sum(x.set, c.id))).join('')}${cell(x.tot)}</tr>`).join('') || '<tr><td class="l" colspan="20" style="color:var(--mut)">No stores</td></tr>'}
+        ${lines.length > 1 ? `<tr class="tot"><td class="l"><b>Total</b></td>${cs.map((c) => cell(sum(allSet, c.id))).join('')}${cell(sum(allSet))}</tr>` : ''}</tbody></table></div>`;
     }
     function level() { return S.alert ? 'store' : S.path.length ? S.path[S.path.length - 1].next : S.view; }
     function gapLines(stores, rows) {
@@ -358,14 +394,14 @@
         return g.ppl.map((a, i) => `<tr>${i ? '' : head}<td class="l">${esc(a.name)}</td><td class="l">${esc(a.code || '')}</td>${sec
           ? `<td class="l" colspan="3">${SGT[a.st] || (a.st ? `<span class="tg grey">${esc(a.st)}</span>` : SGT.IN)}</td>`
           : `<td>${esc(a.first_in || '—')}</td><td>${a.last_out ? esc(a.last_out) : a.out_done ? 'OUT ✓' : '—'}</td><td>${a.hours ?? '—'}</td>`}
-          <td class="l">${a.via_mod ? '<span class="tg amb">Store</span>' : 'Own'}</td><td class="l">${sec ? '' : photo(a)}${stm(a)}</td></tr>`).join('');
+          <td class="l">${(a.src || []).length ? (a.src).map((p) => `<div class="srcl"><small>${esc(p.k)}${p.t ? ' ' + esc(p.t) : ''}</small> ${punchSrc(p)}</div>`).join('') : a.via_mod ? '<span class="tg acc">🏪 Store</span>' : '<span class="tg info">📱 Own</span>'}</td><td class="l">${sec ? '' : photo(a)}${stm(a)}</td></tr>`).join('');
       }).join('');
       const hk = r.hk && hasCat('HK') && catOk('HK') ? (r.hk.set ? ` · HK split M ${r.hk.morning} / E ${r.hk.evening}` : ` · <span style="color:var(--amb)">HK split not set (total ${r.hk.total} in Morning)</span>`) : '';
       const regs = (r.regulars_missing || []).filter((a) => catOk(a.c));
       sdEl.innerHTML = `<div class="card"><div class="hd"><div><h2>${esc(code)} · ${esc(r.store_name || s.name || '')}</h2>
         <div class="sub">${s.am_name ? 'AM ' + esc(s.am_name) + ' · ' : ''}${s.zfm_name ? 'ZFM ' + esc(s.zfm_name) + ' · ' : ''}${esc(fmtDate(date))} · ${SHN[shift]}${hk}${hasCat('SEC') && catOk('SEC') ? ' · Security shows status only (no timing)' : ''}</div></div>
         <button type="button" class="btn s sm" data-x="closesd">✕ Close</button></div>
-        <div class="tw"><table><thead><tr><th class="l">Dept</th><th>Required</th><th>Present</th><th class="l">Status</th><th class="l">Name</th><th class="l">Code</th><th>IN</th><th>OUT</th><th>Hours</th><th class="l">Phone</th><th class="l">Photo · Statement</th></tr></thead>
+        <div class="tw"><table><thead><tr><th class="l">Dept</th><th>Required</th><th>Present</th><th class="l">Status</th><th class="l">Name</th><th class="l">Code</th><th>IN</th><th>OUT</th><th>Hours</th><th class="l">Punched from</th><th class="l">Photo · Statement</th></tr></thead>
         <tbody>${body || '<tr><td class="l" colspan="11" style="color:var(--mut)">Nothing required in this shift, nobody punched</td></tr>'}</tbody></table></div>
         ${regs.length ? `<div class="sub" style="margin-top:10px;font-weight:700">Regulars not here today</div><div class="kv" style="margin-top:6px">${regs.map((a) => `<span class="tg amb">${esc(a.name)} · ${esc(cname(a.c))} · came ${a.days}/7</span>`).join('')}</div>` : ''}</div>`;
       if (scroll) sdEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -382,6 +418,14 @@
 
     /* ---------- events ---------- */
     V.el.addEventListener('click', (e) => {
+      const m = e.target.closest('[data-nd],[data-mx],tr[data-mxk]');
+      if (m && S.d) {
+        if (m.dataset.nd) { const k = Number(m.dataset.nd); if (k !== S.ndays) { S.ndays = k; load(); } return; }
+        if (m.dataset.mx != null) { S.mx = (S.mx || []).slice(0, Number(m.dataset.mx) + 1); paint(); return; }
+        if (m.dataset.mxk != null && m.classList.contains('click')) { const start = me.role === 'zfm' ? 'am' : 'zfm', lv = (S.mx || []).length ? S.mx[S.mx.length - 1].next : start;
+          (S.mx = S.mx || []).push({ key: lv, val: m.dataset.mxk, name: m.dataset.mxn, next: lv === 'zfm' ? 'am' : 'store' }); paint(); }
+        return;
+      }
       const t = e.target.closest('[data-cat],[data-sh],[data-cp],[data-al],[data-vw],[data-bc],[data-clr],[data-day],[data-x],tr.click');
       if (!t || !S.d) return;
       const D = t.dataset;
