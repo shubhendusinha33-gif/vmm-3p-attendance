@@ -1390,41 +1390,97 @@
     load();
   }
 
-  /* ================= v5.5: Ask the data (Gemini via edge function `ask`; key stays on the server) ================= */
+  /* ================= v5.5: Ask the data (edge function `ask`; API key stays on the server) ================= */
   function BotView(root) {
-    const H = [];   // {role:'user'|'model', text}
-    const md = (t) => {   // tiny safe markdown: escape first, then tables / bold / lists / line breaks
-      const lines = esc(t).split('\n'), out = []; let tb = null;
-      const flush = () => { if (!tb) return; const rows = tb.filter((r) => !/^\s*\|?\s*:?-{2,}/.test(r));
-        out.push('<div class="tw"><table class="sbt">' + rows.map((r, i) => '<tr>' + r.replace(/^\s*\||\|\s*$/g, '').split('|').map((c) => (i ? '<td>' : '<th>') + c.trim() + (i ? '</td>' : '</th>')).join('') + '</tr>').join('') + '</table></div>'); tb = null; };
-      lines.forEach((l) => { if (/^\s*\|.*\|\s*$/.test(l)) { (tb = tb || []).push(l); return; } flush(); out.push(l.replace(/^\s*[-*] /, '• ')); });
-      flush();
-      return out.join('\n').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n(?!<)/g, '<br>');
-    };
+    const H = [];   // {role:'user'|'model', text, id?, fb?, ms?}
+    // safe markdown: escape first, then tables / lists / headings / bold / italic / code
+    const inl = (x) => x.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g, '$1<i>$2</i>').replace(/`([^`]+)`/g, '<code>$1</code>');
+    const isNum = (c) => /^[-+]?[₹]?[\d,]+(\.\d+)?\s*(%|★)?$/.test(c.replace(/<[^>]+>/g, '').trim());
+    function md(t) {
+      const L = esc(String(t || '').trim()).split('\n'), out = []; let i = 0;
+      const cells = (r) => r.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+      while (i < L.length) {
+        const l = L[i];
+        if (/^\s*\|.*\|\s*$/.test(l)) {   // table
+          const rows = []; while (i < L.length && /^\s*\|.*\|\s*$/.test(L[i])) rows.push(L[i++]);
+          const body = rows.filter((r) => !/^\s*\|?[\s:|-]+\|?\s*$/.test(r)).map(cells);
+          if (!body.length) continue;
+          const [hd, ...rs] = body;
+          out.push(`<div class="tw"><table class="bt"><thead><tr>${hd.map((c) => `<th>${inl(c)}</th>`).join('')}</tr></thead><tbody>${rs.map((r) => `<tr>${r.map((c) => `<td${isNum(c) ? ' class="n"' : ''}>${inl(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
+          continue;
+        }
+        if (/^\s*([-*•])\s+/.test(l)) { const it = []; while (i < L.length && /^\s*([-*•])\s+/.test(L[i])) it.push(L[i++].replace(/^\s*([-*•])\s+/, '')); out.push(`<ul>${it.map((x) => `<li>${inl(x)}</li>`).join('')}</ul>`); continue; }
+        if (/^\s*\d+[.)]\s+/.test(l)) { const it = []; while (i < L.length && /^\s*\d+[.)]\s+/.test(L[i])) it.push(L[i++].replace(/^\s*\d+[.)]\s+/, '')); out.push(`<ol>${it.map((x) => `<li>${inl(x)}</li>`).join('')}</ol>`); continue; }
+        if (/^\s*#{1,6}\s+/.test(l)) { out.push(`<p class="h">${inl(l.replace(/^\s*#{1,6}\s+/, ''))}</p>`); i++; continue; }
+        if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l) || !l.trim()) { i++; continue; }
+        const para = []; while (i < L.length && L[i].trim() && !/^\s*(\||[-*•]\s|\d+[.)]\s|#{1,6}\s)/.test(L[i])) para.push(L[i++]);
+        if (para.length) out.push(`<p>${inl(para.join('<br>'))}</p>`); else i++;
+      }
+      return out.join('');
+    }
     const EX = ['Which 10 stores have the lowest Security attendance today?', 'Which ZFM is weakest in Housekeeping this week?', 'Stores with 0 present in any dept today', 'Which brand has the lowest staff rating?', 'आज कितने स्टोर में HK 70% से कम है?'];
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let lang = store.get('3pa_bot_lang', 'en-IN'), rec = null, timer = 0;
     root.innerHTML = `<div class="toolrow"><div><h1 class="pt">Ask the data 🤖</h1><div class="sub">Answers from today’s and the last 7 days’ store-level numbers (attendance by store / dept, AM / ZFM, ratings). No staff names or phone numbers are sent. Check important numbers in the dashboard.</div></div></div>
-      <div class="card"><div data-r="log" style="display:flex;flex-direction:column;gap:10px;max-height:60vh;overflow:auto"></div>
+      <div class="card bot"><div class="blog" data-r="log"></div>
         <div class="pills" data-r="ex" style="margin-top:10px">${EX.map((q) => `<button type="button" class="pill" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
-        <form data-r="f" style="display:flex;gap:8px;margin-top:10px"><input class="f" data-r="q" maxlength="600" placeholder="Ask anything about attendance, gaps, AM / ZFM, brands, ratings…" style="flex:1" autocomplete="off"><button class="btn" data-r="go">Ask</button></form>
-        <div class="sub" data-r="left" style="margin-top:6px"></div></div>`;
+        <form data-r="f" class="bform"><input class="f" data-r="q" maxlength="600" placeholder="Ask anything about attendance, gaps, AM / ZFM, brands, ratings…" autocomplete="off">
+          ${SR ? `<button type="button" class="btn s bmic" data-r="mic" title="Speak your question" aria-label="Voice typing">🎤</button><button type="button" class="btn ghost sm" data-r="lang" title="Voice language">${lang === 'hi-IN' ? 'हिं' : 'EN'}</button>` : ''}
+          <button class="btn" data-r="go">Ask</button></form>
+        <div class="sub" data-r="left" style="margin-top:6px">${SR ? '' : 'Voice typing works in Chrome / Edge.'}</div></div>`;
     const R = (k) => root.querySelector(`[data-r="${k}"]`);
-    const ERR = { BOT_KEY_MISSING: 'The bot is not switched on yet: the Google (Gemini) API key has not been added on the server.', BOT_LIMIT: 'Daily question limit reached. Try again tomorrow.',
-      BOT_BUSY: 'Google is busy (free-tier limit). Wait a minute and ask again.', FORBIDDEN: 'Only Admin can use the bot. Log in again if your session ended.', NETWORK: 'No network. Try again.' };
-    const paint = (wait) => { R('log').innerHTML = H.map((m) => `<div style="align-self:${m.role === 'user' ? 'flex-end' : 'flex-start'};max-width:92%;padding:8px 12px;border-radius:12px;background:${m.role === 'user' ? 'var(--acc-soft,#FFF1E8)' : 'var(--hover)'};border:1px solid var(--line);font-size:13px;line-height:1.5">${m.role === 'user' ? esc(m.text) : md(m.text)}</div>`).join('')
-      + (wait ? '<div class="sub">Thinking…</div>' : '') || '<div class="sub">Ask a question or tap an example.</div>'; R('log').scrollTop = 1e9; };
+    const ERR = { BOT_KEY_MISSING: 'The bot is not switched on yet: the API key has not been added on the server.', BOT_LIMIT: 'Daily question limit reached. Try again tomorrow.',
+      BOT_BUSY: 'The AI service is busy. Wait a minute and ask again.', FORBIDDEN: 'Only Admin can use the bot. Log in again if your session ended.', NETWORK: 'No network. Try again.' };
+    const call = async (body) => { try { const res = await fetch(`${CONFIG.url}/functions/v1/ask`, { method: 'POST', headers: { apikey: CONFIG.key, Authorization: `Bearer ${CONFIG.key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: me.token, ...body }) }); return await res.json(); } catch (e) { return { ok: false, error: 'NETWORK' }; } };
+    function paint(waitFrom) {
+      R('log').innerHTML = H.map((m, i) => m.role === 'user' ? `<div class="bq">${esc(m.text)}</div>`
+        : `<div class="ba"><div class="bmd">${md(m.text)}</div><div class="bft"><span>${m.ms ? (m.ms / 1000).toFixed(0) + ' s' : ''}</span>
+            <button type="button" data-fb="1" data-i="${i}" class="${m.fb === 1 ? 'on' : ''}" title="Good answer" aria-label="Good answer">👍</button>
+            <button type="button" data-fb="-1" data-i="${i}" class="${m.fb === -1 ? 'on' : ''}" title="Wrong or not useful" aria-label="Wrong or not useful">👎</button>
+            <button type="button" data-cp="${i}" title="Copy answer">⧉ Copy</button></div></div>`).join('')
+        + (waitFrom ? `<div class="bwait"><span class="dots"><i></i><i></i><i></i></span> Thinking… <b data-r="sec">0</b> s</div>` : '')
+        || '<div class="sub">Ask a question, tap an example, or press 🎤 and speak.</div>';
+      R('log').scrollTop = 1e9;
+    }
     async function ask(q) {
       q = (q || '').trim(); if (!q) return;
-      R('q').value = ''; R('go').disabled = true; H.push({ role: 'user', text: q }); paint(true);
-      let r;
-      try { const res = await fetch(`${CONFIG.url}/functions/v1/ask`, { method: 'POST', headers: { apikey: CONFIG.key, Authorization: `Bearer ${CONFIG.key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: me.token, q, history: H.slice(0, -1).slice(-6) }) }); r = await res.json(); } catch (e) { r = { ok: false, error: 'NETWORK' }; }
-      R('go').disabled = false;
+      if (rec) rec.stop();
+      R('q').value = ''; R('go').disabled = true; H.push({ role: 'user', text: q });
+      const t0 = Date.now(); paint(t0); clearInterval(timer);
+      timer = setInterval(() => { const e = R('sec'); if (e) e.textContent = Math.round((Date.now() - t0) / 1000); }, 1000);
+      const r = await call({ q, history: H.slice(0, -1).filter((m) => m.text).slice(-6).map((m) => ({ role: m.role, text: m.text })) });
+      clearInterval(timer); R('go').disabled = false;
       if (!r || !r.ok) { H.pop(); paint(); toast(ERR[r && r.error] || ('Bot error' + (r && r.detail ? ': ' + r.detail : ''))); R('q').value = q; return; }
-      H.push({ role: 'model', text: r.answer }); paint();
-      if (r.left != null) R('left').textContent = `${nf(r.left)} questions left today`;
+      H.push({ role: 'model', text: r.answer, id: r.id, ms: Date.now() - t0 }); paint();
+      if (r.left != null) R('left').textContent = `${nf(r.left)} questions left today · 👍 / 👎 helps us check answers`;
+    }
+    async function fb(i, v) {
+      const m = H[i]; if (!m || !m.id || m.fb === v) return;
+      m.fb = v; paint();
+      const r = await call({ action: 'fb', id: m.id, v });
+      if (!r || !r.ok) { m.fb = 0; paint(); toast(eText(r && r.error)); return; }
+      toast(v === 1 ? 'Thanks 👍' : 'Noted 👎 · this answer is saved for review');
+    }
+    function mic() {
+      if (!SR) return;
+      if (rec) { rec.stop(); return; }
+      rec = new SR(); rec.lang = lang; rec.interimResults = true; rec.continuous = false;
+      const base = R('q').value ? R('q').value.trim() + ' ' : '';
+      R('mic').classList.add('rec'); R('mic').textContent = '⏺';
+      rec.onresult = (e) => { let t = ''; for (let k = 0; k < e.results.length; k++) t += e.results[k][0].transcript; R('q').value = base + t; };
+      rec.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') toast('Allow the microphone for this site to use voice typing.'); else if (e.error !== 'no-speech' && e.error !== 'aborted') toast('Voice typing error: ' + e.error); };
+      rec.onend = () => { rec = null; const b = R('mic'); if (b) { b.classList.remove('rec'); b.textContent = '🎤'; } R('q').focus(); };
+      try { rec.start(); } catch (e) { rec = null; }
     }
     R('f').addEventListener('submit', (e) => { e.preventDefault(); ask(R('q').value); });
-    R('ex').addEventListener('click', (e) => { const b = e.target.closest('[data-q]'); if (b) ask(b.dataset.q); });
+    root.addEventListener('click', (e) => {
+      const q = e.target.closest('[data-q]'); if (q) { ask(q.dataset.q); return; }
+      const f = e.target.closest('[data-fb]'); if (f) { fb(+f.dataset.i, +f.dataset.fb); return; }
+      const c = e.target.closest('[data-cp]'); if (c) { const m = H[+c.dataset.cp]; if (m) { try { navigator.clipboard.writeText(m.text); toast('Copied'); } catch (x) { /* ignore */ } } return; }
+      if (e.target.closest('[data-r="mic"]')) { mic(); return; }
+      const lg = e.target.closest('[data-r="lang"]'); if (lg) { lang = lang === 'hi-IN' ? 'en-IN' : 'hi-IN'; store.set('3pa_bot_lang', lang); lg.textContent = lang === 'hi-IN' ? 'हिं' : 'EN'; toast(lang === 'hi-IN' ? 'Voice: Hindi' : 'Voice: English'); }
+    });
     paint();
   }
 

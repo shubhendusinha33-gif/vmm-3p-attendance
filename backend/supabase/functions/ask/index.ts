@@ -71,7 +71,10 @@ async function summary(token: string) {
 const SYS = `You are the analyst bot of the VMM "3rd Party Attendance" control tower (Housekeeping, Security, Travel and CDIT promoters in Vishal Mega Mart stores).
 Answer ONLY from the DATA block. If the data cannot answer, say so and say which report in the portal would.
 Attendance % = present ÷ required (cap present at required per store-dept). Use short answers, Indian number format, and small markdown tables when listing stores.
-Mention store code and name, and AM / ZFM when ranking. Never invent numbers. If asked in Hindi, answer in Hindi.`;
+Mention store code and name, and AM / ZFM when ranking. Never invent numbers. If asked in Hindi, answer in Hindi.
+FORMAT (strict): line 1 = the direct answer in one short sentence with the key number in **bold**.
+Then, only if it helps, ONE markdown table (max 15 rows, short column names, % as the last column, best/worst order as asked).
+Then at most 3 short bullet points ("- ") with what to act on. No headings, no code blocks, no long paragraphs, no closing pleasantries.`;
 
 type Turn = { role: "user" | "assistant"; text: string };
 
@@ -124,6 +127,12 @@ Deno.serve(async (req) => {
   const token = String(b.token || ""), q = String(b.q || "").trim().slice(0, 600);
   const emp = await adminOf(token);
   if (!emp) return json({ ok: false, error: "FORBIDDEN" }, 403);
+  if (b.action === "fb") {   // thumbs up / down on one answer
+    const id = Number(b.id), v = Number(b.v);
+    if (!id || (v !== 1 && v !== -1)) return json({ ok: false, error: "BAD_INPUT" }, 400);
+    const { error } = await svc.from("bot_log").update({ fb: v, fb_at: new Date().toISOString() }).eq("id", id).eq("emp_code", emp);
+    return json(error ? { ok: false, error: "BOT_FAIL", detail: error.message } : { ok: true });
+  }
   if (!q) return json({ ok: false, error: "EMPTY" }, 400);
   if (!A_KEY && !G_KEY) return json({ ok: false, error: "BOT_KEY_MISSING" });
   const { count } = await svc.from("bot_log").select("id", { count: "exact", head: true }).eq("emp_code", emp).gte("created_at", istDate() + "T00:00:00+05:30");
@@ -135,9 +144,10 @@ Deno.serve(async (req) => {
       role: h.role === "model" ? "assistant" : "user", text: String(h.text || "").slice(0, 2000),
     }));
     const r = await callModel(SYS + "\n\nDATA:\n" + data, hist, q);
-    await svc.from("bot_log").insert({ emp_code: emp, q, ok: r.ok, ms: Date.now() - t0, err: r.ok ? null : (r.detail || `HTTP ${r.status}`).slice(0, 500) });
+    const { data: row } = await svc.from("bot_log").insert({ emp_code: emp, q, ok: r.ok, ms: Date.now() - t0, a: r.ok ? r.text.slice(0, 8000) : null,
+      err: r.ok ? null : (r.detail || `HTTP ${r.status}`).slice(0, 500) }).select("id").single();
     if (!r.ok) return json({ ok: false, error: r.status === 429 ? "BOT_BUSY" : "BOT_FAIL", detail: (r.detail || `HTTP ${r.status}`).slice(0, 200) });
-    return json({ ok: true, answer: r.text, left: DAY_LIMIT - (count || 0) - 1 });
+    return json({ ok: true, id: row && row.id, answer: r.text, left: DAY_LIMIT - (count || 0) - 1 });
   } catch (e) {
     await svc.from("bot_log").insert({ emp_code: emp, q, ok: false, ms: Date.now() - t0, err: String((e as Error).message || e).slice(0, 500) });
     return json({ ok: false, error: "BOT_FAIL", detail: String((e as Error).message || e).slice(0, 200) });
