@@ -171,7 +171,7 @@
     const ams = () => users.filter((u) => u.role === 'am' && u.active !== false), zfms = () => users.filter((u) => u.role === 'zfm' && u.active !== false);
     const uname = (e) => { const u = users.find((x) => x.emp_code === e); return u ? u.name : e || ''; };
     const umail = (e) => (users.find((x) => x.emp_code === e) || {}).email || '';
-    const st = { f: 'all', q: '', page: 1, size: defSize(), edit: {}, add: false, res: null };
+    const st = { f: 'all', q: '', page: 1, size: defSize(), edit: {}, add: false, res: null, sel: new Set() };
     const F = { all: ['Total stores', () => true, ''], act: ['Active', (s) => s.active, 'ok'], gps: ['GPS missing', (s) => s.active && (s.lat == null || s.lat === ''), 'r'],
       mail: ['Mail missing', (s) => s.active && !s.store_email, 'a'], rlpo: ['RLPO missing', (s) => s.active && !s.rlpo_mail, 'a'], split: ['HK split not set', (s) => s.active && s.hk_split_set === false, 'a'] };
     const EK = ['name', 'am_emp', 'zfm_emp', 'rlpo_mail', 'store_email', 'sg_set', 'hk_total', 'active'];
@@ -188,10 +188,32 @@
       <span class="acts"><button type="button" class="btn" data-a="add">+ Add store</button><button type="button" class="btn s" data-a="tpl">⬇ Template</button>${fileBtn('⬆ Upload (add / update)', 'st')}
       <button type="button" class="btn s" data-a="exp">⬇ Export</button><a class="btn ghost" href="qr.html?all=1" style="text-decoration:none">🖨 All QR posters</a></span></div>
       <div class="kpis one" data-r="kpi"></div><div data-r="add"></div><div data-r="imp"></div><div data-r="res"></div>
-      <div class="card" style="padding-top:8px"><div class="toolrow"><span class="sub" style="margin:0" data-r="cnt"></span><input class="f" type="search" data-r="q" placeholder="Search code / name / city / AM / ZFM / RLPO" style="width:300px"></div>
-        <div class="tw"><table class="edt"><thead><tr><th class="l">Store</th><th class="l">Name</th><th class="l">AM</th><th class="l">ZFM</th><th class="l">RLPO</th><th class="l">Store mail</th><th class="l">GPS</th><th class="l">SG set</th><th class="l">HK total · split</th><th class="l">Active</th><th class="l"></th></tr></thead><tbody data-r="tb"></tbody></table></div>
+      <div data-r="bulk"></div><div class="card" style="padding-top:8px"><div class="toolrow"><span class="sub" style="margin:0" data-r="cnt"></span><input class="f" type="search" data-r="q" placeholder="Search code / name / city / AM / ZFM / RLPO" style="width:300px"></div>
+        <div class="tw"><table class="edt smx"><thead><tr><th><input type="checkbox" data-selall aria-label="Select all shown"></th><th class="l">Store</th><th class="l">Name</th><th class="l">AM</th><th class="l">ZFM</th><th class="l">RLPO</th><th class="l">Store mail</th><th class="l">GPS</th><th class="l">SG set</th><th class="l">HK total · split</th><th class="l">Active</th><th class="l"></th></tr></thead><tbody data-r="tb"></tbody></table></div>
         <div data-r="pg"></div></div><div data-r="save"></div>`;
     const R = (k) => root.querySelector(`[data-r="${k}"]`);
+    function paintBulk() {
+      const n = st.sel.size;
+      R('bulk').innerHTML = `<div class="card" style="padding:8px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>${nf(n)} selected</b>
+        <button type="button" class="btn sm" data-bulk="1" ${n ? '' : 'disabled'}>Set Active Y</button><button type="button" class="btn s sm" data-bulk="0" ${n ? '' : 'disabled'}>Set Active N</button>
+        <button type="button" class="btn ghost sm" data-bulk="clr" ${n ? '' : 'disabled'}>Clear selection</button>
+        <span class="sub" style="margin:0">Tick stores, or tick “all shown” after searching a store code. Applies at once.</span></div>`;
+    }
+    root.addEventListener('change', (e) => {
+      if (e.target.matches('[data-sel]')) { const c = e.target.dataset.sel; e.target.checked ? st.sel.add(c) : st.sel.delete(c); paintBulk(); return; }
+      if (e.target.matches('[data-selall]')) { filtered().forEach((x) => (e.target.checked ? st.sel.add(x.store_code) : st.sel.delete(x.store_code))); paintTable(); paintBulk(); }
+    });
+    root.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-bulk]'); if (!b) return;
+      if (b.dataset.bulk === 'clr') { st.sel.clear(); paintTable(); paintBulk(); return; }
+      const codes = [...st.sel], on = b.dataset.bulk === '1';
+      if (!codes.length) return;
+      if (codes.length > 25 && !window.confirm(`Set ${codes.length} stores to Active ${on ? 'Y' : 'N'}?`)) return;
+      b.disabled = true;
+      const r = await rpc('admin_stores_active_bulk', { p_token: me.token, p_codes: codes, p_active: on });
+      if (!r || !r.ok) { toast(eText(r && r.error)); b.disabled = false; return; }
+      toast(`${nf(r.updated)} stores set to Active ${on ? 'Y' : 'N'}`); st.sel.clear(); await reload();
+    });
     const filtered = () => { const q = st.q.toLowerCase();
       return rows.filter(F[st.f][1]).filter((s) => !q || `${s.store_code} ${s.name} ${s.city || ''} ${uname(s.am_emp)} ${uname(s.zfm_emp)} ${s.rlpo_name || ''} ${s.rlpo_mail || ''}`.toLowerCase().includes(q)); };
     function paintKpi() {
@@ -201,7 +223,7 @@
     const cell = (s, k, html) => `<td class="l${st.edit[s.store_code] && k in st.edit[s.store_code] ? ' chg' : ''}" data-c="${k}">${html}</td>`;
     function rowHtml(s) {
       const c = esc(s.store_code), act = val(s, 'active');
-      return `<tr data-code="${c}"><td class="l code">${c}${s.is_test ? ' <span class="tg info">TEST</span>' : ''}<small>${esc(s.city || '')}</small></td>
+      return `<tr data-code="${c}"><td><input type="checkbox" data-sel="${c}"${st.sel.has(s.store_code) ? ' checked' : ''} aria-label="Select ${c}"></td><td class="l code">${c}${s.is_test ? ' <span class="tg info">TEST</span>' : ''}<small>${esc(s.city || '')}</small></td>
         ${cell(s, 'name', `<input class="ci nm" data-se="name" value="${esc(val(s, 'name'))}" aria-label="Name ${c}">`)}
         ${cell(s, 'am_emp', `<select class="ci" data-se="am_emp" aria-label="AM ${c}">${opts(amL(), val(s, 'am_emp'), '— none')}</select>`)}
         ${cell(s, 'zfm_emp', `<select class="ci" data-se="zfm_emp" aria-label="ZFM ${c}">${opts(zfL(), val(s, 'zfm_emp'), '— none')}</select>`)}
@@ -216,7 +238,8 @@
     function paintTable() {
       const f = filtered();
       R('cnt').textContent = `${plural(f.length, 'store')}${st.f !== 'all' ? ' · ' + F[st.f][0] : ''}${st.q ? ` · “${st.q}”` : ''}`;
-      R('tb').innerHTML = pageSlice(f, st).map(rowHtml).join('') || '<tr><td class="l" colspan="11" style="color:var(--mut)">No stores match</td></tr>';
+      R('tb').innerHTML = pageSlice(f, st).map(rowHtml).join('') || '<tr><td class="l" colspan="12" style="color:var(--mut)">No stores match</td></tr>';
+      paintBulk();
       R('pg').innerHTML = pagerHtml(f.length, st);
     }
     function paintSave() {
@@ -1306,16 +1329,77 @@
     });
   }
 
+  /* ================= Submissions: store-wise punches for a day, fix / delete (v5.5) ================= */
+  async function SubmissionsView(root) {
+    root.innerHTML = SPIN;
+    let users = [];
+    try { users = await aget('users'); } catch (e) { root.innerHTML = `<div class="note r">${esc(e.message)}</div>`; return; }
+    const S = { date: todayIST(), zfm: '', am: '', q: '', rows: [] };
+    const ZF = users.filter((u) => u.role === 'zfm' && u.active !== false), AF = users.filter((u) => u.role === 'am' && u.active !== false);
+    root.innerHTML = `<div class="toolrow"><div><h1 class="pt">Submissions</h1><div class="sub">Every IN / OUT punch by store for the day. Fix a wrong time or type, or delete a wrong punch. Every change is logged in Access &amp; Consent log.</div></div></div>
+      <div class="card"><div class="frm" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">
+        <label>Date<input class="f" type="date" data-k="date" value="${S.date}" max="${todayIST()}"></label>
+        <label>ZFM<select class="f" data-k="zfm"><option value="">All ZFM</option>${ZF.map((u) => `<option value="${esc(u.emp_code)}">${esc(u.name)}</option>`).join('')}</select></label>
+        <label>AM<select class="f" data-k="am"><option value="">All AM</option>${AF.map((u) => `<option value="${esc(u.emp_code)}">${esc(u.name)}</option>`).join('')}</select></label>
+        <label>Store code / name<input class="f" data-k="q" placeholder="HY10 or Indore" style="text-transform:uppercase"></label></div>
+        <div class="sub" data-r="cnt" style="margin-top:8px"></div><div class="tw" style="margin-top:6px" data-r="tb"></div></div>`;
+    const cnt = () => root.querySelector('[data-r="cnt"]'), tb = () => root.querySelector('[data-r="tb"]');
+    async function load() {
+      tb().innerHTML = SPIN;
+      const r = await rpc('admin_punches_list', { p_token: me.token, p_date: S.date, p_zfm: S.zfm || null, p_am: S.am || null, p_q: S.q || null });
+      if (!r || !r.ok) { tb().innerHTML = `<div class="note r">${esc(eText(r && r.error))}</div>`; return; }
+      S.rows = r.rows || []; paint();
+    }
+    function paint() {
+      cnt().textContent = `${nf(S.rows.length)} punch${S.rows.length === 1 ? '' : 'es'}${S.rows.length >= 1000 ? ' (first 1,000 shown: narrow the filters)' : ''} · ${fmtDay(S.date)}`;
+      if (!S.rows.length) { tb().innerHTML = '<div class="note">No punches for these filters.</div>'; return; }
+      let last = '', h = '<table class="sbt"><thead><tr><th class="l">Store</th><th class="l">Name</th><th class="l">Code</th><th class="l">Dept · brand / vendor</th><th class="l">In / Out</th><th class="l">Time</th><th class="l">From</th><th class="l"></th></tr></thead><tbody>';
+      S.rows.forEach((x) => {
+        if (x.store !== last) { last = x.store; h += `<tr><td colspan="8" class="grp">${esc(x.store)} · ${esc(x.store_name || '')}<small style="font-weight:400;color:var(--mut)"> · AM ${esc(x.am_name || '—')} · ZFM ${esc(x.zfm_name || '—')}</small></td></tr>`; }
+        h += `<tr><td class="l">${esc(x.store)}</td><td class="l">${esc(x.name)}</td><td class="l">${esc(x.code || '')}</td><td class="l">${esc(x.c)} · ${esc(x.brand || x.vendor || '—')}</td>
+          <td class="l"><span class="tg ${x.kind === 'IN' ? 'ok' : 'grey'}">${esc(x.kind)}</span></td><td class="l">${esc(x.ts)}</td>
+          <td class="l">${x.device_kind === 'mod' ? 'Store phone' : x.dist_m != null ? 'Own phone · ' + x.dist_m + ' m' : 'Own phone'}</td>
+          <td class="l"><button type="button" class="btn ghost sm" data-ed="${x.id}">Edit</button> <button type="button" class="btn ghost sm" data-del="${x.id}" style="color:var(--red)">Delete</button></td></tr>`;
+      });
+      tb().innerHTML = h + '</tbody></table>';
+    }
+    function edit(id) {
+      const x = S.rows.find((r) => String(r.id) === String(id)); if (!x) return;
+      const md = modal(`<h2>Edit punch · ${esc(x.name)}</h2><div class="sub">${esc(x.store)} · ${esc(fmtDay(S.date))} · now ${esc(x.kind)} ${esc(x.ts)}</div>
+        <div class="frm" style="margin-top:10px"><label>In / Out<select id="pk"><option${x.kind === 'IN' ? ' selected' : ''}>IN</option><option${x.kind === 'OUT' ? ' selected' : ''}>OUT</option></select></label>
+        <label>Time (24-hour)<input class="f" id="pt" value="${esc(x.ts)}" placeholder="09:45" maxlength="5"></label></div>
+        <div class="note r" id="pe" hidden style="margin-top:8px"></div><div style="display:flex;gap:8px;margin-top:12px"><button type="button" class="btn" id="pOk">Save</button><button type="button" class="btn s" id="pNo">Cancel</button></div>`);
+      md.querySelector('#pNo').addEventListener('click', () => closeModal());
+      md.querySelector('#pOk').addEventListener('click', async () => {
+        const r = await rpc('admin_punch_edit', { p_token: me.token, p_id: x.id, p_kind: md.querySelector('#pk').value, p_time: md.querySelector('#pt').value.trim() });
+        if (!r || !r.ok) { const e = md.querySelector('#pe'); e.hidden = false; e.textContent = r && r.error === 'BAD_TIME' ? 'Time must be HH:MM, 24-hour (e.g. 09:45).' : eText(r && r.error); return; }
+        closeModal(); toast('Punch updated'); load();
+      });
+    }
+    async function del(id) {
+      const x = S.rows.find((r) => String(r.id) === String(id)); if (!x) return;
+      if (!window.confirm(`Delete this ${x.kind} punch at ${x.ts} for ${x.name} (${x.store})? This cannot be undone.`)) return;
+      const r = await rpc('admin_punch_edit', { p_token: me.token, p_id: x.id, p_delete: true });
+      if (!r || !r.ok) { toast(eText(r && r.error)); return; }
+      toast('Punch deleted'); load();
+    }
+    root.addEventListener('change', (e) => { const k = e.target.dataset.k; if (!k || k === 'q') return; S[k] = e.target.value; load(); });
+    let qt = 0;
+    root.addEventListener('input', (e) => { if (e.target.dataset.k !== 'q') return; e.target.value = e.target.value.toUpperCase(); S.q = e.target.value.trim(); clearTimeout(qt); qt = setTimeout(load, 300); });
+    root.addEventListener('click', (e) => { const b = e.target.closest('[data-ed],[data-del]'); if (!b) return; if (b.dataset.ed) edit(b.dataset.ed); else del(b.dataset.del); });
+    load();
+  }
+
   /* ================= boot: shell + navigation ================= */
   const callDash = (fn, ...a) => (root) => { if (typeof window[fn] === 'function') return window[fn](root, me, ...a); root.innerHTML = `<div class="note r">${fn} is not available (assets/dash.js did not load).</div>`; };
   const PAGES = {
     live: ['Live Dashboard', callDash('LiveDash')], rating: ['Staff rating', callDash('RatingView')], apv: ['Approvals (view only)', callDash('ApprovalsView')], team: ['Store team', callDash('StoreTeamView')],
     churn: ['Staff churn', callDash('ChurnView')], reports: ['Reports & export', ReportsView],
-    stores: ['Store Master', StoreMaster], manpower: ['Manpower Master', ManpowerMaster], rlpo: ['RLPO Master', RlpoMaster], users: ['Users & PIN', UsersView],
+    stores: ['Store Master', StoreMaster], subs: ['Submissions', SubmissionsView], manpower: ['Manpower Master', ManpowerMaster], rlpo: ['RLPO Master', RlpoMaster], users: ['Users & PIN', UsersView],
     depts: ['HO Dept Master', DeptView], mail: ['Mail Center', MailView], settings: ['Settings', SettingsView], logs: ['Access & Consent log', LogsView], viewas: ['View as user', ViewAsView],
   };
   const NAV = [['live', 'Live Dashboard', 'ld'], ['rating', 'Staff rating ★', 'tm'], ['apv', 'Approvals (view)', 'ap'], ['team', 'Store team', 'tm'], ['churn', 'Staff churn', 'ch'], ['reports', 'Reports & export', 'stm']];
-  const ADM = [['stores', 'Store Master', 'st'], ['manpower', 'Manpower Master', 'mp'], ['rlpo', 'RLPO Master', 'rl'], ['users', 'Users & PIN', 'us'], ['depts', 'HO Dept Master', 'ho'],
+  const ADM = [['stores', 'Store Master', 'st'], ['subs', 'Submissions', 'st'], ['manpower', 'Manpower Master', 'mp'], ['rlpo', 'RLPO Master', 'rl'], ['users', 'Users & PIN', 'us'], ['depts', 'HO Dept Master', 'ho'],
     ['mail', 'Mail Center', 'ml'], ['settings', 'Settings', 'set'], ['logs', 'Access & Consent log', 'lg'], ['viewas', 'View as user', 'user']];
 
   function go(id) {
