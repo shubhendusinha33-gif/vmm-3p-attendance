@@ -1390,15 +1390,53 @@
     load();
   }
 
+  /* ================= v5.5: Ask the data (Gemini via edge function `ask`; key stays on the server) ================= */
+  function BotView(root) {
+    const H = [];   // {role:'user'|'model', text}
+    const md = (t) => {   // tiny safe markdown: escape first, then tables / bold / lists / line breaks
+      const lines = esc(t).split('\n'), out = []; let tb = null;
+      const flush = () => { if (!tb) return; const rows = tb.filter((r) => !/^\s*\|?\s*:?-{2,}/.test(r));
+        out.push('<div class="tw"><table class="sbt">' + rows.map((r, i) => '<tr>' + r.replace(/^\s*\||\|\s*$/g, '').split('|').map((c) => (i ? '<td>' : '<th>') + c.trim() + (i ? '</td>' : '</th>')).join('') + '</tr>').join('') + '</table></div>'); tb = null; };
+      lines.forEach((l) => { if (/^\s*\|.*\|\s*$/.test(l)) { (tb = tb || []).push(l); return; } flush(); out.push(l.replace(/^\s*[-*] /, '• ')); });
+      flush();
+      return out.join('\n').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n(?!<)/g, '<br>');
+    };
+    const EX = ['Which 10 stores have the lowest Security attendance today?', 'Which ZFM is weakest in Housekeeping this week?', 'Stores with 0 present in any dept today', 'Which brand has the lowest staff rating?', 'आज कितने स्टोर में HK 70% से कम है?'];
+    root.innerHTML = `<div class="toolrow"><div><h1 class="pt">Ask the data 🤖</h1><div class="sub">Answers from today’s and the last 7 days’ store-level numbers (attendance by store / dept, AM / ZFM, ratings). No staff names or phone numbers are sent. Check important numbers in the dashboard.</div></div></div>
+      <div class="card"><div data-r="log" style="display:flex;flex-direction:column;gap:10px;max-height:60vh;overflow:auto"></div>
+        <div class="pills" data-r="ex" style="margin-top:10px">${EX.map((q) => `<button type="button" class="pill" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+        <form data-r="f" style="display:flex;gap:8px;margin-top:10px"><input class="f" data-r="q" maxlength="600" placeholder="Ask anything about attendance, gaps, AM / ZFM, brands, ratings…" style="flex:1" autocomplete="off"><button class="btn" data-r="go">Ask</button></form>
+        <div class="sub" data-r="left" style="margin-top:6px"></div></div>`;
+    const R = (k) => root.querySelector(`[data-r="${k}"]`);
+    const ERR = { BOT_KEY_MISSING: 'The bot is not switched on yet: the Google (Gemini) API key has not been added on the server.', BOT_LIMIT: 'Daily question limit reached. Try again tomorrow.',
+      BOT_BUSY: 'Google is busy (free-tier limit). Wait a minute and ask again.', FORBIDDEN: 'Only Admin can use the bot. Log in again if your session ended.', NETWORK: 'No network. Try again.' };
+    const paint = (wait) => { R('log').innerHTML = H.map((m) => `<div style="align-self:${m.role === 'user' ? 'flex-end' : 'flex-start'};max-width:92%;padding:8px 12px;border-radius:12px;background:${m.role === 'user' ? 'var(--acc-soft,#FFF1E8)' : 'var(--hover)'};border:1px solid var(--line);font-size:13px;line-height:1.5">${m.role === 'user' ? esc(m.text) : md(m.text)}</div>`).join('')
+      + (wait ? '<div class="sub">Thinking…</div>' : '') || '<div class="sub">Ask a question or tap an example.</div>'; R('log').scrollTop = 1e9; };
+    async function ask(q) {
+      q = (q || '').trim(); if (!q) return;
+      R('q').value = ''; R('go').disabled = true; H.push({ role: 'user', text: q }); paint(true);
+      let r;
+      try { const res = await fetch(`${CONFIG.url}/functions/v1/ask`, { method: 'POST', headers: { apikey: CONFIG.key, Authorization: `Bearer ${CONFIG.key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: me.token, q, history: H.slice(0, -1).slice(-6) }) }); r = await res.json(); } catch (e) { r = { ok: false, error: 'NETWORK' }; }
+      R('go').disabled = false;
+      if (!r || !r.ok) { H.pop(); paint(); toast(ERR[r && r.error] || ('Bot error' + (r && r.detail ? ': ' + r.detail : ''))); R('q').value = q; return; }
+      H.push({ role: 'model', text: r.answer }); paint();
+      if (r.left != null) R('left').textContent = `${nf(r.left)} questions left today`;
+    }
+    R('f').addEventListener('submit', (e) => { e.preventDefault(); ask(R('q').value); });
+    R('ex').addEventListener('click', (e) => { const b = e.target.closest('[data-q]'); if (b) ask(b.dataset.q); });
+    paint();
+  }
+
   /* ================= boot: shell + navigation ================= */
   const callDash = (fn, ...a) => (root) => { if (typeof window[fn] === 'function') return window[fn](root, me, ...a); root.innerHTML = `<div class="note r">${fn} is not available (assets/dash.js did not load).</div>`; };
   const PAGES = {
     live: ['Live Dashboard', callDash('LiveDash')], rating: ['Staff rating', callDash('RatingView')], apv: ['Approvals (view only)', callDash('ApprovalsView')], team: ['Store team', callDash('StoreTeamView')],
-    churn: ['Staff churn', callDash('ChurnView')], reports: ['Reports & export', ReportsView],
+    churn: ['Staff churn', callDash('ChurnView')], reports: ['Reports & export', ReportsView], bot: ['Ask the data', BotView],
     stores: ['Store Master', StoreMaster], subs: ['Submissions', SubmissionsView], manpower: ['Manpower Master', ManpowerMaster], rlpo: ['RLPO Master', RlpoMaster], users: ['Users & PIN', UsersView],
     depts: ['HO Dept Master', DeptView], mail: ['Mail Center', MailView], settings: ['Settings', SettingsView], logs: ['Access & Consent log', LogsView], viewas: ['View as user', ViewAsView],
   };
-  const NAV = [['live', 'Live Dashboard', 'ld'], ['rating', 'Staff rating ★', 'tm'], ['apv', 'Approvals (view)', 'ap'], ['team', 'Store team', 'tm'], ['churn', 'Staff churn', 'ch'], ['reports', 'Reports & export', 'stm']];
+  const NAV = [['live', 'Live Dashboard', 'ld'], ['rating', 'Staff rating ★', 'tm'], ['apv', 'Approvals (view)', 'ap'], ['team', 'Store team', 'tm'], ['churn', 'Staff churn', 'ch'], ['reports', 'Reports & export', 'stm'], ['bot', 'Ask the data 🤖', 'ld']];
   const ADM = [['stores', 'Store Master', 'st'], ['subs', 'Submissions', 'st'], ['manpower', 'Manpower Master', 'mp'], ['rlpo', 'RLPO Master', 'rl'], ['users', 'Users & PIN', 'us'], ['depts', 'HO Dept Master', 'ho'],
     ['mail', 'Mail Center', 'ml'], ['settings', 'Settings', 'set'], ['logs', 'Access & Consent log', 'lg'], ['viewas', 'View as user', 'user']];
 
