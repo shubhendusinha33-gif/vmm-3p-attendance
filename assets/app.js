@@ -1006,6 +1006,15 @@ const Live = {
 })();
 
 /* ---------- v5.4: phone push alerts for store management (consent + login once; stops on manual logout) ---------- */
+/* v5.5: reason options for a 1–2 ★ rating: 5 per dept + Other (Other = type the reason) */
+const RATING_REASONS = {
+  HK: ['Late / absent from area', 'Work not done properly', 'Left work area without info', 'Uniform / ID not worn', 'Behaviour with staff or guest', 'Other'],
+  SEC: ['Late', 'Not at post', 'Left post without info', 'Uniform / ID not worn', 'Mobile use on duty', 'Other'],
+  TRAVEL: ['Late', 'Not at counter', 'Not following brand script', 'Uniform / appearance', 'Customer complaint', 'Other'],
+  CDIT: ['Late', 'Not at counter', 'Product knowledge weak', 'Uniform / appearance', 'Customer complaint', 'Other'],
+};
+const reasonsFor = (c) => RATING_REASONS[c] || ['Late', 'Not at post', 'Behaviour', 'Uniform', 'Other'];
+
 const Push = {
   supported() { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; },
   iosNeedsInstall() { return /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window.navigator.standalone || matchMedia('(display-mode: standalone)').matches); },

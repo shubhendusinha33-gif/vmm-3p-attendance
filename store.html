@@ -426,24 +426,51 @@ function wire() {
 
 
 /* ---------------- v5.5: daily rating gate (SM / ASM, previous day) ---------------- */
+/* v5.5: SM / ASM confirm today's HK Morning / Evening split before the app opens (once a day) */
+function hkGate(h) {
+  return new Promise((done) => {
+    const root = $('#root');
+    root.innerHTML = `<div class="rg"><div class="rgh"><div><b>${esc(me.store_code)} · ${esc(me.store_name || '')}</b><small>${esc(me.name || '')}${me.post ? ' (' + esc(me.post) + ')' : ''} · ${esc(fmtDay(todayIST()))}</small></div>
+      <button type="button" class="btn s sm" id="hgOut">${esc(t('logout') || 'Logout')}</button></div>
+      <div class="rgb"><div class="note w" style="font-weight:600">🧹 Confirm today’s Housekeeping Morning / Evening · आज की HK सुबह / शाम संख्या भरें<br>
+        <span style="font-weight:400">Total HK required: <b>${h.total}</b>${h.vendor ? ' · ' + esc(h.vendor) : ''}${h.set ? ` · last saved ${h.morning} / ${h.evening}` : ''}</span></div>
+      <div class="frm" style="margin-top:10px"><label>${esc(t('morning'))}<input class="f" type="number" inputmode="numeric" min="0" max="${h.total}" id="hgM" value="${h.set ? h.morning : ''}"></label>
+        <label>${esc(t('evening'))}<input class="f" type="number" inputmode="numeric" min="0" max="${h.total}" id="hgE" value="${h.set ? h.evening : ''}"></label></div>
+      <div id="hgSum" class="sumln" style="margin-top:8px"></div><div class="note r" id="hgErr" hidden style="margin-top:8px"></div>
+      <button type="button" class="btn" id="hgOk" style="margin-top:12px;width:100%">${esc(t('saveSplit'))}</button></div></div>`;
+    const M = $('#hgM'), E = $('#hgE'), B = $('#hgOk');
+    const chk = () => { const a = Number(M.value || 0), b = Number(E.value || 0), ok = M.value !== '' && E.value !== '' && a + b === h.total;
+      $('#hgSum').className = 'sumln ' + (ok ? 'good' : 'bad'); $('#hgSum').textContent = (ok ? '✓ ' : '') + t('hkSum', { s: a + b, t: h.total }); B.disabled = !ok; };
+    M.addEventListener('input', chk); E.addEventListener('input', chk); chk();
+    $('#hgOut').addEventListener('click', () => logout());
+    B.addEventListener('click', async () => {
+      B.disabled = true;
+      const r = await rpc('hk_split_set', { p_token: me.token, p_morning: Number(M.value), p_evening: Number(E.value), p_effective: todayIST() });
+      if (!r || !r.ok) { B.disabled = false; const x = $('#hgErr'); x.hidden = false; x.textContent = r && r.error === 'SUM_MISMATCH' ? t('sumMismatch', { t: r.total }) : err(r && r.error); return; }
+      root.innerHTML = ''; toast(t('hkSaved')); done();
+    });
+  });
+}
+
 function ratingGate(rp) {
   return new Promise((done) => {
-    const root = $('#root'), tags = rp.tags || ['Late', 'Not at post', 'Uniform', 'Behaviour', 'Mobile use', 'Other'];
+    const root = $('#root');
     const S = {}; (rp.rows || []).forEach((a) => { S[a.id] = { s: a.stars || 0, tag: a.tag || '', note: a.note || '', locked: !!a.stars }; });
     const day = fmtDay(rp.date);
-    const valid = (x) => x.s >= 3 || (x.s >= 1 && x.tag && (x.note || '').trim().length >= 3);
+    // 3–5 ★ needs nothing; 1–2 ★ needs a reason from the dept list; "Other" also needs a typed reason
+    const valid = (x) => x.s >= 3 || (x.s >= 1 && x.tag && (x.tag !== 'Other' || (x.note || '').trim().length >= 3));
     const open = () => (rp.rows || []).filter((a) => !S[a.id].locked);
     function paint() {
       const L = rp.rows || [], left = open(), ok = left.filter((a) => valid(S[a.id])).length;
       root.innerHTML = `<div class="rg"><div class="rgh"><div><b>${esc(me.store_code)} · ${esc(me.store_name || '')}</b><small>${esc(me.name || '')}${me.post ? ' (' + esc(me.post) + ')' : ''} · ${esc(fmtDay(todayIST()))}</small></div>
         <button type="button" class="btn s sm" id="rgOut">${esc(t('logout') || 'Logout')}</button></div>
         <div class="rgb"><div class="note w" style="font-weight:600">⏳ Rate yesterday’s staff to continue · कल के स्टाफ को रेट करें<br><span style="font-weight:400">${esc(day)} · ${L.length} staff punched · ${L.length - left.length + ok} of ${L.length} rated</span></div>
-        <div class="sub">Tap 1–5 stars. 1 or 2 stars needs a reason · 1–2 स्टार पर कारण ज़रूरी. One rating per staff per day; it cannot be changed after Submit.</div>
+        <div class="sub">Tap 1–5 stars. For 1 or 2 stars pick a reason from the list · 1–2 स्टार पर कारण चुनें. One rating per staff per day; it cannot be changed after Submit.</div>
         ${L.map((a) => { const x = S[a.id], bad = x.s && x.s <= 2 && !x.locked;
           return `<div class="rgc ${bad ? 'bad' : ''} ${x.locked ? 'done' : ''}" data-a="${a.id}"><b>${esc(a.name)}</b> <span class="sub">· ${esc(cn(a.c))}${a.brand ? ' · ' + esc(a.brand) : a.vendor ? ' · ' + esc(a.vendor) : ''}</span>${x.locked ? ' <span class="tg ok">Saved</span>' : ''}
             <div class="stz">${[1, 2, 3, 4, 5].map((k) => `<button type="button" data-st="${k}" class="${k <= x.s ? 'on' : ''}" aria-label="${k} star"${x.locked ? ' disabled' : ''}>★</button>`).join('')}</div>
-            ${bad ? `<div class="need">${x.s} ★ — reason is required · कारण ज़रूरी</div><div class="tagz">${tags.map((g) => `<button type="button" data-tg="${esc(g)}" class="${x.tag === g ? 'on' : ''}">${esc(g)}</button>`).join('')}</div>
-              <textarea data-nt maxlength="300" placeholder="Write what happened (min 3 letters)">${esc(x.note)}</textarea>` : ''}</div>`; }).join('')}
+            ${bad ? `<div class="need">${x.s} ★ — pick a reason · कारण चुनें</div><div class="tagz">${reasonsFor(a.c).map((g) => `<button type="button" data-tg="${esc(g)}" class="${x.tag === g ? 'on' : ''}">${esc(g)}</button>`).join('')}</div>
+              ${x.tag === 'Other' ? `<textarea data-nt maxlength="300" placeholder="Type the reason (min 3 letters)">${esc(x.note)}</textarea>` : ''}` : ''}</div>`; }).join('')}
         <div id="rgErr" class="note r" hidden></div></div>
         <div class="rgf"><button type="button" class="btn" id="rgGo" ${ok === left.length && left.length ? '' : 'disabled'}>${ok === left.length ? `Submit ${left.length} rating${left.length === 1 ? '' : 's'} ✓` : `Submit (${ok} of ${left.length} done)`}</button></div></div>`;
     }
@@ -458,14 +485,14 @@ function ratingGate(rp) {
       if (x && !x.locked) {
         const st = e.target.closest('[data-st]'), tg = e.target.closest('[data-tg]');
         if (st) { x.s = Number(st.dataset.st); if (x.s >= 3) { x.tag = ''; x.note = ''; } const y = window.scrollY; paint(); window.scrollTo(0, y); return; }
-        if (tg) { x.tag = tg.dataset.tg; c.querySelectorAll('[data-tg]').forEach((b) => b.classList.toggle('on', b === tg)); refreshBtn(); return; }
+        if (tg) { x.tag = tg.dataset.tg; if (x.tag !== 'Other') x.note = ''; const y = window.scrollY; paint(); window.scrollTo(0, y); if (x.tag === 'Other') { const ta = root.querySelector(`[data-a="${c.dataset.a}"] textarea`); if (ta) ta.focus(); } refreshBtn(); return; }
         return;
       }
       const go = e.target.closest('#rgGo'); if (!go || go.disabled) return;
       go.disabled = true; go.textContent = '…';
       const items = open().map((a) => ({ a: a.id, s: S[a.id].s, tag: S[a.id].tag || null, note: (S[a.id].note || '').trim() || null }));
       const r = await rpc('rating_submit', { p_token: me.token, p_items: items });
-      if (!r || !r.ok) { const el = $('#rgErr'); el.hidden = false; el.textContent = { REASON_REQUIRED: '1–2 ★ needs a reason and a short note.', ONLY_SM_ASM: 'Only SM / ASM can rate.' }[r && r.error] || errText(r && r.error); refreshBtn(); return; }
+      if (!r || !r.ok) { const el = $('#rgErr'); el.hidden = false; el.textContent = { REASON_REQUIRED: '1–2 ★ needs a reason. For "Other", type it (min 3 letters).', ONLY_SM_ASM: 'Only SM / ASM can rate.' }[r && r.error] || errText(r && r.error); refreshBtn(); return; }
       if (r.left > 0) { const n = await rpc('rating_pending', { p_token: me.token }); if (n && n.ok && n.need) { rp.rows = n.rows; Object.keys(S).forEach((k) => delete S[k]); n.rows.forEach((a) => { S[a.id] = { s: a.stars || 0, tag: a.tag || '', note: a.note || '', locked: !!a.stars }; }); paint(); return; } }
       root.removeEventListener('click', onClick); root.removeEventListener('input', onInput);
       root.innerHTML = ''; toast(`Thank you · ${items.length} rating${items.length === 1 ? '' : 's'} saved`); done();
@@ -481,6 +508,8 @@ function ratingGate(rp) {
   // v5.5: SM / ASM must rate yesterday's staff before the app opens (DM Apps and view-as are not blocked)
   const rp = await rpc('rating_pending', { p_token: me.token });
   if (rp && rp.ok && rp.need) await ratingGate(rp);
+  const hg = await rpc('hk_split_get', { p_token: me.token });
+  if (hg && hg.ok && hg.need_today) await hkGate(hg);
   buildShell();
   Idle.start({ minutes: me.idle_min || 60 });
   // v5.4 punch alerts: phone push (consent) + in-page pop-up/sound while the app is open (skipped when push is on, to avoid double alerts)

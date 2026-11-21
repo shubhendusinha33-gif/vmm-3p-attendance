@@ -65,3 +65,14 @@ table.edt select.ci{min-width:104px;max-width:150px}
   .tw:has(table.edt){overflow-x:visible}
 }
 @media(max-width:760px){.kpis.one{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* v5.5: Store Master with select column (12 cols) + Submissions table */
+@media(min-width:761px){
+  table.edt.smx th:nth-child(1){width:3%}table.edt.smx th:nth-child(2){width:6%}table.edt.smx th:nth-child(3){width:10%}table.edt.smx th:nth-child(4),table.edt.smx th:nth-child(5),table.edt.smx th:nth-child(6){width:10%}
+  table.edt.smx th:nth-child(7){width:12%}table.edt.smx th:nth-child(8){width:6%}table.edt.smx th:nth-child(9){width:7%}table.edt.smx th:nth-child(10){width:12%}table.edt.smx th:nth-child(11){width:5%}table.edt.smx th:nth-child(12){width:9%}
+}
+table.sbt{width:100%;border-collapse:collapse;font-size:12.5px}
+table.sbt th,table.sbt td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.sbt td.grp{background:var(--thead);font-weight:700;text-align:left!important;text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--ink)}
+table.sbt td.grp small{font-weight:400;color:var(--mut)}
+table.sbt td:last-child:not(.grp){text-align:right}
