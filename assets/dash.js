@@ -1106,7 +1106,7 @@
     }
     function edit(id) {
       const a = (S.det.rows || []).find((x) => String(x.id) === String(id)); if (!a) return;
-      const tags = ['Late', 'Not at post', 'Uniform', 'Behaviour', 'Mobile use', 'Other'];
+      const tags = reasonsFor(a.c);
       const m = modal(`<h2>Correct rating · ${esc(a.name)}</h2><div class="sub">${esc(S.det.store)} · ${esc(fmtDate(S.det.date))}</div>
         <div class="frm" style="margin-top:10px"><label>Stars<select id="rgS"><option value="">— remove rating</option>${[5, 4, 3, 2, 1].map((k) => `<option value="${k}"${a.stars === k ? ' selected' : ''}>${'★'.repeat(k)} (${k})</option>`).join('')}</select></label>
         <label>Reason (1–2 ★)<select id="rgT"><option value="">—</option>${tags.map((g) => `<option${a.tag === g ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select></label>
