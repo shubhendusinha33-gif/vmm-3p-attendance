@@ -92,11 +92,13 @@ async function callModel(system: string, hist: Turn[], q: string): Promise<{ ok:
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "content-type": "application/json", "x-api-key": A_KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: A_MODEL, max_tokens: 1200, system, messages: claudeTurns(hist, q).map((t) => ({ role: t.role, content: t.text })) }),
+      body: JSON.stringify({ model: A_MODEL, max_tokens: 4000, system, messages: claudeTurns(hist, q).map((t) => ({ role: t.role, content: t.text })) }),
     });
     const g = (await res.json().catch(() => null)) as any;
-    const text = ((g && g.content) || []).filter((c: any) => c.type === "text").map((c: any) => c.text).join("");
-    return { ok: res.ok && !!text, text, status: res.status, detail: g && g.error ? g.error.message : undefined };
+    const blocks = (g && g.content) || [];
+    const text = blocks.filter((c: any) => c.type === "text").map((c: any) => c.text).join("");
+    const detail = g && g.error ? g.error.message : !text ? `empty answer (stop: ${g && g.stop_reason}, blocks: ${blocks.map((c: any) => c.type).join(",") || "none"}, HTTP ${res.status})` : undefined;
+    return { ok: res.ok && !!text, text, status: res.status, detail };
   }
   if (G_KEY) {
     const contents = [
@@ -133,11 +135,11 @@ Deno.serve(async (req) => {
       role: h.role === "model" ? "assistant" : "user", text: String(h.text || "").slice(0, 2000),
     }));
     const r = await callModel(SYS + "\n\nDATA:\n" + data, hist, q);
-    await svc.from("bot_log").insert({ emp_code: emp, q, ok: r.ok, ms: Date.now() - t0 });
-    if (!r.ok) return json({ ok: false, error: r.status === 429 ? "BOT_BUSY" : "BOT_FAIL", detail: (r.detail || "").slice(0, 200) });
+    await svc.from("bot_log").insert({ emp_code: emp, q, ok: r.ok, ms: Date.now() - t0, err: r.ok ? null : (r.detail || `HTTP ${r.status}`).slice(0, 500) });
+    if (!r.ok) return json({ ok: false, error: r.status === 429 ? "BOT_BUSY" : "BOT_FAIL", detail: (r.detail || `HTTP ${r.status}`).slice(0, 200) });
     return json({ ok: true, answer: r.text, left: DAY_LIMIT - (count || 0) - 1 });
   } catch (e) {
-    await svc.from("bot_log").insert({ emp_code: emp, q, ok: false, ms: Date.now() - t0 });
+    await svc.from("bot_log").insert({ emp_code: emp, q, ok: false, ms: Date.now() - t0, err: String((e as Error).message || e).slice(0, 500) });
     return json({ ok: false, error: "BOT_FAIL", detail: String((e as Error).message || e).slice(0, 200) });
   }
 });
