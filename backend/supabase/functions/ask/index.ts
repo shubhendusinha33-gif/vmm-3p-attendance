@@ -92,7 +92,7 @@ async function callModel(system: string, hist: Turn[], q: string): Promise<{ ok:
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "content-type": "application/json", "x-api-key": A_KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: A_MODEL, max_tokens: 1200, temperature: 0.2, system, messages: claudeTurns(hist, q).map((t) => ({ role: t.role, content: t.text })) }),
+      body: JSON.stringify({ model: A_MODEL, max_tokens: 1200, system, messages: claudeTurns(hist, q).map((t) => ({ role: t.role, content: t.text })) }),
     });
     const g = (await res.json().catch(() => null)) as any;
     const text = ((g && g.content) || []).filter((c: any) => c.type === "text").map((c: any) => c.text).join("");
