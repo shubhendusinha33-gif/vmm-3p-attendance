@@ -426,6 +426,32 @@ function wire() {
 
 
 /* ---------------- v5.5: daily rating gate (SM / ASM, previous day) ---------------- */
+/* v5.5: SM / ASM confirm today's HK Morning / Evening split before the app opens (once a day) */
+function hkGate(h) {
+  return new Promise((done) => {
+    const root = $('#root');
+    root.innerHTML = `<div class="rg"><div class="rgh"><div><b>${esc(me.store_code)} · ${esc(me.store_name || '')}</b><small>${esc(me.name || '')}${me.post ? ' (' + esc(me.post) + ')' : ''} · ${esc(fmtDay(todayIST()))}</small></div>
+      <button type="button" class="btn s sm" id="hgOut">${esc(t('logout') || 'Logout')}</button></div>
+      <div class="rgb"><div class="note w" style="font-weight:600">🧹 Confirm today’s Housekeeping Morning / Evening · आज की HK सुबह / शाम संख्या भरें<br>
+        <span style="font-weight:400">Total HK required: <b>${h.total}</b>${h.vendor ? ' · ' + esc(h.vendor) : ''}${h.set ? ` · last saved ${h.morning} / ${h.evening}` : ''}</span></div>
+      <div class="frm" style="margin-top:10px"><label>${esc(t('morning'))}<input class="f" type="number" inputmode="numeric" min="0" max="${h.total}" id="hgM" value="${h.set ? h.morning : ''}"></label>
+        <label>${esc(t('evening'))}<input class="f" type="number" inputmode="numeric" min="0" max="${h.total}" id="hgE" value="${h.set ? h.evening : ''}"></label></div>
+      <div id="hgSum" class="sumln" style="margin-top:8px"></div><div class="note r" id="hgErr" hidden style="margin-top:8px"></div>
+      <button type="button" class="btn" id="hgOk" style="margin-top:12px;width:100%">${esc(t('saveSplit'))}</button></div></div>`;
+    const M = $('#hgM'), E = $('#hgE'), B = $('#hgOk');
+    const chk = () => { const a = Number(M.value || 0), b = Number(E.value || 0), ok = M.value !== '' && E.value !== '' && a + b === h.total;
+      $('#hgSum').className = 'sumln ' + (ok ? 'good' : 'bad'); $('#hgSum').textContent = (ok ? '✓ ' : '') + t('hkSum', { s: a + b, t: h.total }); B.disabled = !ok; };
+    M.addEventListener('input', chk); E.addEventListener('input', chk); chk();
+    $('#hgOut').addEventListener('click', () => logout());
+    B.addEventListener('click', async () => {
+      B.disabled = true;
+      const r = await rpc('hk_split_set', { p_token: me.token, p_morning: Number(M.value), p_evening: Number(E.value), p_effective: todayIST() });
+      if (!r || !r.ok) { B.disabled = false; const x = $('#hgErr'); x.hidden = false; x.textContent = r && r.error === 'SUM_MISMATCH' ? t('sumMismatch', { t: r.total }) : err(r && r.error); return; }
+      root.innerHTML = ''; toast(t('hkSaved')); done();
+    });
+  });
+}
+
 function ratingGate(rp) {
   return new Promise((done) => {
     const root = $('#root');
@@ -482,6 +508,8 @@ function ratingGate(rp) {
   // v5.5: SM / ASM must rate yesterday's staff before the app opens (DM Apps and view-as are not blocked)
   const rp = await rpc('rating_pending', { p_token: me.token });
   if (rp && rp.ok && rp.need) await ratingGate(rp);
+  const hg = await rpc('hk_split_get', { p_token: me.token });
+  if (hg && hg.ok && hg.need_today) await hkGate(hg);
   buildShell();
   Idle.start({ minutes: me.idle_min || 60 });
   // v5.4 punch alerts: phone push (consent) + in-page pop-up/sound while the app is open (skipped when push is on, to avoid double alerts)

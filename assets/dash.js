@@ -173,7 +173,8 @@
       return `<span class="hm">${w.r.map((q, i) => { if (!q) return `<i class="n" title="${esc(fmtDay(ds[i]))} · not required"></i>`;
         const v = pct(w.p[i], q); return `<i class="${v >= 90 ? 'g' : v >= 70 ? 'a' : 'r'}" title="${esc(fmtDay(ds[i]))} · ${v}%">${v}</i>`; }).join('')}</span>`;
     }
-    const byPct = (a, b) => (S.sort === 'hi'
+    const nmOf = (x) => String(typeof x.name === 'string' ? x.name : typeof x.n === 'string' ? x.n : x.k || '');
+    const byPct = (a, b) => S.sort === 'az' ? nmOf(a).localeCompare(nmOf(b), 'en', { numeric: true, sensitivity: 'base' }) : (S.sort === 'hi'
       ? (b.req ? b.pc : -1) - (a.req ? a.pc : -1) || b.req - a.req
       : (a.req ? a.pc : 101) - (b.req ? b.pc : 101) || b.req - a.req);
     function nobCats() { const c = ['HK', 'SEC'].filter(hasCat); return c.length ? c : cats().map((x) => x.id); }
@@ -408,7 +409,7 @@
         ${bx}
         <div class="leg"><span><i style="background:var(--ok)"></i>90%+</span><span><i style="background:var(--amb)"></i>70–90%</span><span><i style="background:var(--red)"></i>Below 70%</span></div>${sg}`;
     }
-    const sortSeg = () => `<div class="seg" title="Sort by %"><button type="button" data-sort="hi" class="${S.sort === 'hi' ? 'on' : ''}">▼ High % first</button><button type="button" data-sort="lo" class="${S.sort === 'lo' ? 'on' : ''}">▲ Low % first</button></div>`;
+    const sortSeg = () => `<div class="seg" title="Sort by %"><button type="button" data-sort="hi" class="${S.sort === 'hi' ? 'on' : ''}">▼ High % first</button><button type="button" data-sort="lo" class="${S.sort === 'lo' ? 'on' : ''}">▲ Low % first</button><button type="button" data-sort="az" class="${S.sort === 'az' ? 'on' : ''}" title="ZFM / AM / store name A–Z">A–Z name</button></div>`;
     const CAP = 150;
     const capRow = (n, cols) => (n > CAP && !S.all ? `<tr><td class="l" colspan="${cols}"><button type="button" class="btn s sm" data-all="1">Show all ${fmt(n)} rows</button> <span class="hint">first ${CAP} shown for speed</span></td></tr>` : '');
     /* dept summary: depts (or brands / vendors of the picked dept) in columns (Req / Avl / %), National by ZFM → AM → Store */
@@ -438,7 +439,7 @@
       const lines = [...g.values()].map((x) => ({ ...x, req: x.t.q, pc: pct(x.t.p, x.t.q) })).sort(byPct);
       const shown = S.all ? lines : lines.slice(0, CAP);
       const head = { zfm: 'ZFM', am: 'AM', store: 'Store' }[lv];
-      el.innerHTML = `<div class="hd"><div><h2>Department summary · Required / Available${S.cat && bdReady() ? ' · ' + esc(cname(S.cat)) + ' by ' + subKind().toLowerCase() : ''}</h2><div class="sub">${lv === 'store' ? 'Stores' : 'Click a row to drill down'} · ${S.sort === 'hi' ? 'highest' : 'lowest'} % first</div></div>${sortSeg()}</div>
+      el.innerHTML = `<div class="hd"><div><h2>Department summary · Required / Available${S.cat && bdReady() ? ' · ' + esc(cname(S.cat)) + ' by ' + subKind().toLowerCase() : ''}</h2><div class="sub">${lv === 'store' ? 'Stores' : 'Click a row to drill down'} · ${S.sort === 'az' ? 'name A–Z' : S.sort === 'hi' ? 'highest % first' : 'lowest % first'}</div></div>${sortSeg()}</div>
         <div class="bc" style="margin-top:6px"><button type="button" data-mx="-1">${me.role === 'admin' || me.role === 'hodept' ? 'National' : 'All my stores'}</button>${path.map((p, i) => ` › <button type="button" data-mx="${i}">${esc(p.name)}</button>`).join('')}</div>
         <div class="tw"><table class="mxt"><thead><tr><th class="l" rowspan="2">${head}</th>${cols.map((c) => `<th colspan="3" class="bl" style="text-align:center">${esc(c[1])}</th>`).join('')}<th colspan="3" class="bl" style="text-align:center">${esc(totName)}</th></tr>
         <tr>${[...cols, 0].map(() => '<th class="bl">Req</th><th>Avl</th><th>%</th>').join('')}</tr></thead><tbody>
@@ -482,7 +483,7 @@
         S.alert && `<button type="button" class="chip" data-clr="alert">${esc(ALN()[S.alert])} ✕</button>`,
         S.q && `<button type="button" class="chip" data-clr="q">Store ${esc(S.q.toUpperCase())} ✕</button>`].filter(Boolean).join(' ');
       const shown = S.all ? lines : lines.slice(0, CAP);
-      V.q('[data-ld="gap"]').innerHTML = `<div class="hd"><div><h2>Where the gaps are</h2><div class="sub">${S.sort === 'hi' ? 'Highest' : 'Lowest'} % first · click a row to ${lv === 'store' ? 'see people' : 'open'}</div></div>
+      V.q('[data-ld="gap"]').innerHTML = `<div class="hd"><div><h2>Where the gaps are</h2><div class="sub">${S.sort === 'az' ? 'Name A–Z' : S.sort === 'hi' ? 'Highest % first' : 'Lowest % first'} · click a row to ${lv === 'store' ? 'see people' : 'open'}</div></div>
         <div class="pills"><span class="sub" style="margin:0 4px 0 0;font-weight:700">VIEW BY</span>${views().map(([v, l]) => `<button type="button" class="pill ${S.view === v && !S.alert && !S.path.length ? 'on' : ''}" data-vw="${v}">${v === 'dept' && bdReady() ? subKind() : l}</button>`).join('')}${sortSeg()}</div></div>
         <div class="bc" style="margin-top:8px"><button type="button" data-bc="-1">All</button>${S.path.map((p, i) => ` › <button type="button" data-bc="${i}">${esc(p.name)}</button>`).join('')} ${chips}</div>
         <div class="tw"><table><thead><tr><th class="l">${head}</th>${lv === 'am' ? '<th class="l">ZFM</th>' : ''}${lv === 'store' && me.role !== 'am' ? '<th class="l">AM</th>' : ''}${lv !== 'store' ? '<th>Stores</th>' : ''}<th>Required</th><th>Present</th><th>Gap</th><th>%</th><th class="l">${lv === 'store' ? 'Status' : 'Stores with a gap'}</th>${S.alert ? '<th class="l">Why</th>' : ''}<th class="l">Last 7 days (%)</th></tr></thead><tbody>
