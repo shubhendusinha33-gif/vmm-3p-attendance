@@ -1,16 +1,19 @@
 // VMM 3rd Party Attendance — "Ask the data" bot (Admin only)
-// The Google Gemini key lives ONLY here, as the edge-function secret GEMINI_API_KEY.
-// It is never sent to the browser, never in GitHub. The browser sends: session token + question.
-// This function checks the token is a live Admin session, applies a daily limit, builds a
-// store-level summary from the same RPCs the dashboard uses (no associate names / phones),
-// and asks Gemini to answer only from that summary.
+// Provider: Anthropic Claude (secret ANTHROPIC_API_KEY, model ANTHROPIC_MODEL, default claude-haiku-5-5).
+// If that key is not set, falls back to Google Gemini (secret GEMINI_API_KEY, model GEMINI_MODEL).
+// Keys live ONLY here as Supabase secrets — never in the browser or in GitHub.
+// The browser sends: session token + question + short history. This function checks the token is a live
+// Admin session, applies a daily limit, builds a store-level summary (no associate names / phones),
+// and asks the model to answer only from that summary.
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
 const URL_ = Deno.env.get("SUPABASE_URL")!;
 const svc = createClient(URL_, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const anon = createClient(URL_, Deno.env.get("SUPABASE_ANON_KEY") || "sb_publishable_KRASYzbWRPYoKzJItq-Gqw_zLwUvnX-", { auth: { persistSession: false } });
-const KEY = Deno.env.get("GEMINI_API_KEY") || "";
-const MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash";
+const A_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
+const A_MODEL = Deno.env.get("ANTHROPIC_MODEL") || "claude-haiku-5-5";
+const G_KEY = Deno.env.get("GEMINI_API_KEY") || "";
+const G_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.8-flash";
 const DAY_LIMIT = Number(Deno.env.get("BOT_DAY_LIMIT") || 60);
 
 const cors = {
@@ -70,6 +73,48 @@ Answer ONLY from the DATA block. If the data cannot answer, say so and say which
 Attendance % = present ÷ required (cap present at required per store-dept). Use short answers, Indian number format, and small markdown tables when listing stores.
 Mention store code and name, and AM / ZFM when ranking. Never invent numbers. If asked in Hindi, answer in Hindi.`;
 
+type Turn = { role: "user" | "assistant"; text: string };
+
+// Claude needs alternating user / assistant turns, starting with the user
+function claudeTurns(hist: Turn[], q: string): Turn[] {
+  const all: Turn[] = [...hist.filter((t) => t.text), { role: "user", text: q }];
+  const out: Turn[] = [];
+  for (const t of all) {
+    if (!out.length && t.role !== "user") continue;
+    if (out.length && out[out.length - 1].role === t.role) out[out.length - 1].text += "\n\n" + t.text;
+    else out.push({ ...t });
+  }
+  return out;
+}
+
+async function callModel(system: string, hist: Turn[], q: string): Promise<{ ok: boolean; text: string; status: number; detail?: string }> {
+  if (A_KEY) {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": A_KEY, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({ model: A_MODEL, max_tokens: 1200, temperature: 0.2, system, messages: claudeTurns(hist, q) }),
+    });
+    const g = (await res.json().catch(() => null)) as any;
+    const text = ((g && g.content) || []).filter((c: any) => c.type === "text").map((c: any) => c.text).join("");
+    return { ok: res.ok && !!text, text, status: res.status, detail: g && g.error ? g.error.message : undefined };
+  }
+  if (G_KEY) {
+    const contents = [
+      ...hist.filter((t) => t.text).map((t) => ({ role: t.role === "assistant" ? "model" : "user", parts: [{ text: t.text }] })),
+      { role: "user", parts: [{ text: q }] },
+    ];
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${G_MODEL}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": G_KEY },
+      body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents, generationConfig: { temperature: 0.2, maxOutputTokens: 1500 } }),
+    });
+    const g = (await res.json().catch(() => null)) as any;
+    const text = ((g && g.candidates && g.candidates[0] && g.candidates[0].content && g.candidates[0].content.parts) || []).map((p: any) => p.text || "").join("");
+    return { ok: res.ok && !!text, text, status: res.status, detail: g && g.error ? g.error.message : undefined };
+  }
+  return { ok: false, text: "", status: 0, detail: "NO_KEY" };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ ok: false, error: "METHOD" }, 405);
@@ -78,28 +123,19 @@ Deno.serve(async (req) => {
   const emp = await adminOf(token);
   if (!emp) return json({ ok: false, error: "FORBIDDEN" }, 403);
   if (!q) return json({ ok: false, error: "EMPTY" }, 400);
-  if (!KEY) return json({ ok: false, error: "BOT_KEY_MISSING" });
+  if (!A_KEY && !G_KEY) return json({ ok: false, error: "BOT_KEY_MISSING" });
   const { count } = await svc.from("bot_log").select("id", { count: "exact", head: true }).eq("emp_code", emp).gte("created_at", istDate() + "T00:00:00+05:30");
   if ((count || 0) >= DAY_LIMIT) return json({ ok: false, error: "BOT_LIMIT", limit: DAY_LIMIT });
   const t0 = Date.now();
   try {
     const data = await summary(token);
-    const hist = (Array.isArray(b.history) ? b.history : []).slice(-6).map((h: any) => ({ role: h.role === "model" ? "model" : "user", parts: [{ text: String(h.text || "").slice(0, 2000) }] }));
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": KEY },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYS + "\n\nDATA:\n" + data }] },
-        contents: [...hist, { role: "user", parts: [{ text: q }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 1500 },
-      }),
-    });
-    const g = await res.json().catch(() => null) as any;
-    const answer = g?.candidates?.[0]?.content?.parts?.map((p: any) => p.text || "").join("") || "";
-    const ok = res.ok && !!answer;
-    await svc.from("bot_log").insert({ emp_code: emp, q, ok, ms: Date.now() - t0 });
-    if (!ok) return json({ ok: false, error: res.status === 429 ? "BOT_BUSY" : "BOT_FAIL", detail: g?.error?.message?.slice(0, 200) });
-    return json({ ok: true, answer, left: DAY_LIMIT - (count || 0) - 1 });
+    const hist: Turn[] = (Array.isArray(b.history) ? b.history : []).slice(-6).map((h: any) => ({
+      role: h.role === "model" ? "assistant" : "user", text: String(h.text || "").slice(0, 2000),
+    }));
+    const r = await callModel(SYS + "\n\nDATA:\n" + data, hist, q);
+    await svc.from("bot_log").insert({ emp_code: emp, q, ok: r.ok, ms: Date.now() - t0 });
+    if (!r.ok) return json({ ok: false, error: r.status === 429 ? "BOT_BUSY" : "BOT_FAIL", detail: (r.detail || "").slice(0, 200) });
+    return json({ ok: true, answer: r.text, left: DAY_LIMIT - (count || 0) - 1 });
   } catch (e) {
     await svc.from("bot_log").insert({ emp_code: emp, q, ok: false, ms: Date.now() - t0 });
     return json({ ok: false, error: "BOT_FAIL", detail: String((e as Error).message || e).slice(0, 200) });
