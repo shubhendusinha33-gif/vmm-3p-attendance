@@ -29,6 +29,7 @@
   .sheet .st.A { background: #FDEDEC; color: #C0392B; }
   .sheet .st.H { background: #FFF4E0; color: #B26A00; }
   .sheet .st.CO { background: #EEF2F6; color: #334155; font-size: 8pt; }
+  .sheet .st.WO { background: #EEF2F6; color: #334155; }
   .sheet .sum { display: grid; grid-template-columns: repeat(var(--n, 4), 1fr); gap: 3mm; }
   .sheet .sum div { border-radius: 2mm; padding: 3mm; text-align: center; font-size: 9pt; background: #F3F6FA; color: #1A2130; }
   .sheet .sum b { display: block; font-size: 15pt; margin-top: 1mm; }
@@ -90,7 +91,7 @@
 <script>
 let me = null, data = null, assocRows = [], wrap = null;
 const q = new URLSearchParams(location.search);
-const STL = { P: 'P', A: 'A', H: 'H', CO: 'Comp-Off' };
+const STL = { P: 'P', A: 'A', H: 'H', CO: 'Comp-Off', WO: 'WO' };
 
 function err(m) { const e = $('#err'); if (!e) return; e.hidden = !m; e.textContent = m || ''; }
 
@@ -164,10 +165,11 @@ function render() {
     <div>Associate: <b>${esc(a.name)}</b></div><div>Employee Code: <b>${esc(a.code)}</b></div>`;
   let cells = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => `<div class="h">${d}</div>`).join('');
   for (let i = 0; i < first.getDay(); i++) cells += '<div class="blank"></div>';
-  const n = { P: 0, A: 0, H: 0, CO: 0 };
+  const n = { P: 0, A: 0, H: 0, CO: 0, WO: 0 };
+  const hasH = sec || r.days.some((d) => d.bs);
   r.days.forEach((d) => {
     let st = statusOf(d);
-    if (st === 'H' && !sec) st = 'P';
+    if (st === 'H' && !sec && !d.bs) st = 'P';   // non-Security: Half day only for break shift (<4 punches)
     if (n[st] !== undefined) n[st]++;
     cells += `<div><div class="n">${parseYmd(d.d).getDate()}</div>${st ? `<span class="st ${st}">${STL[st]}</span>` : ''}${starsOf(d)}</div>`;
   });
@@ -175,11 +177,11 @@ function render() {
   while (total % 7) { cells += '<div class="blank"></div>'; total++; }
   $('#grid').innerHTML = cells;
   const W = n.P + n.A + n.H;
-  $('#sum').style.setProperty('--n', sec ? 5 : 4);
-  $('#sum').innerHTML = `<div>Working Days<b>${W}</b></div><div class="p">Present<b>${n.P}</b></div>${sec ? `<div class="h">Half day<b>${n.H}</b></div>` : ''}
-    <div class="a">Absent<b>${n.A}</b></div><div class="c">Comp-Off<b>${n.CO}</b></div>`;
+  $('#sum').style.setProperty('--n', (hasH ? 5 : 4) + (n.WO ? 1 : 0));
+  $('#sum').innerHTML = `<div>Working Days<b>${W}</b></div><div class="p">Present<b>${n.P}</b></div>${hasH ? `<div class="h">Half day<b>${n.H}</b></div>` : ''}
+    <div class="a">Absent<b>${n.A}</b></div><div class="c">Comp-Off<b>${n.CO}</b></div>${n.WO ? `<div class="c">Week off<b>${n.WO}</b></div>` : ''}`;
   const set = r.store.sg_set || 8;
-  $('#leg').textContent = `P = Present · A = Absent${sec ? ` · H = Half day (Security ${set}-hr set)` : ''} · Comp-Off = approved comp-off. No punch timings are shown on this statement.`;
+  $('#leg').textContent = `P = Present · A = Absent${sec ? ` · H = Half day (Security ${set}-hr set)` : ''}${!sec && hasH ? ' · H = Half day (break shift, fewer than 4 punches)' : ''} · Comp-Off = approved comp-off${n.WO ? ' · WO = week off marked by SM / ASM' : ''}. No punch timings are shown on this statement.`;
   $('#sheet').hidden = false;
   document.title = `Statement ${a.code} ${r.from} to ${r.to} · 3rd Party Attendance`;
   data.summary = { W, ...n };
@@ -206,7 +208,7 @@ function paintRate() {
 function xls() {
   if (!data) return err(t('show') + ' ›');
   const a = data.associate, sec = a.c === 'SEC';
-  const rows = data.days.map((d) => { let st = statusOf(d); if (st === 'H' && !sec) st = 'P';
+  const rows = data.days.map((d) => { let st = statusOf(d); if (st === 'H' && !sec && !d.bs) st = 'P';
     return { Date: d.d, Store: data.store.code, Name: a.name, Dept: (a.cat_name || a.c) + (a.brand ? ' – ' + a.brand : ''), Vendor: a.vendor || '', Status: STL[st] || '',
       'Rating (★)': d.rs || (d.rmiss ? 'Not rated' : ''), 'Reason': d.rtag ? d.rtag + (d.rnote ? ' · ' + d.rnote : '') : '', 'Rated by': d.rby || '' }; });
   downloadXlsx(rows, `Statement_${a.code}_${data.from}_${data.to}.xlsx`, 'Statement');

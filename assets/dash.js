@@ -609,13 +609,17 @@
   /* =====================================================================
      APPROVALS (Pending + History)
      ===================================================================== */
-  const CR_KIND = { compoff: 'Comp-off', staff: 'Staff detail change', missed_out: 'Missed OUT', missed_in: 'Missed IN', sg_mispunch: 'SG mis-punch', sg_edit: 'SG time edit', cross_store: 'Phone from other store (SM)' };
+  const CR_KIND = { compoff: 'Comp-off', staff: 'Staff detail change', missed_out: 'Missed OUT', missed_in: 'Missed IN', sg_mispunch: 'SG mis-punch', sg_edit: 'SG time edit', cross_store: 'Phone from other store (SM)',
+    week_off: 'Week off (store, direct)', break_shift: 'Break shift (store, direct)', punch_delete: 'Punch deleted (store, direct)' };
   const isSg = (k) => k === 'sg_mispunch' || k === 'sg_edit';
   function crChange(r) {
     const p = r.payload || {};
     if (r.kind === 'compoff') return p.on === false ? `Remove comp-off · ${r.date ? fmtDay(r.date) : ''}` : `Absent → Comp-off · ${r.date ? fmtDay(r.date) : ''}`;
     if (r.kind === 'staff') { const o = p.old || {}, n = p.new || {};
       return ['name', 'vendor', 'brand'].filter((k) => (o[k] || '') !== (n[k] || '')).map((k) => `${k}: ${o[k] || '—'} → ${n[k] || '—'}`).join(' · ') || 'No change'; }
+    if (r.kind === 'week_off') return `${p.on === false ? 'Week off removed' : 'Week off'} · ${r.date ? fmtDay(r.date) : ''}`;
+    if (r.kind === 'break_shift') return `Break shift ${p.on ? 'ON (4 punches)' : 'OFF'}`;
+    if (r.kind === 'punch_delete') return `Deleted ${p.kind || ''} ${p.time || ''} · ${r.date ? fmtDay(r.date) : ''}${p.why ? ' · ' + p.why : ''}`;
     if (r.kind === 'cross_store') return `Registered at ${p.home_store || '?'} · tried ${p.tries || 3}× at ${r.store} · ${r.date ? fmtDay(r.date) : ''} · today only`;
     if (isSg(r.kind)) {
       const bits = [r.date ? fmtDay(r.date) : '', p.in ? `IN ${p.in}` : '', p.out ? `OUT ${p.out}` : '', p.missing ? `missing ${p.missing}` : '', p.sg ? `now ${p.sg}` : ''].filter(Boolean);
@@ -637,7 +641,7 @@
     return r.status === 'approved' ? 'Approved' : 'Rejected';
   }
   async function dashPendingCount(me) {
-    if (!me || !['am', 'rlpo'].includes(me.role) || me.view_by) return 0;
+    if (!me || !['am', 'rlpo', 'admin'].includes(me.role) || me.view_by) return 0;
     const r = await rpc('cr_list', { p_token: me.token, p_status: 'pending', p_days: 120 });
     return r && r.ok ? (r.rows || []).filter((x) => x.can_decide).length : 0;
   }
@@ -646,10 +650,12 @@
     const V = mount(root, { bar: false });
     const today = todayIST();
     const S = { tab: 'pend', from: addDays(today, -30), to: today, group: 'all', status: 'all', q: '', pend: null, hist: null, busy: false };
-    const decider = ['am', 'rlpo'].includes(me.role) && !me.view_by;
+    const decider = ['am', 'rlpo', 'admin'].includes(me.role) && !me.view_by, isAdm = me.role === 'admin' && !me.view_by;
+    S.sel = new Set(); S.f = { kind: '', store: '' };
     const title = me.role === 'rlpo' ? 'SG approvals' : decider ? 'Approvals' : 'Approvals (view only)';
     const sub = me.role === 'rlpo' ? 'Security mis-punch (IN without OUT) and time edits from your stores. Until you decide, a mis-punch counts as Absent. Add a remark if you want; every decision is saved.'
       : me.role === 'am' ? 'Requests from your stores (comp-off, staff detail change). Add a remark if you want; every decision is saved with who and when. Security requests go to the RLPO.'
+      : isAdm ? 'Admin can approve or reject every request (AM, RLPO and SM ones). Tick rows and use the bar to decide many at once. A remark is mandatory to reject; optional to approve. Security approved in bulk = P.'
         : 'Store requests are decided by their AM; Security mis-punch / edits by the RLPO. You can watch and download, not decide.';
     V.el.insertAdjacentHTML('beforeend', `<div><h1 class="pt">${esc(title)}</h1><div class="sub">${esc(sub)}</div></div>
       <div class="card"><div class="tabs"><button type="button" data-apt="pend" class="on">Pending</button><button type="button" data-apt="hist">History</button></div><div data-ap="body">${spin}</div></div>`);
@@ -676,17 +682,28 @@
       const btns = sg
         ? `<button type="button" class="btn g sm" data-dec="${x.id}|P">Approve as P</button><button type="button" class="btn sm" style="background:var(--amb)" data-dec="${x.id}|H">Approve as H</button><button type="button" class="btn r sm" data-dec="${x.id}|A">Reject (A)</button>`
         : `<button type="button" class="btn g sm" data-dec="${x.id}|ok">Approve</button><button type="button" class="btn r sm" data-dec="${x.id}|no">Reject</button>`;
-      return `<div class="reqc" data-row="${x.id}"><div style="min-width:0;flex:1 1 300px"><b>${esc(x.store)}${x.store_name ? ' · ' + esc(x.store_name) : ''} · ${esc(CR_KIND[x.kind] || x.kind)}</b>
+      return `<div class="reqc" data-row="${x.id}">${isAdm ? `<input type="checkbox" data-sel="${x.id}" ${S.sel.has(String(x.id)) ? 'checked' : ''} aria-label="Select" style="width:18px;height:18px;margin:2px 4px 0 0;flex:0 0 auto">` : ''}<div style="min-width:0;flex:1 1 300px"><b>${esc(x.store)}${x.store_name ? ' · ' + esc(x.store_name) : ''} · ${esc(CR_KIND[x.kind] || x.kind)}</b>
         <div class="sub">${esc(x.assoc || '')}${x.assoc_code ? ' · ' + esc(x.assoc_code) : ''}${x.cat ? ' · ' + esc(x.cat) : ''} · from ${esc([x.by_post, x.by_name || x.by].filter(Boolean).join(' '))} · ${esc(x.at || '')}</div>
         <div style="margin-top:4px"><span class="tg info">${esc(crChange(x))}</span></div><div style="margin-top:4px;font-size:13px">“${esc(x.reason || '')}”</div></div>
-        <span class="act"><input class="f" data-rmk="${x.id}" placeholder="Remark (optional)" maxlength="300">${btns}</span></div>`;
+        <span class="act"><input class="f" data-rmk="${x.id}" placeholder="${isAdm ? 'Remark (mandatory to reject)' : 'Remark (optional)'}" maxlength="300">${btns}</span></div>`;
+    }
+    function fOk(x) { return (!S.f.kind || x.kind === S.f.kind) && (!S.f.store || [x.store, x.store_name, x.assoc, x.assoc_code].join(' ').toUpperCase().includes(S.f.store.toUpperCase())); }
+    function bulkBar() {
+      if (!isAdm) return '';
+      const kinds = [...new Set(S.pend.map((x) => x.kind))];
+      const vis = S.pend.filter((x) => x.can_decide && fOk(x)), n = vis.filter((x) => S.sel.has(String(x.id))).length;
+      return `<div class="toolrow" style="margin-top:6px"><span class="ftl"><select data-bf="kind" aria-label="Type"><option value="">All types (${S.pend.length})</option>${kinds.map((k) => `<option value="${esc(k)}" ${S.f.kind === k ? 'selected' : ''}>${esc(CR_KIND[k] || k)} (${S.pend.filter((x) => x.kind === k).length})</option>`).join('')}</select>
+          <input class="f" data-bf="store" placeholder="Store / staff" value="${esc(S.f.store)}" style="width:150px"><label class="sub" style="margin:0;display:flex;gap:6px;align-items:center"><input type="checkbox" data-selall ${vis.length && n === vis.length ? 'checked' : ''}> Select all shown (${vis.length})</label></span></div>
+        <div data-bulk style="position:sticky;bottom:0;z-index:5;margin-top:8px;background:var(--ink);color:#fff;border-radius:10px;padding:8px 10px;display:${n ? 'flex' : 'none'};gap:8px;align-items:center;flex-wrap:wrap">
+          <b data-bn>${n} selected</b><input class="f" data-brm placeholder="Remark for all (mandatory to reject)" maxlength="300" style="flex:1;min-width:180px;color:var(--ink)">
+          <button type="button" class="btn g sm" data-bulk-go="ok">✓ Approve ${n}</button><button type="button" class="btn r sm" data-bulk-go="no">✕ Reject ${n}</button></div>`;
     }
     function paintPend() {
-      const mine = S.pend.filter((x) => x.can_decide), others = S.pend.filter((x) => !x.can_decide);
+      const mine = S.pend.filter((x) => x.can_decide && (!isAdm || fOk(x))), others = S.pend.filter((x) => !x.can_decide);
       const table = others.length ? `${mine.length ? '<h2 style="margin-top:14px">Waiting with others</h2>' : ''}<div class="tw"><table><thead><tr><th class="l">Store</th><th class="l">Type</th><th class="l">Staff</th><th class="l">For date</th><th class="l">Change</th><th class="l">Reason</th><th class="l">From</th><th class="l">Waiting with</th></tr></thead><tbody>
         ${others.map((x) => `<tr><td class="l"><b>${esc(x.store)}</b><small>${esc(x.store_name || '')}</small></td><td class="l">${esc(CR_KIND[x.kind] || x.kind)}</td><td class="l">${esc(x.assoc || '')}<small>${esc(x.assoc_code || '')}</small></td><td class="l">${x.date ? esc(fmtDay(x.date)) : '—'}</td>
           <td class="l">${esc(crChange(x))}</td><td class="l" style="white-space:normal;min-width:180px">${esc(x.reason || '')}</td><td class="l">${esc([x.by_post, x.by_name || x.by].filter(Boolean).join(' '))}<small>${esc(x.at || '')}</small></td><td class="l"><span class="tg amb">${esc(x.approver || (isSg(x.kind) ? 'RLPO' : 'AM'))}</span></td></tr>`).join('')}</tbody></table></div>` : '';
-      body.innerHTML = (mine.length ? `<div class="dlist">${mine.map(card).join('')}</div>` : decider ? '<div class="note k" style="margin-top:8px">All done. No pending requests for you.</div>' : '')
+      body.innerHTML = bulkBar() + (mine.length ? `<div class="dlist">${mine.map(card).join('')}</div>` : decider ? '<div class="note k" style="margin-top:8px">All done. No pending requests for you.</div>' : '')
         + table + (!mine.length && !others.length && !decider ? '<div class="note k" style="margin-top:8px">Nothing pending.</div>' : '');
     }
     function histTools() {
@@ -717,6 +734,7 @@
       const [id, v] = btn.dataset.dec.split('|'), row = (S.pend || []).find((x) => String(x.id) === id); if (!row) return;
       const sg = isSg(row.kind), inp = V.q(`[data-rmk="${id}"]`), note = inp ? inp.value.trim() : '';
       const approve = sg ? v !== 'A' : v === 'ok';
+      if (isAdm && !approve && !note) { toast('Remark is mandatory to reject.'); if (inp) inp.focus(); return; }
       S.busy = true; const box = btn.closest('.reqc'); box.querySelectorAll('button').forEach((b) => { b.disabled = true; });
       const r = await rpc('cr_decide', { p_token: me.token, p_id: Number(id), p_approve: approve, p_note: note || null, p_status: sg ? v : null });
       S.busy = false;
@@ -728,7 +746,36 @@
         if (r && r.error === 'ALREADY_DECIDED') load();
       }
     }
+    async function bulk(ok) {
+      if (S.busy) return;
+      const ids = S.pend.filter((x) => x.can_decide && fOk(x) && S.sel.has(String(x.id))).map((x) => Number(x.id));
+      const note = (V.q('[data-brm]') || {}).value ? V.q('[data-brm]').value.trim() : '';
+      if (!ids.length) return;
+      if (!ok && !note) { toast('Remark is mandatory to reject.'); V.q('[data-brm]').focus(); return; }
+      if (!window.confirm(`${ok ? 'Approve' : 'Reject'} ${ids.length} request${pl(ids.length)}?`)) return;
+      S.busy = true; V.el.querySelectorAll('[data-bulk-go]').forEach((b) => { b.disabled = true; });
+      const r = await rpc('cr_decide_bulk', { p_token: me.token, p_ids: ids, p_approve: ok, p_note: note || null });
+      S.busy = false;
+      if (!r || !r.ok) { toast(errText(r && r.error)); V.el.querySelectorAll('[data-bulk-go]').forEach((b) => { b.disabled = false; }); return; }
+      const bad = r.failed || [];
+      toast(`${ok ? 'Approved' : 'Rejected'} ${r.done}${bad.length ? ` · ${bad.length} not done (${[...new Set(bad.map((x) => errText(x.error)))].join(', ')})` : ''}`, bad.length ? 6000 : 2600);
+      S.sel.clear(); load();
+    }
+    function selPaint() {
+      const vis = S.pend.filter((x) => x.can_decide && fOk(x)), n = vis.filter((x) => S.sel.has(String(x.id))).length, bar = V.q('[data-bulk]');
+      if (bar) { bar.style.display = n ? 'flex' : 'none'; V.q('[data-bn]').textContent = `${n} selected`; V.q('[data-bulk-go="ok"]').textContent = `✓ Approve ${n}`; V.q('[data-bulk-go="no"]').textContent = `✕ Reject ${n}`; }
+      const all = V.q('[data-selall]'); if (all) all.checked = vis.length > 0 && n === vis.length;
+    }
+    V.el.addEventListener('change', (e) => {
+      const c = e.target;
+      if (c.dataset.sel) { if (c.checked) S.sel.add(c.dataset.sel); else S.sel.delete(c.dataset.sel); selPaint(); return; }
+      if (c.hasAttribute('data-selall')) { S.pend.filter((x) => x.can_decide && fOk(x)).forEach((x) => { if (c.checked) S.sel.add(String(x.id)); else S.sel.delete(String(x.id)); }); paintPend(); return; }
+      if (c.dataset.bf === 'kind') { S.f.kind = c.value; S.sel.clear(); paintPend(); }
+    });
+    let bft = 0;
+    V.el.addEventListener('input', (e) => { if (e.target.dataset.bf !== 'store') return; clearTimeout(bft); const v = e.target.value; bft = setTimeout(() => { S.f.store = v; S.sel.clear(); paintPend(); const i = V.q('[data-bf="store"]'); if (i) { i.focus(); i.setSelectionRange(v.length, v.length); } }, 250); });
     V.el.addEventListener('click', (e) => {
+      const bg = e.target.closest('[data-bulk-go]'); if (bg) { bulk(bg.dataset.bulkGo === 'ok'); return; }
       const t = e.target.closest('[data-apt],[data-dec],[data-hs],[data-h="xls"]'); if (!t) return;
       if (t.dataset.apt) { if (S.tab !== t.dataset.apt) { S.tab = t.dataset.apt; load(); } return; }
       if (t.dataset.dec) { decide(t); return; }
