@@ -181,10 +181,11 @@ declare d text := pg_get_functiondef('public.punch_submit(text,text,text,text,te
      '''punches_today'', v_n + 1, ''left_today'', 4 - (v_n + 1), ''work_date'', v_work, ''night'', v_work <> v_today);']];
   i int;
 begin
+  d := replace(d, E'\r', '');   -- line endings: pasted scripts may carry CRLF
   if position('SELFIE_DUE' in d) > 0 then raise notice 'punch_submit already patched'; return; end if;
   for i in 1 .. array_length(procedure_rep, 1) loop
-    if position(procedure_rep[i][1] in d) = 0 then raise exception 'punch_submit patch % not found', i; end if;
-    d := replace(d, procedure_rep[i][1], procedure_rep[i][2]);
+    if position(replace(procedure_rep[i][1], E'\r', '') in d) = 0 then raise exception 'punch_submit patch % not found', i; end if;
+    d := replace(d, replace(procedure_rep[i][1], E'\r', ''), replace(procedure_rep[i][2], E'\r', ''));
   end loop;
   execute d;
 end $do$;
@@ -353,7 +354,7 @@ $f$;
 revoke all on function public._can_decide(public.sessions, public.change_requests) from public, anon, authenticated;
 
 do $do$
-declare d text := pg_get_functiondef('public.cr_decide(uuid,bigint,boolean,text,text)'::regprocedure);
+declare d text := replace(pg_get_functiondef('public.cr_decide(uuid,bigint,boolean,text,text)'::regprocedure), E'\r', '');
 begin
   if position('NOTE_REQUIRED' in d) > 0 then return; end if;
   if position($$if s.role not in ('am','rlpo','store') then$$ in d) = 0 then raise exception 'cr_decide patch 1 not found'; end if;
@@ -384,7 +385,7 @@ end $function$;
 grant execute on function public.cr_decide_bulk(uuid, bigint[], boolean, text) to anon;
 
 do $do$
-declare d text := pg_get_functiondef('public.cr_list(uuid,text,integer)'::regprocedure);
+declare d text := replace(pg_get_functiondef('public.cr_list(uuid,text,integer)'::regprocedure), E'\r', '');
 begin
   d := replace(d, $$'can_decide', s.role in ('am','rlpo') and s.view_by is null,$$, $$'can_decide', s.role in ('am','rlpo','admin') and s.view_by is null,$$);
   execute d;
@@ -415,8 +416,8 @@ declare d text := replace(pg_get_functiondef('public.dash_store(uuid,text,date,t
 begin
   if position('''mgr'', _is_mgr(s)' in d) > 0 then return; end if;
   for i in 1 .. array_length(rep, 1) loop
-    if position(rep[i][1] in d) = 0 then raise exception 'dash_store patch % not found', i; end if;
-    d := replace(d, rep[i][1], rep[i][2]);
+    if position(replace(rep[i][1], E'\r', '') in d) = 0 then raise exception 'dash_store patch % not found', i; end if;
+    d := replace(d, replace(rep[i][1], E'\r', ''), replace(rep[i][2], E'\r', ''));
   end loop;
   execute d;
 end $do$;
@@ -438,8 +439,8 @@ declare d text := replace(pg_get_functiondef('public.statement(uuid,bigint,date,
 begin
   if position('''wo'', cx.k' in d) > 0 then return; end if;
   for i in 1 .. array_length(rep, 1) loop
-    if position(rep[i][1] in d) = 0 then raise exception 'statement patch % not found', i; end if;
-    d := replace(d, rep[i][1], rep[i][2]);
+    if position(replace(rep[i][1], E'\r', '') in d) = 0 then raise exception 'statement patch % not found', i; end if;
+    d := replace(d, replace(rep[i][1], E'\r', ''), replace(rep[i][2], E'\r', ''));
   end loop;
   execute d;
 end $do$;
