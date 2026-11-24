@@ -265,7 +265,7 @@ async function hkSave() {
 
 /* ---------------- Requests ---------------- */
 const KINDS = { compoff: ['kCompoff', 'am'], staff: ['kStaff', 'am'], sg_mispunch: ['kSgMis', 'rlpo'], sg_edit: ['kSgEdit', 'rlpo'] };
-const DIRECT_KINDS = { week_off: ['Week off', 'वीक ऑफ'], break_shift: ['Break shift', 'ब्रेक शिफ्ट'], punch_delete: ['Punch deleted', 'पंच डिलीट'] };
+const DIRECT_KINDS = { week_off: ['Week off', 'वीक ऑफ'], break_shift: ['Break shift', 'ब्रेक शिफ्ट'], punch_delete: ['Punch deleted', 'पंच डिलीट'], phone_reset: ['Reset phone link', 'फ़ोन लिंक रीसेट'] };
 async function getAssoc() {
   if (assoc) return assoc;
   const r = await rpc('associates_list', { p_token: me.token, p_store: me.store_code });
@@ -418,12 +418,13 @@ function moreMenu(a) {
   const items = [['edit', '✏️', L('Edit name / brand / vendor', 'नाम / ब्रांड / वेंडर बदलें')],
     !past2 && a.np !== 0 && a.c ? ['del', '🗑️', L('Delete duplicate punch', 'डुप्लिकेट पंच डिलीट करें')] : null,
     ['bs', '⏸️', a.bs ? L('Break shift: turn OFF', 'ब्रेक शिफ्ट: बंद करें') : L('Break shift: turn ON (4 punches)', 'ब्रेक शिफ्ट: चालू करें (4 पंच)')],
-    ['wo', '🌙', L('Mark week off', 'वीक ऑफ लगाएं')]].filter(Boolean);
+    ['wo', '🌙', L('Mark week off', 'वीक ऑफ लगाएं')],
+    ['ph', '📱', L('Reset phone link (AM approval)', 'फ़ोन लिंक रीसेट (AM अप्रूवल)')]].filter(Boolean);
   const md = modal(`<h3>${esc(a.name)} <small style="font-weight:400;color:var(--mut)">· ${esc(cn(a.c))}${a.brand ? ' · ' + esc(a.brand) : ''}</small></h3>
     <div class="dlist">${items.map(([k, ic, l]) => `<button type="button" class="btn s" data-m="${k}" style="justify-content:flex-start;width:100%;text-align:left">${ic} ${esc(l)}</button>`).join('')}</div>
     <div class="mx"><button type="button" class="btn s" data-close>✕</button></div>`);
   md.addEventListener('click', (e) => { const b = e.target.closest('[data-m]'); if (!b) return; md.close();
-    ({ edit: editDialog, del: delDialog, bs: bsDialog, wo: woDialog })[b.dataset.m](a); });
+    ({ edit: editDialog, del: delDialog, bs: bsDialog, wo: woDialog, ph: phDialog })[b.dataset.m](a); });
 }
 function editDialog(a) {
   const brands = (cats[a.c] && cats[a.c].brands) || [];
@@ -469,6 +470,16 @@ function bsDialog(a) {
     <div class="mx"><button type="button" class="btn s" data-close>✕</button><button type="button" class="btn" data-ok>${esc(on ? L('Turn ON', 'चालू करें') : L('Turn OFF', 'बंद करें'))}</button></div>`);
   md.querySelector('[name="rmk"]').dataset.req = '1';
   md.querySelector('[data-ok]').addEventListener('click', (e) => directCall(md, e.currentTarget, 'store_break_shift', { p_associate: Number(a.id), p_on: on }, on ? L('Break shift ON', 'ब्रेक शिफ्ट चालू') : L('Break shift OFF', 'ब्रेक शिफ्ट बंद')));
+}
+function phDialog(a) {
+  const md = modal(`<h3>📱 ${esc(L('Reset phone link', 'फ़ोन लिंक रीसेट'))} · ${esc(a.name)}</h3>
+    <div class="note i">${esc(L('Use when the person punched from someone else’s phone, or changed phone. After AM / Admin approves, the next punch from the new phone links it. Punches already done stay.', 'जब किसी ने दूसरे के फ़ोन से पंच किया हो या फ़ोन बदला हो। AM / Admin के अप्रूव करने के बाद नए फ़ोन से अगला पंच उसे जोड़ देगा। पुराने पंच वैसे ही रहेंगे।'))}</div>
+    <label class="lbl" style="font-size:12px;color:var(--mut);display:block;margin-top:8px">${esc(t('reasonReq'))}<textarea class="f" name="why" rows="2" maxlength="300" style="width:100%" placeholder="${esc(L('e.g. Punched IN from colleague’s phone, own phone now', 'जैसे: साथी के फ़ोन से IN किया, अब अपना फ़ोन'))}"></textarea></label>
+    <div class="note r" data-e hidden></div>
+    <div class="mx"><button type="button" class="btn s" data-close>✕</button><button type="button" class="btn" data-ok>${esc(t('sendToAm'))}</button></div>`);
+  md.querySelector('[data-ok]').addEventListener('click', async (e) => {
+    if (await sendRequest('phone_reset', a.id, null, {}, md.querySelector('[name="why"]').value, md.querySelector('[data-e]'), e.currentTarget)) md.close();
+  });
 }
 function woDialog(a) {
   const today = todayIST(), opts = [];

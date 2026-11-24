@@ -610,13 +610,14 @@
      APPROVALS (Pending + History)
      ===================================================================== */
   const CR_KIND = { compoff: 'Comp-off', staff: 'Staff detail change', missed_out: 'Missed OUT', missed_in: 'Missed IN', sg_mispunch: 'SG mis-punch', sg_edit: 'SG time edit', cross_store: 'Phone from other store (SM)',
-    week_off: 'Week off (store, direct)', break_shift: 'Break shift (store, direct)', punch_delete: 'Punch deleted (store, direct)' };
+    week_off: 'Week off (store, direct)', break_shift: 'Break shift (store, direct)', punch_delete: 'Punch deleted (store, direct)', phone_reset: 'Reset phone link' };
   const isSg = (k) => k === 'sg_mispunch' || k === 'sg_edit';
   function crChange(r) {
     const p = r.payload || {};
     if (r.kind === 'compoff') return p.on === false ? `Remove comp-off · ${r.date ? fmtDay(r.date) : ''}` : `Absent → Comp-off · ${r.date ? fmtDay(r.date) : ''}`;
     if (r.kind === 'staff') { const o = p.old || {}, n = p.new || {};
       return ['name', 'vendor', 'brand'].filter((k) => (o[k] || '') !== (n[k] || '')).map((k) => `${k}: ${o[k] || '—'} → ${n[k] || '—'}`).join(' · ') || 'No change'; }
+    if (r.kind === 'phone_reset') return `Unlink current phone (…${p.device || ''}) · next punch links the new phone`;
     if (r.kind === 'week_off') return `${p.on === false ? 'Week off removed' : 'Week off'} · ${r.date ? fmtDay(r.date) : ''}`;
     if (r.kind === 'break_shift') return `Break shift ${p.on ? 'ON (4 punches)' : 'OFF'}`;
     if (r.kind === 'punch_delete') return `Deleted ${p.kind || ''} ${p.time || ''} · ${r.date ? fmtDay(r.date) : ''}${p.why ? ' · ' + p.why : ''}`;
