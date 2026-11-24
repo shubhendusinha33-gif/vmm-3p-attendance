@@ -6,7 +6,7 @@
        checkHk (default true) calls hk_split_get and shows the amber dot on HK split when not set.
      SG_TAG(st)  status-only tag for a Security guard (P / H / A / MP / P* / IN) — never times. */
 Object.assign(I18N.en, {
-  tabToday: 'Today', tabPunch: 'Punch', tabHk: 'HK split', tabReq: 'Requests', tabStm: 'Statement', tabQr: 'QR',
+  tabToday: 'Today', tabPunch: 'Punch', tabHk: 'HK / SG count', tabReq: 'Requests', tabStm: 'Statement', tabQr: 'QR',
   live: 'Live', endOfDay: 'End of day', required: 'Required', notPunchedK: 'Not punched', monthToDate: 'Month to date',
   hkNotSet: 'HK split not entered. Admin set HK total = {n}.', hkEnter: 'Enter Morning / Evening split',
   statusOnly: 'status only', hrSet: '{n}-hr set', notPunchedN: '{n} not punched', notOnDuty: '{n} not on duty',
@@ -16,7 +16,7 @@ Object.assign(I18N.en, {
   punchForStaffT: 'Punch for staff', punchHelp: 'For staff without a phone. Counts as “punched by store” and is shown to the AM.',
   openPunch: '+ Punch for staff (no phone)', whoIn: 'Who is in now', byStoreToday: 'Punched by store today', noneYet: 'None yet',
   lastPunch: 'last punch', notToday: 'not punched today',
-  hkTitle: 'HK split', hkHelp: 'Admin uploads only the total Housekeeping count for your store. You decide how many come in the Morning and how many in the Evening. Morning + Evening must equal the total.',
+  hkTitle: 'HK / SG count', hkHelp: 'Admin uploads only the total Housekeeping count for your store. You decide how many come in the Morning and how many in the Evening. Morning + Evening must equal the total (or the actual reporting count, if set above).',
   hkTotal: 'HK total (from Admin)', hkVendor: 'Vendor', effFrom: 'Effective from', saveSplit: 'Save split', hkCurrent: 'Current: Morning {m} + Evening {e} = {t}',
   hkNotYet: 'Not entered yet · your store shows in “HK split not set” on AM / Admin dashboards', hkSum: 'Morning + Evening = {s} of {t}',
   hkNoTotal: 'No Housekeeping total is set for your store yet. Ask Admin (Manpower Master → HK).', hkSaved: 'HK split saved',
@@ -33,7 +33,7 @@ Object.assign(I18N.en, {
   refresh: 'Refresh',
 });
 Object.assign(I18N.hi, {
-  tabToday: 'आज', tabPunch: 'पंच', tabHk: 'HK बंटवारा', tabReq: 'अनुरोध', tabStm: 'स्टेटमेंट', tabQr: 'QR',
+  tabToday: 'आज', tabPunch: 'पंच', tabHk: 'HK / SG संख्या', tabReq: 'अनुरोध', tabStm: 'स्टेटमेंट', tabQr: 'QR',
   live: 'लाइव', endOfDay: 'दिन खत्म', required: 'ज़रूरत', notPunchedK: 'पंच नहीं हुआ', monthToDate: 'महीने में अब तक',
   hkNotSet: 'HK बंटवारा नहीं भरा। एडमिन ने HK कुल = {n} रखा है।', hkEnter: 'सुबह / शाम बंटवारा भरें',
   statusOnly: 'सिर्फ़ स्टेटस', hrSet: '{n} घंटे सेट', notPunchedN: '{n} ने पंच नहीं किया', notOnDuty: '{n} ड्यूटी पर नहीं',
@@ -43,7 +43,7 @@ Object.assign(I18N.hi, {
   punchForStaffT: 'स्टाफ़ का पंच', punchHelp: 'जिनके पास फ़ोन नहीं है उनके लिए। यह “स्टोर से पंच” गिना जाता है और AM को दिखता है।',
   openPunch: '+ स्टाफ़ का पंच करें (बिना फ़ोन)', whoIn: 'अभी कौन अंदर है', byStoreToday: 'आज स्टोर से पंच', noneYet: 'अभी कोई नहीं',
   lastPunch: 'आखिरी पंच', notToday: 'आज पंच नहीं',
-  hkTitle: 'HK बंटवारा', hkHelp: 'एडमिन आपके स्टोर के लिए सिर्फ़ हाउसकीपिंग की कुल संख्या डालता है। सुबह और शाम में कितने आएंगे यह आप तय करें। सुबह + शाम = कुल होना चाहिए।',
+  hkTitle: 'HK / SG संख्या', hkHelp: 'एडमिन आपके स्टोर के लिए सिर्फ़ हाउसकीपिंग की कुल संख्या डालता है। सुबह और शाम में कितने आएंगे यह आप तय करें। सुबह + शाम = कुल होना चाहिए।',
   hkTotal: 'HK कुल (एडमिन से)', hkVendor: 'वेंडर', effFrom: 'कब से लागू', saveSplit: 'बंटवारा सेव करें', hkCurrent: 'अभी: सुबह {m} + शाम {e} = {t}',
   hkNotYet: 'अभी नहीं भरा · आपका स्टोर AM / एडमिन डैशबोर्ड पर “HK split not set” में दिखेगा', hkSum: 'सुबह + शाम = {t} में से {s}',
   hkNoTotal: 'आपके स्टोर के लिए हाउसकीपिंग कुल अभी सेट नहीं है। एडमिन से पूछें।', hkSaved: 'HK बंटवारा सेव हुआ',

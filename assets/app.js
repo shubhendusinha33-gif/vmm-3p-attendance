@@ -301,7 +301,15 @@ function errText(e) {
     READ_ONLY: 'View mode is read-only. Nothing was changed.', WEAK_PIN: t('weakPin'), WRONG_OLD_PIN: t('wrongOldPin'),
     ADMIN_SETUP: t('adminSetup'), BAD_CODE: t('badCode'), CODE_EXPIRED: t('codeExpired'), STORE_NOT_FOUND: t('storeNotFound'),
     ALREADY_PENDING: t('alreadyPending'), EDIT_TYPE_OFF: t('editTypeOff'), REASON_REQUIRED: t('reasonRequired'), POST_TAKEN: t('postTaken', { post: '', store: '', name: '', emp: '' }),
-    EMP_ELSEWHERE: t('empElsewhere', { where: '—' }), ALREADY_DECIDED: 'Already decided by someone else.', DUPLICATE_NAME: 'Another associate in this store already has this name.', ADMIN_PROTECTED: 'Admin PIN cannot be reset here. Admin changes it with Change PIN.', FORBIDDEN: t('forbidden') })[e] || String(e || 'Error');
+    EMP_ELSEWHERE: t('empElsewhere', { where: '—' }), ALREADY_DECIDED: 'Already decided by someone else.', DUPLICATE_NAME: 'Another associate in this store already has this name.', ADMIN_PROTECTED: 'Admin PIN cannot be reset here. Admin changes it with Change PIN.', FORBIDDEN: t('forbidden'),
+    SM_ASM_ONLY: lang() === 'hi' ? 'यह सिर्फ़ SM / ASM कर सकते हैं।' : 'Only SM / ASM can do this.',
+    NOTE_REQUIRED: 'Remark is mandatory to reject.', TOO_OLD: lang() === 'hi' ? 'सिर्फ़ आज और कल के पंच बदले जा सकते हैं।' : 'Only today and yesterday can be changed.',
+    SELFIE_PUNCH: lang() === 'hi' ? 'ऑडिट सेल्फी वाला पंच डिलीट नहीं हो सकता।' : 'A punch with the audit selfie cannot be deleted.',
+    ONLY_PUNCH: lang() === 'hi' ? 'उस दिन का अकेला पंच डिलीट नहीं हो सकता।' : 'The only punch of the day cannot be deleted.',
+    PUNCHED_THAT_DAY: lang() === 'hi' ? 'उस दिन IN पंच हो चुका है, वीक ऑफ नहीं लग सकता।' : 'Already punched IN that day, so no week off.',
+    ALREADY_OFF: lang() === 'hi' ? 'उस दिन पहले से छुट्टी लगी है।' : 'Already off on that day.',
+    WO_IN_7_DAYS: lang() === 'hi' ? '7 दिन में एक ही वीक ऑफ लग सकता है।' : 'Only 1 week off in any 7 days.',
+    BAD_DATE: lang() === 'hi' ? 'तारीख सही नहीं है।' : 'Date is not allowed.', BAD_VALUE: lang() === 'hi' ? 'संख्या सही नहीं है।' : 'Number is not valid.' })[e] || String(e || 'Error');
 }
 function credit() { return `${CONFIG.version} · Designed &amp; Developed by Shubhendu Sinha · VMM Central Ops &amp; BI`; }
 

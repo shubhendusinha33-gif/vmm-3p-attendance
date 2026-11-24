@@ -149,18 +149,19 @@ function paintDay() {
     <div class="cols2">${order.map((c) => {
       const v = by[c], sec = c === 'SEC', ppl = r.present.filter((a) => a.c === c), miss = Math.max(v.req - v.p, 0);
       const vend = [...v.vendors].join(', ');
-      return `<div class="card"><div class="hd"><div><h2>${esc(cn(c))}</h2><div class="sub">${vend ? esc(t('vendor')) + ' ' + esc(vend) : ''}${sec ? ` · ${esc(t('hrSet', { n: sgSet }))} · ${esc(t('statusOnly'))}` : ''}${v.co ? ` · ${esc(t('compoffShort'))} ${v.co}` : ''}</div></div><span class="tg ${tg(v.p, v.req)}">${v.p} / ${v.req}</span></div>
+      const act = r.actual && r.actual[c] != null ? Number(r.actual[c]) : null, bud = v.req + v.co, xs = act != null ? act - bud : 0;
+      return `<div class="card"><div class="hd"><div><h2>${esc(cn(c))}</h2><div class="sub">${vend ? esc(t('vendor')) + ' ' + esc(vend) : ''}${sec ? ` · ${esc(t('hrSet', { n: sgSet }))} · ${esc(t('statusOnly'))}` : ''}${v.co ? ` · ${esc(t('compoffShort'))} ${v.co}` : ''}${act != null ? ` · ${esc(L('Reporting', 'रिपोर्टिंग'))} <b>${act}</b>${xs ? ` <span class="tg ${xs > 0 ? 'amb' : 'red'}">${xs > 0 ? '+' : ''}${xs}</span>` : ''}` : ''}</div></div><span class="tg ${tg(v.p, v.req)}">${v.p} / ${v.req}</span></div>
         ${v.brands.length ? `<div class="brs">${v.brands.map((s) => `<span class="tg ${tg(s.p, s.req)}">${esc(s.brand)} ${s.p}/${s.req}</span>`).join('')}</div>` : ''}
         <div class="dlist">${sec
-          ? ppl.map((g) => `<div class="post"><b>${esc(g.name)}</b><span class="acts">${SG_TAG(g.st)}${past && g.st === 'MP' ? `<button class="btn s sm" data-a="sgreq" data-id="${g.id}">${esc(t('misPunchReq'))}</button>` : ''}</span></div>`).join('')
+          ? ppl.map((g) => `<div class="post"><b>${esc(g.name)}</b><span class="acts">${SG_TAG(g.st)}${past && g.st === 'MP' ? `<button class="btn s sm" data-a="sgreq" data-id="${g.id}">${esc(t('misPunchReq'))}</button>` : ''}${bsTag(g)}${r.mgr ? moreBtn(g) : ''}</span></div>`).join('')
           : ppl.map((a) => `<div class="post"><span><b>${esc(a.name)}</b>${a.brand ? ` <small>${esc(a.brand)}</small>` : ''}<br><small>IN ${esc(a.first_in || '—')}${a.last_out ? ' · OUT ' + esc(a.last_out) : a.out_done ? ' · OUT ✓' : ' · ' + esc(t('stillIn'))}${a.hours ? ' · ' + a.hours + ' h' : ''}</small>${(a.src || []).length ? `<br>${a.src.map((p) => `<small style="color:var(--mut)">${esc(p.k)}</small> ${punchSrc(p, true)}`).join(' ')}` : a.via_mod ? ' · ' + esc(t('punchedByStore')) : ''}</span>
               <span class="acts">${a.photo === 'done' ? `${a.live === 'pass' ? `<span class="tg ok">${esc(t('liveOk'))}</span> ` : ''}<button class="btn ghost sm" style="padding:2px 6px" title="View selfie" data-selfie="${esc(a.id)}|${esc(date)}">📷</button>` : a.photo === 'pending' ? '<span class="tg amb">📷?</span>' : ''}
-              ${editTypes.includes('staff') ? `<button class="btn s sm" data-a="staff" data-id="${a.id}" title="${esc(t('staffReq'))}" aria-label="${esc(t('staffReq'))}">✎</button>` : ''}</span></div>`).join('')}
+              ${bsTag(a)}${r.mgr ? moreBtn(a) : editTypes.includes('staff') ? `<button class="btn s sm" data-a="staff" data-id="${a.id}" title="${esc(t('staffReq'))}" aria-label="${esc(t('staffReq'))}">✎</button>` : ''}</span></div>`).join('')}
           ${miss ? `<div class="post miss"><b>${esc(t(sec ? 'notOnDuty' : 'notPunchedN', { n: miss }))}</b>${!sec && !past ? `<button class="btn sm" data-a="go" data-to="pn">${esc(t('punchForStaffT'))}</button>` : ''}</div>` : ''}
           ${!ppl.length && !miss ? '<div class="sub">—</div>' : ''}</div></div>`;
     }).join('') || `<div class="card"><div class="empty">—</div></div>`}</div>
     ${r.regulars_missing.length ? `<div class="card"><h2>${esc(t('regularsMissing'))}</h2><div class="dlist">${r.regulars_missing.map((a) => `<div class="post"><span><b>${esc(a.name)}</b> <small>· ${esc(cn(a.c))}${a.brand ? ' ' + esc(a.brand) : ''}</small><br><small>${esc(t('cameDays', { n: a.days }))}</small></span>
-        ${editTypes.includes('compoff') ? `<button class="btn s sm" data-a="compoff" data-id="${a.id}">${esc(t('compoffReq'))}</button>` : ''}</div>`).join('')}</div></div>` : ''}`;
+        <span class="acts">${r.mgr && date >= addDaysY(todayIST(), -1) ? `<button class="btn s sm" data-a="wo" data-id="${a.id}">🌙 ${esc(L('Week off', 'वीक ऑफ'))}</button>` : ''}${editTypes.includes('compoff') ? `<button class="btn s sm" data-a="compoff" data-id="${a.id}">${esc(t('compoffReq'))}</button>` : ''}</span></div>`).join('')}</div></div>` : ''}`;
 }
 async function loadMtdPct() {
   const r = await rpc('store_range', { p_token: me.token, p_store: me.store_code, p_from: monthStart(todayIST()), p_to: todayIST() });
@@ -224,19 +225,21 @@ async function loadHk() {
   return r;
 }
 async function renderHk() {
-  W().innerHTML = `<h1 class="pt">${esc(t('hkTitle'))} · ${esc(me.store_code)}</h1><div id="hkBody"><div class="spin"></div></div>`;
+  W().innerHTML = `<h1 class="pt">${esc(t('hkTitle'))} · ${esc(me.store_code)}</h1><div id="actBody"></div><div id="hkBody"><div class="spin"></div></div>`;
+  loadActual();
   const r = await loadHk();
   if (tab !== 'hks' || !$('#hkBody')) return;
   if (!r || !r.ok) { $('#hkBody').innerHTML = `<div class="note r">${esc(err(r && r.error))}</div>`; return; }
   if (!r.has_hk) { $('#hkBody').innerHTML = `<div class="card"><div class="note">${esc(t('hkNoTotal'))}</div></div>`; return; }
   const today = todayIST(), minD = ymd(new Date(parseYmd(today).getTime() - 31 * 864e5)), maxD = ymd(new Date(parseYmd(today).getTime() + 90 * 864e5));
   $('#hkBody').innerHTML = `<div class="card"><div class="sub">${esc(t('hkHelp'))}</div>
-    <div class="kpis k4" style="margin-top:10px"><div class="kpi"><span class="l">${esc(t('hkTotal'))}</span><span class="v">${r.total}</span>${r.vendor ? `<span class="d">${esc(t('hkVendor'))} ${esc(r.vendor)}</span>` : ''}</div>
+    <div class="kpis k4" style="margin-top:10px"><div class="kpi"><span class="l">${esc(t('hkTotal'))}</span><span class="v">${r.budget != null ? r.budget : r.total}${r.actual != null && r.actual !== r.budget ? ` <small style="font-size:13px;color:var(--amb)">· ${esc(L('reporting', 'रिपोर्टिंग'))} ${r.actual}</small>` : ''}</span>${r.vendor ? `<span class="d">${esc(t('hkVendor'))} ${esc(r.vendor)}</span>` : ''}</div>
       <div class="kpi"><span class="l">${esc(t('morning'))} / ${esc(t('evening'))}</span><span class="v">${r.set ? `${r.morning} / ${r.evening}` : '—'}</span>${r.set && r.effective_from ? `<span class="d">${esc(t('effFrom'))} ${fmtDate(r.effective_from)}</span>` : ''}</div></div>
     <div class="frm" style="margin-top:10px"><label>${esc(t('morning'))}<input class="f" type="number" inputmode="numeric" min="0" max="${r.total}" id="hkM" value="${r.set ? r.morning : ''}"></label>
       <label>${esc(t('evening'))}<input class="f" type="number" inputmode="numeric" min="0" max="${r.total}" id="hkE" value="${r.set ? r.evening : ''}"></label>
       <label>${esc(t('effFrom'))}<input class="f" type="date" id="hkD" value="${today}" min="${minD}" max="${maxD}"></label>
       <label>&nbsp;<button class="btn" data-a="hksave" id="hkSave">${esc(t('saveSplit'))}</button></label></div>
+    ${r.actual != null && r.actual !== r.budget ? `<div class="sub" style="margin-top:8px">${esc(L(`Must add up to ${r.total} (actual reporting). Budget ${r.budget}.`, `कुल ${r.total} होना चाहिए (असल रिपोर्टिंग)। बजट ${r.budget}।`))}</div>` : ''}
     <div id="hkSum" class="sumln" style="margin-top:8px"></div>
     <div id="hkMsg" class="sub" style="margin-top:6px">${r.set ? esc(t('hkCurrent', { m: r.morning, e: r.evening, t: r.total })) : `<span style="color:var(--amb);font-weight:700">${esc(t('hkNotYet'))}</span>`}</div>
     <div class="note r" id="hkErr" hidden style="margin-top:8px"></div></div>
@@ -262,6 +265,7 @@ async function hkSave() {
 
 /* ---------------- Requests ---------------- */
 const KINDS = { compoff: ['kCompoff', 'am'], staff: ['kStaff', 'am'], sg_mispunch: ['kSgMis', 'rlpo'], sg_edit: ['kSgEdit', 'rlpo'] };
+const DIRECT_KINDS = { week_off: ['Week off', 'वीक ऑफ'], break_shift: ['Break shift', 'ब्रेक शिफ्ट'], punch_delete: ['Punch deleted', 'पंच डिलीट'] };
 async function getAssoc() {
   if (assoc) return assoc;
   const r = await rpc('associates_list', { p_token: me.token, p_store: me.store_code });
@@ -276,6 +280,7 @@ async function loadCr() {
 }
 function paintBadge() { if (sh) sh.setBadge('rq', crs.filter((x) => x.status === 'pending').length); }
 function kindsAvail() { return Object.keys(KINDS).filter((k) => k.startsWith('sg_') || editTypes.includes(k)); }
+const kindLbl = (k) => (DIRECT_KINDS[k] ? L(...DIRECT_KINDS[k]) : t((KINDS[k] || [k])[0]));
 async function renderReq() {
   W().innerHTML = `<h1 class="pt">${esc(t('reqTitle'))}</h1><div id="smAp"></div><div class="card"><div class="sub" style="margin-bottom:8px">${esc(t('reqHelp'))}</div><div id="rqForm"><div class="spin"></div></div></div>
     <div class="card"><div class="hd"><h2>${esc(t('myRequests'))}</h2></div><div class="seg" id="rqSeg" style="margin-top:8px"></div><div class="dlist" id="rqList"><div class="spin"></div></div></div>`;
@@ -314,9 +319,11 @@ function paintReqList() {
     const p = x.payload || {}, sg = x.group === 'sg' || /^sg_/.test(x.kind);
     const det = x.kind === 'staff' && p.new ? `${esc((p.old || {}).name || '')} → <b>${esc(p.new.name || '')}</b>${p.new.vendor ? ' · ' + esc(p.new.vendor) : ''}${p.new.brand ? ' · ' + esc(p.new.brand) : ''}`
       : sg ? [p.missing ? `${esc(t('missingPunch'))}: ${esc(p.missing)}` : '', p.in ? 'IN ' + esc(p.in) : '', p.out ? 'OUT ' + esc(p.out) : ''].filter(Boolean).join(' · ') : '';
-    return `<div class="reqc"><div class="m"><b>${esc(t((KINDS[x.kind] || [x.kind])[0]))}</b> · ${esc(x.assoc || '')}${x.date ? ' · ' + fmtDay(x.date) : ''}
+    const dr = p.direct ? ` <span class="tg info">${esc(L('Direct · no approval', 'सीधा · बिना अप्रूवल'))}</span>` : '';
+    const det2 = x.kind === 'punch_delete' ? `${esc(p.kind || '')} ${esc(p.time || '')}${p.why ? ' · ' + esc(p.why) : ''}` : x.kind === 'break_shift' ? (p.on ? 'ON' : 'OFF') : x.kind === 'week_off' ? (p.on === false ? L('removed', 'हटाया') : '') : '';
+    return `<div class="reqc"><div class="m"><b>${esc(kindLbl(x.kind))}</b>${dr} · ${esc(x.assoc || '')}${x.date ? ' · ' + fmtDay(x.date) : ''}${det2 ? ' · ' + det2 : ''}
       <div class="sub">${esc(x.reason || '')}${det ? ' · ' + det : ''}</div>
-      <div class="sub">${esc(t(sg ? 'toRlpo' : 'toAm'))} · ${esc(x.at || '')}${x.status !== 'pending' && (x.decided_by || x.decided_by_emp) ? ` · ${esc(t('decidedBy', { who: x.decided_by || x.decided_by_emp }))}${x.decided_by_role ? ' (' + esc(roleLabel(x.decided_by_role)) + ')' : ''}${x.decided_at ? ' · ' + esc(x.decided_at) : ''}` : ''}</div>
+      <div class="sub">${p.direct ? esc([x.by_post, x.by_name || x.by].filter(Boolean).join(' ')) : esc(t(sg ? 'toRlpo' : 'toAm'))} · ${esc(x.at || '')}${x.status !== 'pending' && (x.decided_by || x.decided_by_emp) ? ` · ${esc(t('decidedBy', { who: x.decided_by || x.decided_by_emp }))}${x.decided_by_role ? ' (' + esc(roleLabel(x.decided_by_role)) + ')' : ''}${x.decided_at ? ' · ' + esc(x.decided_at) : ''}` : ''}</div>
       ${x.note ? `<div class="sub">${esc(t('remark'))}: <b>“${esc(x.note)}”</b></div>` : ''}</div>
       <div class="rt"><span class="tg ${st[x.status] || 'grey'}">${esc(t(lbl[x.status] || x.status))}</span>${x.decision ? SG_TAG(x.decision) : ''}</div></div>`;
   }).join('') || `<div class="sub">${esc(t('noRequests'))}</div>`;
@@ -389,6 +396,124 @@ function quickRequest(kind, a) {
   });
 }
 
+
+/* ---------------- v5.6: actual reporting count, SM / ASM direct actions ---------------- */
+const L = (en, hi) => (lang() === 'hi' ? hi : en);
+const addDaysY = (d, n) => ymd(new Date(parseYmd(d).getTime() + n * 864e5));
+const bsTag = (a) => (a.bs ? ` <span class="tg info">${esc(L('Break shift', 'ब्रेक शिफ्ट'))}${a.c !== 'SEC' && a.np != null ? ' · ' + a.np + '/4' : ''}</span>` : '');
+const moreBtn = (a) => `<button class="btn s sm" data-a="more" data-id="${a.id}" title="${esc(L('More', 'और'))}" aria-label="${esc(L('More actions', 'और विकल्प'))}" style="padding:4px 10px;font-size:16px;line-height:1">⋮</button>`;
+const rmkField = (req) => `<label class="lbl" style="font-size:12px;color:var(--mut);display:block;margin-top:8px">${esc(L(req ? 'Remark (mandatory)' : 'Remark (optional)', req ? 'रिमार्क (ज़रूरी)' : 'रिमार्क (ज़रूरी नहीं)'))}<textarea class="f" name="rmk" rows="2" maxlength="200" style="width:100%"></textarea></label>`;
+const directNote = () => `<p class="mini" style="margin:6px 0 0">${esc(L('No approval needed. Saved with your name, old → new, visible to AM / Admin.', 'अप्रूवल की ज़रूरत नहीं। आपके नाम के साथ सेव होगा (पुराना → नया), AM / Admin देख सकते हैं।'))}</p>`;
+async function directCall(md, btn, fn, args, okMsg) {
+  const e = md.querySelector('[data-e]'), rmk = md.querySelector('[name="rmk"]');
+  if (rmk && rmk.dataset.req === '1' && rmk.value.trim().length < 5) { e.hidden = false; e.textContent = L('Write a remark (min 5 letters).', 'रिमार्क लिखें (कम से कम 5 अक्षर)।'); rmk.focus(); return; }
+  btn.disabled = true;
+  const r = await rpc(fn, { p_token: me.token, ...args, p_remark: rmk ? rmk.value.trim() : null });
+  btn.disabled = false;
+  if (!r || !r.ok) { e.hidden = false; e.textContent = errText(r && r.error); return; }
+  md.close(); toast(okMsg); day = null; $('#tdBody') && ($('#tdBody').innerHTML = '<div class="spin"></div>'); loadDay(); loadCr();
+}
+function moreMenu(a) {
+  const past2 = date < addDaysY(todayIST(), -1);
+  const items = [['edit', '✏️', L('Edit name / brand / vendor', 'नाम / ब्रांड / वेंडर बदलें')],
+    !past2 && a.np !== 0 && a.c ? ['del', '🗑️', L('Delete duplicate punch', 'डुप्लिकेट पंच डिलीट करें')] : null,
+    ['bs', '⏸️', a.bs ? L('Break shift: turn OFF', 'ब्रेक शिफ्ट: बंद करें') : L('Break shift: turn ON (4 punches)', 'ब्रेक शिफ्ट: चालू करें (4 पंच)')],
+    ['wo', '🌙', L('Mark week off', 'वीक ऑफ लगाएं')]].filter(Boolean);
+  const md = modal(`<h3>${esc(a.name)} <small style="font-weight:400;color:var(--mut)">· ${esc(cn(a.c))}${a.brand ? ' · ' + esc(a.brand) : ''}</small></h3>
+    <div class="dlist">${items.map(([k, ic, l]) => `<button type="button" class="btn s" data-m="${k}" style="justify-content:flex-start;width:100%;text-align:left">${ic} ${esc(l)}</button>`).join('')}</div>
+    <div class="mx"><button type="button" class="btn s" data-close>✕</button></div>`);
+  md.addEventListener('click', (e) => { const b = e.target.closest('[data-m]'); if (!b) return; md.close();
+    ({ edit: editDialog, del: delDialog, bs: bsDialog, wo: woDialog })[b.dataset.m](a); });
+}
+function editDialog(a) {
+  const brands = (cats[a.c] && cats[a.c].brands) || [];
+  const md = modal(`<h3>✏️ ${esc(L('Edit staff details', 'स्टाफ डिटेल बदलें'))}</h3><div class="frm">
+    <label>${esc(t('yourName'))}<input class="f" name="nm" maxlength="40" value="${esc(a.name)}"></label>
+    <label>${esc(t('vendor'))}<input class="f" name="vd" maxlength="60" value="${esc(a.vendor || '')}"></label>
+    ${brands.length ? `<label>${esc(t('brand'))}<select class="f" name="br">${brands.map((x) => `<option ${x === a.brand ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>` : ''}</div>
+    ${rmkField(true)}${directNote()}<div class="note r" data-e hidden></div>
+    <div class="mx"><button type="button" class="btn s" data-close>✕</button><button type="button" class="btn" data-ok>${esc(L('Save', 'सेव करें'))}</button></div>`);
+  md.querySelector('[name="rmk"]').dataset.req = '1';
+  const q = (n) => md.querySelector(`[name="${n}"]`);
+  md.querySelector('[data-ok]').addEventListener('click', (e) => directCall(md, e.currentTarget, 'store_staff_edit',
+    { p_associate: Number(a.id), p_name: q('nm').value.trim(), p_vendor: q('vd').value.trim(), p_brand: q('br') ? q('br').value : null }, L('Saved', 'सेव हो गया')));
+}
+async function delDialog(a) {
+  const md = modal(`<h3>🗑️ ${esc(L('Delete duplicate punch', 'डुप्लिकेट पंच डिलीट'))}</h3><div class="sub">${esc(a.name)} · ${esc(fmtDay(date))}</div><div data-pl><div class="spin"></div></div>
+    <div class="mx"><button type="button" class="btn s" data-close>✕</button></div>`);
+  const r = await rpc('store_punches', { p_token: me.token, p_associate: Number(a.id), p_date: date });
+  const box = md.querySelector('[data-pl]'); if (!box) return;
+  if (!r || !r.ok) { box.innerHTML = `<div class="note r">${esc(errText(r && r.error))}</div>`; return; }
+  const rows = r.rows || [];
+  if (rows.length < 2) { box.innerHTML = `<div class="note w" style="margin-top:8px">${esc(L('Only one punch on this day. Nothing to delete.', 'इस दिन एक ही पंच है। डिलीट करने को कुछ नहीं।'))}</div>`; return; }
+  const why = [L('Double tap', 'दो बार दबा'), L('Wrong person', 'गलत व्यक्ति'), L('Other', 'अन्य')];
+  box.innerHTML = `<div class="dlist" style="margin-top:8px">${rows.map((p) => `<label class="post" style="cursor:${p.photo === 'none' ? 'pointer' : 'default'}"><span><input type="radio" name="pid" value="${p.id}" ${p.photo === 'none' ? '' : 'disabled'}> <b>${esc(p.k)}</b> ${esc(p.t)}${p.src === 'store' ? ` <small>· ${esc(t('punchedByStore'))}</small>` : ''}</span>${p.photo !== 'none' ? `<span class="tg info">📷 ${esc(L('audit selfie · keep', 'ऑडिट सेल्फी · रखें'))}</span>` : ''}</label>`).join('')}</div>
+    <div class="tagz" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${why.map((w, i) => `<button type="button" class="pill ${i ? '' : 'on'}" data-why="${esc(w)}">${esc(w)}</button>`).join('')}</div>
+    ${rmkField(true)}<p class="mini" style="margin:6px 0 0">${esc(L('Only today and yesterday. IN / OUT order is fixed automatically. Logged with your name.', 'सिर्फ़ आज और कल। IN / OUT क्रम अपने आप ठीक होगा। आपके नाम से लॉग होगा।'))}</p><div class="note r" data-e hidden></div>
+    <div class="mx" style="margin-top:8px"><button type="button" class="btn r" data-ok>${esc(L('Delete punch', 'पंच डिलीट करें'))}</button></div>`;
+  md.querySelector('[name="rmk"]').dataset.req = '1';
+  let w = why[0];
+  md.addEventListener('click', (e) => { const p = e.target.closest('[data-why]'); if (!p) return; w = p.dataset.why; md.querySelectorAll('[data-why]').forEach((x) => x.classList.toggle('on', x === p)); });
+  md.querySelector('[data-ok]').addEventListener('click', (e) => {
+    const sel = md.querySelector('[name="pid"]:checked');
+    if (!sel) { const x = md.querySelector('[data-e]'); x.hidden = false; x.textContent = L('Pick the punch to delete.', 'डिलीट करने वाला पंच चुनें।'); return; }
+    directCall(md, e.currentTarget, 'store_punch_delete', { p_punch: Number(sel.value), p_reason: w }, L('Punch deleted', 'पंच डिलीट हो गया'));
+  });
+}
+function bsDialog(a) {
+  const on = !a.bs;
+  const md = modal(`<h3>⏸️ ${esc(L('Break shift', 'ब्रेक शिफ्ट'))} · ${esc(a.name)}</h3>
+    <div class="note ${on ? 'i' : 'w'}">${esc(on ? L('Turn ON from today. 4 punches needed every day (IN · OUT · IN · OUT). 4 = Present, fewer than 4 = Half day.', 'आज से चालू। हर दिन 4 पंच ज़रूरी (IN · OUT · IN · OUT)। 4 = Present, 4 से कम = Half day।')
+      : L('Turn OFF. From today normal 2 punches.', 'बंद करें। आज से सामान्य 2 पंच।'))}</div>
+    ${rmkField(true)}${directNote()}<div class="note r" data-e hidden></div>
+    <div class="mx"><button type="button" class="btn s" data-close>✕</button><button type="button" class="btn" data-ok>${esc(on ? L('Turn ON', 'चालू करें') : L('Turn OFF', 'बंद करें'))}</button></div>`);
+  md.querySelector('[name="rmk"]').dataset.req = '1';
+  md.querySelector('[data-ok]').addEventListener('click', (e) => directCall(md, e.currentTarget, 'store_break_shift', { p_associate: Number(a.id), p_on: on }, on ? L('Break shift ON', 'ब्रेक शिफ्ट चालू') : L('Break shift OFF', 'ब्रेक शिफ्ट बंद')));
+}
+function woDialog(a) {
+  const today = todayIST(), opts = [];
+  for (let i = -1; i <= 7; i++) { const d = addDaysY(today, i); opts.push(`<option value="${d}" ${d === (date > today ? today : date >= addDaysY(today, -1) ? date : today) ? 'selected' : ''}>${esc(fmtDay(d))}${i === 0 ? ' · ' + L('today', 'आज') : ''}</option>`); }
+  const md = modal(`<h3>🌙 ${esc(L('Mark week off', 'वीक ऑफ लगाएं'))} · ${esc(a.name)}</h3>
+    <label class="lbl" style="font-size:12px;color:var(--mut)">${esc(t('date'))}<select class="f" name="d" style="width:100%">${opts.join('')}</select></label>
+    <p class="mini" style="margin:6px 0 0">${esc(L('No approval needed. Max 1 week off in any 7 days. Not allowed if already punched IN that day.', 'अप्रूवल की ज़रूरत नहीं। 7 दिन में 1 वीक ऑफ। उस दिन IN पंच हुआ हो तो नहीं।'))}</p>
+    ${rmkField(false)}<div class="note r" data-e hidden></div>
+    <div class="mx"><button type="button" class="btn s" data-close>✕</button><button type="button" class="btn" data-ok>${esc(L('Mark WO', 'WO लगाएं'))}</button></div>`);
+  md.querySelector('[data-ok]').addEventListener('click', (e) => directCall(md, e.currentTarget, 'store_week_off', { p_associate: Number(a.id), p_date: md.querySelector('[name="d"]').value, p_on: true }, L('Week off marked', 'वीक ऑफ लग गया')));
+}
+
+/* actual reporting vs budget (HK + Security) — set once, change only when needed */
+let act = null;
+async function loadActual() {
+  const r = await rpc('actual_get', { p_token: me.token });
+  const el = $('#actBody'); if (!el) return;
+  if (!r || !r.ok) { el.innerHTML = ''; return; }
+  act = r;
+  if (!r.rows.length) { el.innerHTML = ''; return; }
+  const lastBy = (c) => r.history.find((h) => h.c === c);
+  el.innerHTML = `<div class="card"><h2>${esc(L('Staff reporting vs budget', 'असल रिपोर्टिंग बनाम बजट'))}</h2>
+    <div class="sub" style="margin:4px 0 8px">${esc(L('Set once. Change only when the number of staff coming changes. Attendance % stays on budget.', 'एक बार भरें। स्टाफ की संख्या बदले तभी बदलें। अटेंडेंस % बजट पर ही रहेगा।'))}</div>
+    <div class="dlist">${r.rows.map((x) => { const lb = lastBy(x.c), v = x.actual != null ? x.actual : x.budget, xs = x.actual != null ? x.actual - x.budget : 0;
+      return `<div class="post"><span><b>${esc(cn(x.c))}</b> <small>· ${esc(L('Budget', 'बजट'))} ${x.budget}${x.vendor ? ' · ' + esc(x.vendor) : ''}</small>${xs ? ` <span class="tg ${xs > 0 ? 'amb' : 'red'}">${xs > 0 ? '+' : ''}${xs}</span>` : ''}
+        <br><small>${lb ? esc(L('Last changed', 'पिछला बदलाव')) + ' ' + esc(lb.at) + ' · ' + esc(lb.by) + (lb.remark ? ' · “' + esc(lb.remark) + '”' : '') : esc(L('Not set yet (= budget)', 'अभी नहीं भरा (= बजट)'))}</small></span>
+        <input class="f" type="number" inputmode="numeric" min="0" max="99" data-act="${esc(x.c)}" value="${v}" style="width:70px;text-align:center;font-size:17px;font-weight:700" ${r.can_edit ? '' : 'disabled'}></div>`; }).join('')}</div>
+    ${r.can_edit ? `<label class="lbl" style="font-size:12px;color:var(--mut);display:block;margin-top:8px">${esc(L('Remark (needed when you change it)', 'रिमार्क (बदलने पर ज़रूरी)'))}<input class="f" id="actRm" maxlength="200" style="width:100%"></label>
+      <div class="note r" id="actErr" hidden style="margin-top:8px"></div><button class="btn" data-a="actsave" style="margin-top:8px">${esc(L('Save', 'सेव करें'))}</button>` : `<div class="sub" style="margin-top:6px">${esc(L('Only SM / ASM can change this.', 'सिर्फ़ SM / ASM बदल सकते हैं।'))}</div>`}</div>`;
+}
+async function actSave(btn) {
+  const ch = [...document.querySelectorAll('[data-act]')].map((i) => ({ c: i.dataset.act, n: Number(i.value) }))
+    .filter((x) => { const row = act.rows.find((y) => y.c === x.c); return row && x.n !== (row.actual != null ? row.actual : row.budget); });
+  const e = $('#actErr'), rm = $('#actRm').value.trim();
+  if (!ch.length) { e.hidden = false; e.textContent = L('Nothing changed.', 'कुछ नहीं बदला।'); return; }
+  if (ch.some((x) => !Number.isInteger(x.n) || x.n < 0 || x.n > 99)) { e.hidden = false; e.textContent = errText('BAD_VALUE'); return; }
+  if (rm.length < 5) { e.hidden = false; e.textContent = L('Write a remark (min 5 letters).', 'रिमार्क लिखें (कम से कम 5 अक्षर)।'); $('#actRm').focus(); return; }
+  btn.disabled = true;
+  for (const x of ch) {
+    const r = await rpc('actual_set', { p_token: me.token, p_cat: x.c, p_n: x.n, p_remark: rm });
+    if (!r || !r.ok) { btn.disabled = false; e.hidden = false; e.textContent = errText(r && r.error); return; }
+  }
+  toast(L('Saved', 'सेव हो गया')); day = null; renderHk();
+}
+
 /* ---------------- events ---------------- */
 function wire() {
   document.addEventListener('click', (e) => {
@@ -402,6 +527,9 @@ function wire() {
     else if (a === 'stm') location.href = `statement.html?a=${b.dataset.id}&from=${mtd.from}&to=${mtd.to}`;
     else if (a === 'staff' || a === 'compoff') { const x = find(b.dataset.id); if (x) quickRequest(a, x); }
     else if (a === 'sgreq') { const x = find(b.dataset.id); if (x) quickRequest('sg_mispunch', x); }
+    else if (a === 'more') { const x = find(b.dataset.id); if (x) moreMenu(x); }
+    else if (a === 'wo') { const x = find(b.dataset.id); if (x) woDialog(x); }
+    else if (a === 'actsave') actSave(b);
     else if (a === 'pncat') { pnCat = b.dataset.c; $$('#pnCats .pill').forEach((p) => p.classList.toggle('on', p === b)); $('#pnRoster').innerHTML = '<div class="spin"></div>'; loadRoster(); }
     else if (a === 'hksave') hkSave();
     else if (a === 'rqsend') rqSend();
@@ -433,7 +561,7 @@ function hkGate(h) {
     root.innerHTML = `<div class="rg"><div class="rgh"><div><b>${esc(me.store_code)} · ${esc(me.store_name || '')}</b><small>${esc(me.name || '')}${me.post ? ' (' + esc(me.post) + ')' : ''} · ${esc(fmtDay(todayIST()))}</small></div>
       <button type="button" class="btn s sm" id="hgOut">${esc(t('logout') || 'Logout')}</button></div>
       <div class="rgb"><div class="note w" style="font-weight:600">🧹 Confirm today’s Housekeeping Morning / Evening · आज की HK सुबह / शाम संख्या भरें<br>
-        <span style="font-weight:400">Total HK required: <b>${h.total}</b>${h.vendor ? ' · ' + esc(h.vendor) : ''}${h.set ? ` · last saved ${h.morning} / ${h.evening}` : ''}</span></div>
+        <span style="font-weight:400">${h.actual != null && h.actual !== h.budget ? `HK reporting: <b>${h.total}</b> (budget ${h.budget})` : `Total HK required: <b>${h.total}</b>`}${h.vendor ? ' · ' + esc(h.vendor) : ''}${h.set ? ` · last saved ${h.morning} / ${h.evening}` : ''}</span></div>
       <div class="frm" style="margin-top:10px"><label>${esc(t('morning'))}<input class="f" type="number" inputmode="numeric" min="0" max="${h.total}" id="hgM" value="${h.set ? h.morning : ''}"></label>
         <label>${esc(t('evening'))}<input class="f" type="number" inputmode="numeric" min="0" max="${h.total}" id="hgE" value="${h.set ? h.evening : ''}"></label></div>
       <div id="hgSum" class="sumln" style="margin-top:8px"></div><div class="note r" id="hgErr" hidden style="margin-top:8px"></div>

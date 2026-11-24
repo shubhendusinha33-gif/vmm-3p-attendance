@@ -306,6 +306,11 @@ async function doPunch(fromMe) {
         : (hi ? `यह फ़ोन स्टोर ${home} में रजिस्टर है, यहाँ पंच नहीं हो सकता (कोशिश ${r.tries} / 3)। हर कोशिश रिकॉर्ड होती है।` : `This phone is registered at store ${home}. It cannot punch at this store (try ${r.tries} of 3). Every try is recorded.`);
       return err(msg, errEl);
     }
+    if (r && r.error === 'SELFIE_DUE' && r.photo_token) {   // v5.6: pending random selfie (10% audit) must be taken before the next punch
+      punchRes = { ok: true, name: r.name, code: r.code, kind: r.kind, time: r.time, shift: r.shift, photo_token: r.photo_token, photo_required: true, resumed: true, cat: c, vendor: v, brand: b };
+      err(lang() === 'hi' ? `पिछले पंच (${r.kind} ${r.time}) की सेल्फी बाकी है। पहले सेल्फी लें, फिर पंच करें।` : `Selfie for your last punch (${r.kind} ${r.time}) is pending. Take it first, then punch again.`, errEl);
+      Cam.open(); return;
+    }
     if (r && (r.error === 'OTHER_PHONE' || r.error === 'PHONE_IN_USE') && fromMe) memSet(null);
     return err(errText(r && r.error), errEl);
   }
@@ -329,6 +334,8 @@ function loadFaceApi() {
   }
   return loadFaceApi.p;
 }
+// leaving the page while the audit selfie is open: warn (the next punch is blocked until it is taken anyway)
+window.addEventListener('beforeunload', (e) => { if (Cam.ov) { e.preventDefault(); e.returnValue = ''; } });
 const Cam = {
   ov: null, stop: null, run: 0, result: null, shot: null, ready: false, sawFace: false,
   el(s) { return this.ov.querySelector(s); },
@@ -443,6 +450,7 @@ const Cam = {
       this.el('[data-c="fail"]').hidden = false; return;
     }
     punchRes.photoKB = (this.shot.bytes / 1024).toFixed(1); punchRes.live = res;
+    if (punchRes.resumed) { this.close(); punchRes = null; toast(lang() === 'hi' ? 'सेल्फी सेव हो गई। अब पंच करें।' : 'Selfie saved. Now punch again.'); return; }
     this.close(); showDone();
   },
 };
@@ -451,6 +459,7 @@ function showDone() {
   const r = punchRes;
   $('#doneTitle').textContent = t('punchSaved', { k: r.kind });
   $('#doneSub').textContent = [r.name, catName(r.cat), r.vendor, r.brand, r.time, r.shift === 'M' ? t('morning') : t('evening')].filter(Boolean).join(' · ');
+  if (r.night) $('#doneSub').textContent += ' · ' + (lang() === 'hi' ? `कल (${fmtDay(r.work_date)}) की नाइट शिफ्ट का OUT` : `OUT of night shift ${fmtDay(r.work_date)}`);
   const bits = [];
   if (r.photoKB) bits.push(`📷 ${r.live === 'pass' ? t('liveOk') + ' · ' : r.live === 'noface' ? t('liveNo') + ' · ' : ''}${t('selfieKB', { n: r.photoKB })}`);
   bits.push(r.dist_m != null ? '📍 ' + t('insideM', { d: r.dist_m }) : (ctx.test_mode ? t('testMode') : '📍 —'));
