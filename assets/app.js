@@ -309,6 +309,7 @@ function errText(e) {
     PUNCHED_THAT_DAY: lang() === 'hi' ? 'उस दिन IN पंच हो चुका है, वीक ऑफ नहीं लग सकता।' : 'Already punched IN that day, so no week off.',
     ALREADY_OFF: lang() === 'hi' ? 'उस दिन पहले से छुट्टी लगी है।' : 'Already off on that day.',
     WO_IN_7_DAYS: lang() === 'hi' ? '7 दिन में एक ही वीक ऑफ लग सकता है।' : 'Only 1 week off in any 7 days.',
+    NO_PHONE_LINK: lang() === 'hi' ? 'इस व्यक्ति से कोई फ़ोन जुड़ा नहीं है, वह अपने फ़ोन से सीधे पंच कर सकता है।' : 'No phone is linked to this person. They can punch from their own phone directly.',
     BAD_DATE: lang() === 'hi' ? 'तारीख सही नहीं है।' : 'Date is not allowed.', BAD_VALUE: lang() === 'hi' ? 'संख्या सही नहीं है।' : 'Number is not valid.' })[e] || String(e || 'Error');
 }
 function credit() { return `${CONFIG.version} · Designed &amp; Developed by Shubhendu Sinha · VMM Central Ops &amp; BI`; }
