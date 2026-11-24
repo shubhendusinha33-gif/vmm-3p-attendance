@@ -74,7 +74,7 @@
         <div class="lin" id="empWrap"><span id="empIc"></span><input type="text" id="emp" autocomplete="username"></div>
         <div class="row2" data-for="store">
           <div><label class="lb" for="post" data-t="post"></label><select class="lsel" id="post"></select></div>
-          <div><label class="lb" for="storeCode" data-t="storeCode"></label><div class="lin"><span id="stIc"></span><input type="text" id="storeCode" maxlength="4" placeholder="HY10" style="text-transform:uppercase"></div></div>
+          <div><label class="lb" for="storeCode" data-t="storeCode"></label><div class="lin"><span id="stIc"></span><input type="text" id="storeCode" maxlength="8" placeholder="HY10" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase"></div></div>
         </div>
         <div data-for="hodept" hidden><label class="lb" for="dept" data-t="department"></label><select class="lsel" id="dept"><option value="" data-t="selectDept"></option></select></div>
         <label class="lb" for="capIn" data-t="capLbl"></label>
@@ -272,7 +272,7 @@ function ident() {
     p_role: role,
     p_emp: role === 'store' ? raw : (mailOnly(role) || raw.includes('@') ? raw.toLowerCase() : raw),
     p_post: role === 'store' ? $('#post').value : null,
-    p_store: role === 'store' ? $('#storeCode').value.trim().toUpperCase() : null,
+    p_store: role === 'store' ? $('#storeCode').value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4) : null,
     p_dept: role === 'hodept' ? (Number($('#dept').value) || null) : null,
   };
 }
@@ -492,7 +492,11 @@ async function doSave() {
   $('#dots').addEventListener('click', (e) => { const b = e.target.closest('[data-hs]'); if (b) { goSlide(Number(b.dataset.hs)); startSlides(); } });
   $('#capNew').addEventListener('click', () => { capNew(); $('#capIn').focus(); });
   $('#capIn').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
-  $('#storeCode').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase(); });
+  // store code: never rewrite the box while the phone keyboard is still composing (Android lost characters / blocked digits)
+  const stFix = (el) => { const v = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4); if (v !== el.value) el.value = v; };
+  $('#storeCode').addEventListener('input', (e) => { if (!e.isComposing) stFix(e.target); });
+  $('#storeCode').addEventListener('compositionend', (e) => stFix(e.target));
+  $('#storeCode').addEventListener('blur', (e) => stFix(e.target));
   $('#emp').addEventListener('input', (e) => { if (role === 'store') e.target.value = e.target.value.replace(/\D/g, ''); });
   $('#rem').addEventListener('change', () => { if (!$('#rem').checked) store.del(REM_KEY); });
   $('#card').addEventListener('submit', (e) => { e.preventDefault(); wantFirst = false; doCheck(); });
