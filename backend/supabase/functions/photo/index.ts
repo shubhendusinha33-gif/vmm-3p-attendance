@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
       .select("id, store_code, work_date, ts, photo_status, associate_id, associates(code)")
       .eq("photo_token", token).maybeSingle();
     if (!p || p.photo_status !== "pending") return json({ ok: false, error: "TOKEN_INVALID" }, 400);
-    if (Date.now() - new Date(p.ts).getTime() > 15 * 60 * 1000) return json({ ok: false, error: "TOKEN_EXPIRED" }, 400);
+    if (Date.now() - new Date(p.ts).getTime() > 20 * 3600 * 1000) return json({ ok: false, error: "TOKEN_EXPIRED" }, 400);   // v5.6: same 20 h window as the selfie lock in punch_submit
     const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
     if (bytes.length > MAX_BYTES) return json({ ok: false, error: "TOO_BIG" }, 400);
     const isWebp = bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50;
